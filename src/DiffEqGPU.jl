@@ -1,6 +1,9 @@
 module DiffEqGPU
 
-using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase, DiffEqMonteCarlo
+using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase
+
+export MonteGPUArray, MonteCPUArray
+
 function gpu_kernel(f,du,u,p,t)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         @views @inbounds f(du[:,i],u[:,i],p,t)
@@ -44,7 +47,7 @@ function DiffEqBase.__solve(monteprob::DiffEqBase.AbstractMonteCarloProblem,
         end
     end
 
-    prob = ODEProblem(_f,_u0,tspan,p)
+    prob = ODEProblem(_f,u0,probs[1].tspan,p)
     solve(prob,alg; kwargs...)
 end
 
