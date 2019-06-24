@@ -2,9 +2,9 @@
 environment:
   matrix:
   - julia_version: 1.0
-  - julia_version: nightly
+  #- julia_version: nightly
 platform:
-  - x86
+  #- x86
   - x64
 matrix:
   allow_failures:
