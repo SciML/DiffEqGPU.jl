@@ -22,18 +22,35 @@ struct MonteGPUArray <: MonteArrayAlgorithm end
 function DiffEqBase.__solve(monteprob::DiffEqBase.AbstractMonteCarloProblem,
                  alg::Union{DiffEqBase.DEAlgorithm,Nothing},
                  montealg::MonteArrayAlgorithm;
-                 num_monte, batch_size = num_monte, kwargs...)
+                 num_monte, batch_size = num_monte/2, kwargs...)
 
-    probs = [monteprob.prob_func(deepcopy(monteprob.prob),i,1) for i in 1:num_monte]
+    num_batches = num_monte ÷ batch_size + 1
+
+    time = @elapsed begin
+        sols = map(1:num_batches) do i
+            if i == num_batches
+              I = (batch_size*(i-1)+1):num_monte
+            else
+              I = (batch_size*(i-1)+1):batch_size*i
+            end
+            batch_solve(monteprob,I)
+        end
+    end
+
+    DiffEqBase.MonteCarloSolution(hcat(sols...),time,true)
+end
+
+function batch_solve(monteprob,I)
+    probs = [monteprob.prob_func(deepcopy(monteprob.prob),i,1) for i in I]
     @assert all(p->p.tspan == probs[1].tspan,probs)
     #@assert all(p->p.f === probs[1].f,probs)
 
     if montealg isa MonteGPUArray
-        u0 = CuArray(hcat([probs[i].u0 for i in 1:num_monte]...))
-        p  = CuArray(hcat([probs[i].p  for i in 1:num_monte]...))
+        u0 = CuArray(hcat([probs[i].u0 for i in I]...))
+        p  = CuArray(hcat([probs[i].p  for i in I]...))
     elseif montealg isa MonteCPUArray
-        u0 = hcat([probs[i].u0 for i in 1:num_monte]...)
-        p  = hcat([probs[i].p  for i in 1:num_monte]...)
+        u0 = hcat([probs[i].u0 for i in I]...)
+        p  = hcat([probs[i].p  for i in I]...)
     end
 
     _f = let f=probs[1].f
@@ -46,7 +63,9 @@ function DiffEqBase.__solve(monteprob::DiffEqBase.AbstractMonteCarloProblem,
     prob = ODEProblem(_f,u0,probs[1].tspan,p)
     sol  = solve(prob,alg; kwargs...)
 
-
+    us = Array.(sol.u)
+    solus = [[us[i][:,j] for i in 1:length(us)] for j in I]
+    [DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i]) for i in I]
 end
 
 export MonteCPUArray, MonteGPUArray
