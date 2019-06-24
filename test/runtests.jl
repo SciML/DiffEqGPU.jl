@@ -1,6 +1,4 @@
-using DiffEqGPU, OrdinaryDiffEq, Test
-
-#Performance check with nvvp
+using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test, DiffEqMonteCarlo
 
 function lorenz(du,u,p,t)
  @inbounds begin
@@ -17,7 +15,9 @@ tspan = (0.0f0,100.0f0)
 prob = ODEProblem(lorenz,u0,tspan)
 monteprob = MonteCarloProblem(prob)
 
+#Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
 @time solve(monteprob,Tsit5(),MonteGPUArray(),num_monte=100_000,saveat=1.0f0)
+@time solve(monteprob,Tsit5(),MonteCPUArray(),num_monte=100_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),MonteThreads(), num_monte=100_000,saveat=1.0f0)
-@time solve(monteprob,Tsit5(),MonteSerial(), num_monte=100_000,saveat=1.0f0)
+@time solve(monteprob,Tsit5(),MonteSerial(),  num_monte=100_000,saveat=1.0f0)
