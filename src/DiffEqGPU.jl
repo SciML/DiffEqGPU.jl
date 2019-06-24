@@ -48,4 +48,6 @@ function DiffEqBase.__solve(monteprob::DiffEqBase.AbstractMonteCarloProblem,
     solve(prob,alg; kwargs...)
 end
 
+export MonteCPUArray, MonteGPUArray
+
 end # module

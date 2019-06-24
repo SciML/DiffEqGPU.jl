@@ -13,6 +13,7 @@ end
 
 CuArrays.allowscalar(false)
 u0 = Float32[1.0;0.0;0.0]
+tspan = (0.0f0,100.0f0)
 prob = ODEProblem(lorenz,u0,tspan)
 monteprob = MonteCarloProblem(prob)
 
