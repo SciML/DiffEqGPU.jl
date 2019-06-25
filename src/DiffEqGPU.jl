@@ -40,17 +40,18 @@ function DiffEqBase.__solve(monteprob::DiffEqBase.AbstractMonteCarloProblem,
     DiffEqBase.MonteCarloSolution(hcat(sols...),time,true)
 end
 
-function batch_solve(monteprob,I)
+function batch_solve(monteprob,alg,montealg,I;kwargs...)
     probs = [monteprob.prob_func(deepcopy(monteprob.prob),i,1) for i in I]
     @assert all(p->p.tspan == probs[1].tspan,probs)
+    @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
     if montealg isa MonteGPUArray
-        u0 = CuArray(hcat([probs[i].u0 for i in I]...))
-        p  = CuArray(hcat([probs[i].p  for i in I]...))
+        u0 = CuArray(hcat([probs[i].u0 for i in 1:length(probs)]...))
+        p  = CuArray(hcat([probs[i].p  for i in 1:length(probs)]...))
     elseif montealg isa MonteCPUArray
-        u0 = hcat([probs[i].u0 for i in I]...)
-        p  = hcat([probs[i].p  for i in I]...)
+        u0 = hcat([probs[i].u0 for i in 1:length(probs)]...)
+        p  = hcat([probs[i].p  for i in 1:length(probs)]...)
     end
 
     _f = let f=probs[1].f
@@ -64,8 +65,8 @@ function batch_solve(monteprob,I)
     sol  = solve(prob,alg; kwargs...)
 
     us = Array.(sol.u)
-    solus = [[us[i][:,j] for i in 1:length(us)] for j in I]
-    [DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i]) for i in I]
+    solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
+    [DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i]) for i in 1:length(probs)]
 end
 
 export MonteCPUArray, MonteGPUArray
