@@ -13,9 +13,8 @@ GPUifyLoops = "ba82f77b-6841-5d2e-bd9f-4daf811aec27"
 julia = "1"
 
 [extras]
-DiffEqMonteCarlo = "78ddff82-25fc-5f2b-89aa-309469cbf16f"
 OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 
 [targets]
-test = ["DiffEqMonteCarlo","OrdinaryDiffEq","Test"]
+test = ["OrdinaryDiffEq","Test"]
