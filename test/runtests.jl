@@ -1,4 +1,4 @@
-using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test, DiffEqMonteCarlo
+using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test
 
 function lorenz(du,u,p,t)
  @inbounds begin
@@ -13,11 +13,11 @@ CuArrays.allowscalar(false)
 u0 = Float32[1.0;0.0;0.0]
 tspan = (0.0f0,100.0f0)
 prob = ODEProblem(lorenz,u0,tspan)
-monteprob = MonteCarloProblem(prob)
+monteprob = EnsembleProblem(prob)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time solve(monteprob,Tsit5(),MonteGPUArray(),num_monte=100_000,saveat=1.0f0)
-@time solve(monteprob,Tsit5(),MonteCPUArray(),num_monte=100_000,saveat=1.0f0)
-@time solve(monteprob,Tsit5(),MonteThreads(), num_monte=100_000,saveat=1.0f0)
-@time solve(monteprob,Tsit5(),MonteSerial(),  num_monte=100_000,saveat=1.0f0)
+@time solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,saveat=1.0f0)
+@time solve(monteprob,Tsit5(),EnsembleCPUArray(),trajectories=100_000,saveat=1.0f0)
+@time solve(monteprob,Tsit5(),EnsembleThreads(), trajectories=100_000,saveat=1.0f0)
+@time solve(monteprob,Tsit5(),EnsembleSerial(),  trajectories=100_000,saveat=1.0f0)

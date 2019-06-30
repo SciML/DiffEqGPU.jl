@@ -15,41 +15,41 @@ function GPUifyLoops.launch_config(::typeof(gpu_kernel),maxthreads,context,g,f,d
     (threads=t,blocks=blocks)
 end
 
-abstract type MonteArrayAlgorithm <: DiffEqBase.MonteCarloAlgorithm end
-struct MonteCPUArray <: MonteArrayAlgorithm end
-struct MonteGPUArray <: MonteArrayAlgorithm end
+abstract type EnsembleArrayAlgorithm <: DiffEqBase.EnsembleAlgorithm end
+struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
+struct EnsembleGPUArray <: EnsembleArrayAlgorithm end
 
-function DiffEqBase.__solve(monteprob::DiffEqBase.AbstractMonteCarloProblem,
+function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  alg::Union{DiffEqBase.DEAlgorithm,Nothing},
-                 montealg::MonteArrayAlgorithm;
-                 num_monte, batch_size = num_monte/2, kwargs...)
+                 ensemblealg::EnsembleArrayAlgorithm;
+                 trajectories, batch_size = trajectories/2, kwargs...)
 
-    num_batches = num_monte ÷ batch_size + 1
+    num_batches = trajectories ÷ batch_size + 1
 
     time = @elapsed begin
         sols = map(1:num_batches) do i
             if i == num_batches
-              I = (batch_size*(i-1)+1):num_monte
+              I = (batch_size*(i-1)+1):trajectories
             else
               I = (batch_size*(i-1)+1):batch_size*i
             end
-            batch_solve(monteprob,I)
+            batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         end
     end
 
-    DiffEqBase.MonteCarloSolution(hcat(sols...),time,true)
+    DiffEqBase.EnsembleSolution(hcat(sols...),time,true)
 end
 
-function batch_solve(monteprob,alg,montealg,I;kwargs...)
-    probs = [monteprob.prob_func(deepcopy(monteprob.prob),i,1) for i in I]
+function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+    probs = [ensembleprob.prob_func(deepcopy(ensembleprob.prob),i,1) for i in I]
     @assert all(p->p.tspan == probs[1].tspan,probs)
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
-    if montealg isa MonteGPUArray
+    if ensemblealg isa EnsembleGPUArray
         u0 = CuArray(hcat([probs[i].u0 for i in 1:length(probs)]...))
         p  = CuArray(hcat([probs[i].p  for i in 1:length(probs)]...))
-    elseif montealg isa MonteCPUArray
+    elseif ensemblealg isa EnsembleCPUArray
         u0 = hcat([probs[i].u0 for i in 1:length(probs)]...)
         p  = hcat([probs[i].p  for i in 1:length(probs)]...)
     end
@@ -69,6 +69,6 @@ function batch_solve(monteprob,alg,montealg,I;kwargs...)
     [DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i]) for i in 1:length(probs)]
 end
 
-export MonteCPUArray, MonteGPUArray
+export EnsembleCPUArray, EnsembleGPUArray
 
 end # module
