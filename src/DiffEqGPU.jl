@@ -22,10 +22,11 @@ struct EnsembleGPUArray <: EnsembleArrayAlgorithm end
 function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  alg::Union{DiffEqBase.DEAlgorithm,Nothing},
                  ensemblealg::EnsembleArrayAlgorithm;
-                 trajectories, batch_size = trajectories/2, kwargs...)
+                 trajectories, batch_size = trajectories, kwargs...)
 
-    num_batches = trajectories ÷ batch_size + 1
+    num_batches = trajectories ÷ batch_size
 
+    num_batches * batch_size != trajectories && (num_batches += 1)
     time = @elapsed begin
         sols = map(1:num_batches) do i
             if i == num_batches

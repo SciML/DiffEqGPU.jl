@@ -18,6 +18,8 @@ monteprob = EnsembleProblem(prob)
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
 @time solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,saveat=1.0f0)
+@time solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,
+                                                 batch_size=50_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleCPUArray(),trajectories=100_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleThreads(), trajectories=100_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleSerial(),  trajectories=100_000,saveat=1.0f0)
