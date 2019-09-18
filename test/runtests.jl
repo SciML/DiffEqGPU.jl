@@ -25,3 +25,32 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 @time solve(monteprob,Tsit5(),EnsembleCPUArray(),trajectories=100_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleThreads(), trajectories=100_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleSerial(),  trajectories=100_000,saveat=1.0f0)
+
+
+function lorenz_jac(du,u,p,t)
+ @inbounds begin
+     σ = p[1]
+     ρ = p[2]
+     β = p[3]
+     x = u[1]
+     y = u[2]
+     z = u[3]
+     du[1,1] = -σ
+     du[2,1] = ρ - z
+     du[3,1] = y
+     du[1,2] = σ
+     du[2,2] = -1
+     du[3,2] = x
+     du[1,3] = 0
+     du[2,3] = -x
+     du[3,3] = -β
+ end
+ nothing
+end
+
+func = ODEFunction(lorenz)
+prob = ODEProblem(func,u0,tspan,p)
+prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func)
+
+@time solve(monteprob,TRBDF2(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0)

@@ -9,6 +9,15 @@ function gpu_kernel(f,du,u,p,t)
     nothing
 end
 
+function jac_kernel(f,J,u,p,t)
+    @loop for i in (0:(size(u,2)-1); (blockIdx().x-1) * blockDim().x + threadIdx().x)
+        section = 1 + (i*size(u,1)) : ((i+1)*size(u,1))
+        @views @inbounds f(J[section,section],u[:,i],p,t)
+        nothing
+    end
+    nothing
+end
+
 function GPUifyLoops.launch_config(::typeof(gpu_kernel),maxthreads,context,g,f,du,u,args...;kwargs...)
     t = min(maxthreads,size(u,2))
     blocks = ceil(Int,size(u,2)/t)
@@ -62,12 +71,32 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         end
     end
 
-    prob = ODEProblem(_f,u0,probs[1].tspan,p)
+    if DiffEqBase.has_jac(probs[1].f)
+        _jac = let jac=probs[1].f.jac
+            function (J,u,p,t)
+                version = u isa CuArray ? CUDA() : CPU()
+                @launch version gpu_kernel(jac,J,u,p,t)
+                @show J
+            end
+        end
+    else
+        _jac = nothing
+    end
+
+    if probs[1].f.colorvec !== nothing
+        colorvec = repeat(probs[1].f.colorvec,length(I))
+    else
+        colorvec = repeat(1:length(probs[1].u0),length(I))
+    end
+
+    f_func = ODEFunction(_f,jac=_jac,colorvec=colorvec)
+    prob = ODEProblem(f_func,u0,probs[1].tspan,p;
+                      probs[1].kwargs...)
     sol  = solve(prob,alg; kwargs...)
 
     us = Array.(sol.u)
     solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
-    [DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i]) for i in 1:length(probs)]
+    [DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats) for i in 1:length(probs)]
 end
 
 export EnsembleCPUArray, EnsembleGPUArray
