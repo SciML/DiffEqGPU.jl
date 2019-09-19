@@ -81,7 +81,3 @@ end
 callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=ContinuousCallback(c_condition,affect!,save_positions=(false,false)))
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
 @test_broken solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100,saveat=1.0f0)[1].retcode == :Success
-
-CuArrays.allowscalar(true)
-solve(callback_monteprob,Tsit5(),EnsembleGPUArray(gpuifycallback=false),trajectories=100,saveat=1.0f0)
-CuArrays.allowscalar(false)
