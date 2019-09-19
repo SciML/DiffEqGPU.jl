@@ -43,8 +43,8 @@ function continuous_condition_kernel(condition,out,u,t,p)
 end
 
 function continuous_affect!_kernel(affect!,event_idx,u,t,p)
-    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        @views @inbounds i == event_idx && affect!(FakeIntegrator(u[:,i],t,p[:,i]))
+    @loop for i in ((event_idx,); (blockIdx().x-1) * blockDim().x + threadIdx().x)
+        @views @inbounds affect!(FakeIntegrator(u[:,i],t,p[:,i]))
         nothing
     end
     nothing
@@ -63,14 +63,8 @@ struct FakeIntegrator{uType,tType,P}
 end
 
 abstract type EnsembleArrayAlgorithm <: DiffEqBase.EnsembleAlgorithm end
-struct EnsembleCPUArray <: EnsembleArrayAlgorithm
-    gpuifycallback::Bool
-end
-EnsembleCPUArray(;gpuifycallback = true) = EnsembleCPUArray(gpuifycallback)
-struct EnsembleGPUArray <: EnsembleArrayAlgorithm
-    gpuifycallback::Bool
-end
-EnsembleGPUArray(;gpuifycallback = true) = EnsembleGPUArray(gpuifycallback)
+struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
+struct EnsembleGPUArray <: EnsembleArrayAlgorithm end
 
 function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  alg::Union{DiffEqBase.DEAlgorithm,Nothing},
@@ -135,99 +129,48 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     if :callback ∉ keys(probs[1].kwargs)
         _callback = nothing
     elseif probs[1].kwargs[:callback] isa DiscreteCallback
-        if ensemblealg.gpuifycallback
-            if ensemblealg isa EnsembleGPUArray
-                cur = CuArray([false for i in 1:length(probs)])
-            else
-                cur = [false for i in 1:length(probs)]
-            end
-            _condition = probs[1].kwargs[:callback].condition
-            _affect!   = probs[1].kwargs[:callback].affect!
-
-            condition = function (u,t,integrator)
-                version = u isa CuArray ? CUDA() : CPU()
-                @launch version discrete_condition_kernel(_condition,cur,u,t,p)
-                any(cur)
-            end
-
-            affect! = function (integrator)
-                version = u isa CuArray ? CUDA() : CPU()
-                @launch version discrete_affect!_kernel(_affect!,cur,u,t,p)
-            end
-
-            _callback = DiscreteCallback(condition,affect!,save_positions=probs[1].kwargs[:callback].save_positions)
+        if ensemblealg isa EnsembleGPUArray
+            cur = CuArray([false for i in 1:length(probs)])
         else
             cur = [false for i in 1:length(probs)]
-
-            condition = function (u,t,integrator)
-                for i in 1:length(probs)
-                    @views cur[i] = probs[i].kwargs[:callback].condition(u[:,i],t,integrator)
-                end
-                any(cur)
-            end
-
-            if probs[1].kwargs[:callback].affect! !== nothing
-                affect! = function (integrator)
-                    for i in 1:length(probs)
-                        @views cur[i] && probs[1].kwargs[:callback].affect!(FakeIntegrator(integrator.u[:,i],integrator.t,integrator.p[:,i]))
-                    end
-                end
-            else
-                affect! = nothing
-            end
-
-            _callback = DiscreteCallback(condition,affect!,save_positions=probs[1].kwargs[:callback].save_positions)
         end
+        _condition = probs[1].kwargs[:callback].condition
+        _affect!   = probs[1].kwargs[:callback].affect!
+
+        condition = function (u,t,integrator)
+            version = u isa CuArray ? CUDA() : CPU()
+            @launch version discrete_condition_kernel(_condition,cur,u,t,integrator.p)
+            any(cur)
+        end
+
+        affect! = function (integrator)
+            version = integrator.u isa CuArray ? CUDA() : CPU()
+            @launch version discrete_affect!_kernel(_affect!,cur,integrator.u,integrator.t,integrator.p)
+        end
+
+        _callback = DiscreteCallback(condition,affect!,save_positions=probs[1].kwargs[:callback].save_positions)
     elseif probs[1].kwargs[:callback] isa ContinuousCallback
-        if ensemblealg.gpuifycallback
-            _condition   = probs[1].kwargs[:callback].condition
-            _affect!     = probs[1].kwargs[:callback].affect!
-            _affect_neg! = probs[1].kwargs[:callback].affect_neg!
+        _condition   = probs[1].kwargs[:callback].condition
+        _affect!     = probs[1].kwargs[:callback].affect!
+        _affect_neg! = probs[1].kwargs[:callback].affect_neg!
 
-            condition = function (out,u,t,integrator)
-                version = u isa CuArray ? CUDA() : CPU()
-                @launch version continuous_condition_kernel(_condition,out,u,t,p)
-                any(cur)
-            end
-
-            affect! = function (integrator,event_idx)
-                version = u isa CuArray ? CUDA() : CPU()
-                @launch version continuous_affect!_kernel(_affect!,cur,u,t,p)
-            end
-
-            affect_neg! = function (integrator,event_idx)
-                version = u isa CuArray ? CUDA() : CPU()
-                @launch version continuous_affect!_kernel(_affect_neg!,event_idx,u,t,p)
-            end
-
-            _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
-        else
-            condition = function (cur,u,t,integrator)
-                for i in 1:length(probs)
-                    @views cur[i] = probs[i].kwargs[:callback].condition(u[:,i],t,integrator)
-                end
-                nothing
-            end
-
-            if probs[1].kwargs[:callback].affect! !== nothing
-                affect! = function (integrator,event_idx)
-                    @views probs[1].kwargs[:callback].affect!(FakeIntegrator(integrator.u[:,event_idx],integrator.t,integrator.p[:,event_idx]))
-                    nothing
-                end
-            else
-                affect! = nothing
-            end
-
-            if probs[1].kwargs[:callback].affect_neg! !== nothing
-                affect_neg! = function (integrator,event_idx)
-                    @views probs[1].kwargs[:callback].affect_neg!(FakeIntegrator(integrator.u[:,event_idx],integrator.t,integrator.p[:,event_idx]))
-                end
-            else
-                affect_neg! = nothing
-            end
-
-            _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
+        condition = function (out,u,t,integrator)
+            version = u isa CuArray ? CUDA() : CPU()
+            @launch version continuous_condition_kernel(_condition,out,u,t,integrator.p)
+            nothing
         end
+
+        affect! = function (integrator,event_idx)
+            version = integrator.u isa CuArray ? CUDA() : CPU()
+            @launch version continuous_affect!_kernel(_affect!,event_idx,integrator.u,integrator.t,integrator.p)
+        end
+
+        affect_neg! = function (integrator,event_idx)
+            version = integrator.u isa CuArray ? CUDA() : CPU()
+            @launch version continuous_affect!_kernel(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p)
+        end
+
+        _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
     end
 
     f_func = ODEFunction(_f,jac=_jac)
