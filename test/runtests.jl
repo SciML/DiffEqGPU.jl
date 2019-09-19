@@ -58,8 +58,6 @@ monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 @time solve(monteprob_jac,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 @time solve(monteprob_jac,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=100,saveat=1.0f0)
 
-CuArrays.allowscalar(true)
-
 condition = function (u,t,integrator)
     u[1] > 5
 end
@@ -71,3 +69,19 @@ end
 callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=DiscreteCallback(condition,affect!,save_positions=(false,false)))
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
 @test_broken solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100,saveat=1.0f0)[1].retcode == :Success
+
+CuArrays.allowscalar(true)
+solve(callback_monteprob,Tsit5(),EnsembleGPUArray(gpuifycallback=false),trajectories=100,saveat=1.0f0)
+CuArrays.allowscalar(false)
+
+c_condition = function (u,t,integrator)
+    u[1] - 5
+end
+
+callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=ContinuousCallback(c_condition,affect!,save_positions=(false,false)))
+callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+@test_broken solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100,saveat=1.0f0)[1].retcode == :Success
+
+CuArrays.allowscalar(true)
+solve(callback_monteprob,Tsit5(),EnsembleGPUArray(gpuifycallback=false),trajectories=100,saveat=1.0f0)
+CuArrays.allowscalar(false)
