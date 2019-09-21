@@ -14,7 +14,8 @@ u0 = Float32[1.0;0.0;0.0]
 tspan = (0.0f0,100.0f0)
 p = (10.0f0,28.0f0,8/3f0)
 prob = ODEProblem(lorenz,u0,tspan,p)
-prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
+const pre_p = [rand(Float32,3) for i in 1:100_000]
+prob_func = (prob,i,repeat) -> remake(prob,p=pre_p[i].*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
@@ -25,3 +26,61 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 @time solve(monteprob,Tsit5(),EnsembleCPUArray(),trajectories=100_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleThreads(), trajectories=100_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleSerial(),  trajectories=100_000,saveat=1.0f0)
+
+
+solve(monteprob,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+solve(monteprob,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+@test_broken solve(monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+
+function lorenz_jac(du,u,p,t)
+ @inbounds begin
+     σ = p[1]
+     ρ = p[2]
+     β = p[3]
+     x = u[1]
+     y = u[2]
+     z = u[3]
+     du[1,1] = -σ
+     du[2,1] = ρ - z
+     du[3,1] = y
+     du[1,2] = σ
+     du[2,2] = -1
+     du[3,2] = x
+     du[1,3] = 0
+     du[2,3] = -x
+     du[3,3] = -β
+ end
+ nothing
+end
+
+func = ODEFunction(lorenz,jac=lorenz_jac)
+prob_jac = ODEProblem(func,u0,tspan,p)
+monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
+
+@time solve(monteprob_jac,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+@time solve(monteprob_jac,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=100,saveat=1.0f0)
+
+condition = function (u,t,integrator)
+    @inbounds u[1] > 5
+end
+
+affect! = function (integrator)
+    @inbounds integrator.u[1] = -4
+end
+
+callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=DiscreteCallback(condition,affect!,save_positions=(false,false)))
+callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100,saveat=1.0f0)
+
+c_condition = function (u,t,integrator)
+    @inbounds u[1] - 3
+end
+
+c_affect! = function (integrator)
+    @inbounds integrator.u[1] += 20
+end
+
+callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=ContinuousCallback(c_condition,c_affect!,save_positions=(false,false)))
+callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+CuArrays.@allowscalar solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0)
+@test_broken solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10,saveat=1.0f0)[1].retcode == :Success
