@@ -173,7 +173,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
     end
 
-    f_func = ODEFunction(_f,jac=_jac)
+    f_func = ODEFunction(_f,jac=_jac,colorvec=colorvec)
     prob = ODEProblem(f_func,u0,probs[1].tspan,p;
                       probs[1].kwargs...)
     sol  = solve(prob,alg; callback = _callback, kwargs...)
@@ -183,6 +183,47 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     [DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode) for i in 1:length(probs)]
 end
 
-export EnsembleCPUArray, EnsembleGPUArray
+### GPU Factorization
+
+mutable struct LinSolveGPUSplitFactorize{T}
+  facts::Array{CuArrays.CUSOLVER.CuQR{T,CuArray{T,2}}}
+  len::Int
+end
+LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(CuArrays.CUSOLVER.CuQR{Float32,CuArray{Float32,2}}[],0)
+
+function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
+  version = b isa CuArray ? CUDA() : CPU()
+  if update_matrix
+    @launch version qr_kernel(p.facts,A)
+  end
+  if typeof(p.A) <: SuiteSparse.UMFPACK.UmfpackLU || typeof(p.factorization) <: typeof(lu)
+    ldiv!(x,p.A,b) # No 2-arg form for SparseArrays!
+  else
+    x .= b
+    @launch version ldiv!_kernel(p.facts,x,p.len)
+  end
+end
+function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
+  LinSolveGPUSplitFactorize(Array{CuArrays.CUSOLVER.CuQR{eltype(u0_prototype),CuArray{eltype(u0_prototype),2}}}(undef,size(u0_prototype,2)),size(u0_prototype,1))
+end
+
+function qr_kernel(facts,W,len)
+    @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
+        section = 1 + (i*len) : ((i+1)*len)
+        facts[i] = qr!(W[])
+        nothing
+    end
+    nothing
+end
+
+function ldiv!_kernel(facts,W,len)
+    @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
+        @views ldiv!(facts[i],x[(i*len+1):((i+1)*len)])
+        nothing
+    end
+    nothing
+end
+
+export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
 
 end # module

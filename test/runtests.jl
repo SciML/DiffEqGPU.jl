@@ -28,7 +28,9 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 @time solve(monteprob,Tsit5(),EnsembleSerial(),  trajectories=100_000,saveat=1.0f0)
 
 
-@time solve(monteprob,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+solve(monteprob,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+solve(monteprob,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+@test_broken solve(monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 
 function lorenz_jac(du,u,p,t)
  @inbounds begin
@@ -69,10 +71,6 @@ end
 callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=DiscreteCallback(condition,affect!,save_positions=(false,false)))
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
 solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100,saveat=1.0f0)
-
-CuArrays.allowscalar(true)
-solve(callback_monteprob,Tsit5(),EnsembleGPUArray(gpuifycallback=false),trajectories=100,saveat=1.0f0)
-CuArrays.allowscalar(false)
 
 c_condition = function (u,t,integrator)
     @inbounds u[1] - 3
