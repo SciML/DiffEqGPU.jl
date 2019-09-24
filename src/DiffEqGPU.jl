@@ -103,7 +103,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         p  = hcat([probs[i].p  for i in 1:length(probs)]...)
     end
 
-    _f = let f=probs[1].f
+    _f = let f=probs[1].f.f
         function (du,u,p,t)
             version = u isa CuArray ? CUDA() : CPU()
             @launch version gpu_kernel(f,du,u,p,t)
