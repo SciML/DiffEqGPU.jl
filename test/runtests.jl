@@ -20,7 +20,9 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,saveat=1.0f0)
+sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,saveat=1.0f0)
+@test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
+
 @time solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,
                                                  batch_size=50_000,saveat=1.0f0)
 @time solve(monteprob,Tsit5(),EnsembleCPUArray(),trajectories=100_000,saveat=1.0f0)

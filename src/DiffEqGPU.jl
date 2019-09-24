@@ -174,10 +174,17 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
     end
 
+    #=
+    internalnorm(u::CuArray,t) = sqrt(maximum(reduce((x,y)->x^2 + y^2, u, dim=1))/size(u0,1))
+    internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
+    =#
+
     f_func = ODEFunction(_f,jac=_jac,colorvec=colorvec)
     prob = ODEProblem(f_func,u0,probs[1].tspan,p;
                       probs[1].kwargs...)
-    sol  = solve(prob,alg; callback = _callback, kwargs...)
+    sol  = solve(prob,alg; callback = _callback,
+                 #internalnorm=internalnorm,
+                 kwargs...)
 
     us = Array.(sol.u)
     solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
