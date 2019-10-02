@@ -1,6 +1,7 @@
 module DiffEqGPU
 
 using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra
+using StaticArrays
 
 function gpu_kernel(f,du,u,p,t)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
@@ -193,43 +194,46 @@ end
 
 ### GPU Factorization
 
-mutable struct LinSolveGPUSplitFactorize{T}
-  facts::Array{CuArrays.CUSOLVER.CuQR{T,CuArray{T,2}}}
-  len::Int
+mutable struct LinSolveGPUSplitFactorize{T,L}
+  facts::T
+  LinSolveGPUSplitFactorize(facts::T, ::Val{L}) where {T,L} = new{T,L}(facts)
 end
-LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(CuArrays.CUSOLVER.CuQR{Float32,CuArray{Float32,2}}[],0)
+LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0,Val(0))
 
-function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
+function (p::LinSolveGPUSplitFactorize{T,L})(x,A,b,update_matrix=false;kwargs...) where {T,L}
   version = b isa CuArray ? CUDA() : CPU()
   if update_matrix
-    @launch version qr_kernel(p.facts,A)
+    @launch version qr_kernel(p.facts,A,L,SArray{Tuple{L,L},Float32,2,L*L})
   end
-  if typeof(p.A) <: SuiteSparse.UMFPACK.UmfpackLU || typeof(p.factorization) <: typeof(lu)
-    ldiv!(x,p.A,b) # No 2-arg form for SparseArrays!
-  else
-    x .= b
-    @launch version ldiv!_kernel(p.facts,x,p.len)
-  end
+  x .= b
+  @launch version ldiv!_kernel(p.facts,x,L)
+  return nothing
 end
 function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
-  LinSolveGPUSplitFactorize(Array{CuArrays.CUSOLVER.CuQR{eltype(u0_prototype),CuArray{eltype(u0_prototype),2}}}(undef,size(u0_prototype,2)),size(u0_prototype,1))
+  L = size(u0_prototype,1)
+  T = SArray{Tuple{L,L},Float32,2,L*L}
+  LinSolveGPUSplitFactorize(CuArray{T,1}(undef,size(u0_prototype,2)), Val(L))
 end
 
-function qr_kernel(facts,W,len)
+function qr_kernel(facts,W,len,T)
     @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         section = 1 + (i*len) : ((i+1)*len)
-        facts[i] = qr!(W[])
+        #facts[i+1] = qr(@inbounds T(@view W[section, section]))
+        facts[i+1] = @inbounds T(@view W[section, section])
         nothing
     end
-    nothing
+    return nothing
 end
 
-function ldiv!_kernel(facts,W,len)
+function ldiv!_kernel(facts,x,len)
+    T = SArray{Tuple{3},Float32,1,3}
     @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        @views ldiv!(facts[i],x[(i*len+1):((i+1)*len)])
+        section = 1 + (i*len) : ((i+1)*len)
+        xi = @view x[section]
+        xi .= facts[i+1] \ @inbounds T(xi)
         nothing
     end
-    nothing
+    return nothing
 end
 
 export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
