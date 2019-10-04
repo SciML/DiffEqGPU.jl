@@ -206,7 +206,7 @@ function (p::LinSolveGPUSplitFactorize{T,L})(x,A,b,update_matrix=false;kwargs...
     @launch version qr_kernel(p.facts,A,L,SArray{Tuple{L,L},Float32,2,L*L})
   end
   copyto!(x, b)
-  @launch version ldiv!_kernel(p.facts,x,L)
+  @launch version ldiv!_kernel(p.facts,x,L,SArray{Tuple{L},Float32,1,L})
   return nothing
 end
 function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
@@ -216,21 +216,22 @@ function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
 end
 
 function qr_kernel(facts,W,len,::Type{T}) where T
+    n = StaticArrays.Length(T)
     @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         section = 1 + (i*len) : ((i+1)*len)
         #facts[i+1] = qr(@inbounds T(@view W[section, section]))
-        facts[i+1] = @inbounds T(@view W[section, section])
+        facts[i+1] = StaticArrays._convert(T, (@view W[section, section]), n)
         nothing
     end
     return nothing
 end
 
-function ldiv!_kernel(facts,x,len)
-    T = SArray{Tuple{3},Float32,1,3}
+function ldiv!_kernel(facts,x,len,::Type{T}) where T
+    n = StaticArrays.Length(T)
     @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         section = 1 + (i*len) : ((i+1)*len)
         xi = @view x[section]
-        xi .= facts[i+1] \ @inbounds T(xi)
+        xi .= facts[i+1] \ StaticArrays._convert(T, xi, n)
         nothing
     end
     return nothing
