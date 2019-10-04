@@ -122,6 +122,17 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         _jac = nothing
     end
 
+    if DiffEqBase.has_tgrad(probs[1].f)
+        _tgrad = let tgrad=probs[1].f.tgrad
+            function (J,u,p,t)
+                version = u isa CuArray ? CUDA() : CPU()
+                @launch version gpu_kernel(tgrad,J,u,p,t)
+            end
+        end
+    else
+        _tgrad = nothing
+    end
+
     if probs[1].f.colorvec !== nothing
         colorvec = repeat(probs[1].f.colorvec,length(I))
     else
@@ -180,7 +191,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
     =#
 
-    f_func = ODEFunction(_f,jac=_jac,colorvec=colorvec)
+    f_func = ODEFunction(_f,jac=_jac,colorvec=colorvec,tgrad=_tgrad)
     prob = ODEProblem(f_func,u0,probs[1].tspan,p;
                       probs[1].kwargs...)
     sol  = solve(prob,alg; callback = _callback,
@@ -203,7 +214,9 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
   version = b isa CuArray ? CUDA() : CPU()
   if update_matrix
+    @show "before",A
     @launch version qr_kernel(A,p.len,p.nfacts)
+    @show "after",A
   end
   copyto!(x, b)
   @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
