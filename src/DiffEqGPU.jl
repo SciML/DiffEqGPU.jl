@@ -194,52 +194,103 @@ end
 
 ### GPU Factorization
 
-mutable struct LinSolveGPUSplitFactorize{T,L}
-  facts::T
-  LinSolveGPUSplitFactorize(facts::T, ::Val{L}) where {T,L} = new{T,L}(facts)
+struct LinSolveGPUSplitFactorize
+  len::Int32
+  nfacts::Int32
 end
-LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0,Val(0))
+LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 
-function (p::LinSolveGPUSplitFactorize{T,L})(x,A,b,update_matrix=false;kwargs...) where {T,L}
+function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
   version = b isa CuArray ? CUDA() : CPU()
-  Tw = SArray{Tuple{L,L},Float32,2,L*L}
   if update_matrix
-    @launch version qr_kernel(p.facts,A,L,Tw)
+    @launch version qr_kernel(A,p.len,p.nfacts)
   end
   copyto!(x, b)
-  @launch version ldiv!_kernel(p.facts,x,L,Tw,SArray{Tuple{L},Float32,1,L})
+  @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
   return nothing
 end
 function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
-  L = size(u0_prototype,1)
-  #T = SArray{Tuple{L,L},Float32,2,L*L}
-  T = NTuple{L*L,Float32}
-  LinSolveGPUSplitFactorize(CuArray{T,1}(undef,size(u0_prototype,2)), Val(L))
+  LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
 
-getN(::Type{SArray{A,B,C,L}}) where {A,B,C,L} = Val(L)
-
-function qr_kernel(facts,W,len,::Type{T}) where T
-    @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
+function qr_kernel(W,len,nfacts)
+    @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         section = 1 + (i*len) : ((i+1)*len)
-        #facts[i+1] = qr(@inbounds T(@view W[section, section]))
-        #facts[i+1] = StaticArrays._convert(T, (@view W[section, section]), len*len)
         vW = @inbounds @view W[section, section]
-        facts[i+1] = ntuple(i->(@inbounds vW[i]), getN(T))
+        generic_lufact!(vW)
         nothing
     end
     return nothing
 end
 
-function ldiv!_kernel(facts,x,len,::Type{Tw},::Type{Tv}) where {Tw,Tv}
-    @loop for i in (0:length(facts)-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
+function ldiv!_kernel(W,x,len,nfacts)
+    @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         section = 1 + (i*len) : ((i+1)*len)
-        xi = @view x[section]
-        #xi .= facts[i+1] \ StaticArrays._convert(T, xi, len)
-        xi .= Tw(facts[i+1]) \ Tv(ntuple(i->(@inbounds xi[i]), getN(Tv)))
+        vW = @inbounds @view W[section, section]
+        xi = @inbounds @view x[section]
+        naivesolve!(vW, xi)
         nothing
     end
     return nothing
+end
+
+function generic_lufact!(A::AbstractMatrix{T}) where {T}
+  m, n = size(A)
+  minmn = min(m,n)
+  @inbounds begin
+    for k = 1:minmn
+      # find index max
+      kp = k
+      if k != kp
+        # Interchange
+        for i = 1:n
+          tmp = A[k,i]
+          A[k,i] = A[kp,i]
+          A[kp,i] = tmp
+        end
+      end
+      # Scale first column
+      Akkinv = inv(A[k,k])
+      for i = k+1:m
+        A[i,k] *= Akkinv
+      end
+      # Update the rest
+      for j = k+1:n
+        for i = k+1:m
+          A[i,j] -= A[i,k]*A[k,j]
+        end
+      end
+    end
+  end
+  return nothing
+end
+
+function naivesub!(A::UpperTriangular, b::AbstractVector, x::AbstractVector = b)
+  n = size(A, 2)
+  @inbounds for j in n:-1:1
+    #iszero(A.data[j,j]) && throw(SingularException(j))
+    xj = x[j] = A.data[j,j] \ b[j]
+    for i in j-1:-1:1 # counterintuitively 1:j-1 performs slightly better
+      b[i] -= A.data[i,j] * xj
+    end
+  end
+  return nothing
+end
+function naivesub!(A::UnitLowerTriangular, b::AbstractVector, x::AbstractVector = b)
+  n = size(A, 2)
+  @inbounds for j in 1:n
+    xj = x[j] = b[j]
+    for i in j+1:n
+      b[i] -= A.data[i,j] * xj
+    end
+  end
+  return nothing
+end
+
+function naivesolve!(A::AbstractMatrix, x::AbstractVector)
+  naivesub!(UnitLowerTriangular(A), x)
+  naivesub!(UpperTriangular(A), x)
+  return nothing
 end
 
 export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
