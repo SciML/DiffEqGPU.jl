@@ -206,104 +206,99 @@ end
 ### GPU Factorization
 
 struct LinSolveGPUSplitFactorize
-  len::Int32
-  nfacts::Int32
+    len::Int32
+    nfacts::Int32
 end
 LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
-  version = b isa CuArray ? CUDA() : CPU()
-  if update_matrix
-    @show "before",A
-    @launch version qr_kernel(A,p.len,p.nfacts)
-    @show "after",A
-  end
-  copyto!(x, b)
-  @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
-  return nothing
+    version = b isa CuArray ? CUDA() : CPU()
+    if update_matrix
+        @show "before",A
+        @launch version qr_kernel(A,p.len,p.nfacts)
+        @show "after",A
+    end
+    copyto!(x, b)
+    @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
+    return nothing
 end
 function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
-  LinSolveGPUSplitFactorize(size(u0_prototype)...)
+    LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
 
+struct SimpleView
+    offset1::Int32
+    stride2::Int32 # stride(A, 2)
+end
+
+function Base.getindex(sv::SimpleView, i::Integer, j::Integer)
+    ret = sv.offset1 + i + sv.stride2 * (j-1)
+end
+Base.getindex(sv::SimpleView, i::Integer) = sv.offset1 + i
+
 function qr_kernel(W,len,nfacts)
+    stride2 = stride(W, 2)
     @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        section = 1 + (i*len) : ((i+1)*len)
-        vW = @inbounds @view W[section, section]
-        generic_lufact!(vW)
+        offset = i*len
+        sv = SimpleView(offset, stride2)
+        generic_lufact!(W, sv, len)
         nothing
     end
     return nothing
 end
 
 function ldiv!_kernel(W,x,len,nfacts)
+    stride2 = stride(W, 2)
     @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        section = 1 + (i*len) : ((i+1)*len)
-        vW = @inbounds @view W[section, section]
-        xi = @inbounds @view x[section]
-        naivesolve!(vW, xi)
+        offset = i*len
+        sv = SimpleView(offset, stride2)
+        naivesolve!(W, x, sv, len)
         nothing
     end
     return nothing
 end
 
-function generic_lufact!(A::AbstractMatrix{T}) where {T}
-  m, n = size(A)
-  minmn = min(m,n)
-  @inbounds begin
-    for k = 1:minmn
-      # find index max
-      kp = k
-      if k != kp
-        # Interchange
-        for i = 1:n
-          tmp = A[k,i]
-          A[k,i] = A[kp,i]
-          A[kp,i] = tmp
-        end
-      end
-      # Scale first column
-      Akkinv = inv(A[k,k])
-      for i = k+1:m
-        A[i,k] *= Akkinv
-      end
-      # Update the rest
-      for j = k+1:n
+function generic_lufact!(A::AbstractMatrix{T}, ii, minmn) where {T}
+    m = n = minmn
+    @inbounds for k = 1:minmn
+        # Scale first column
+        Akkinv = inv(A[ii[k,k]])
         for i = k+1:m
-          A[i,j] -= A[i,k]*A[k,j]
+            A[ii[i,k]] *= Akkinv
         end
-      end
+        # Update the rest
+        for j = k+1:n, i = k+1:m
+            A[ii[i,j]] -= A[ii[i,k]]*A[ii[k,j]]
+        end
     end
-  end
-  return nothing
+    return nothing
 end
 
-function naivesub!(A::UpperTriangular, b::AbstractVector, x::AbstractVector = b)
-  n = size(A, 2)
-  @inbounds for j in n:-1:1
-    #iszero(A.data[j,j]) && throw(SingularException(j))
-    xj = x[j] = A.data[j,j] \ b[j]
-    for i in j-1:-1:1 # counterintuitively 1:j-1 performs slightly better
-      b[i] -= A.data[i,j] * xj
+function naivesub!(A::UpperTriangular, b::AbstractVector, ii, n)
+    x = b
+    @inbounds for j in n:-1:1
+        xj = x[ii[j]] = A.data[ii[j,j]] \ b[ii[j]]
+        for i in j-1:-1:1 # counterintuitively 1:j-1 performs slightly better
+            b[ii[i]] -= A.data[ii[i,j]] * xj
+        end
     end
-  end
-  return nothing
+    return nothing
 end
-function naivesub!(A::UnitLowerTriangular, b::AbstractVector, x::AbstractVector = b)
-  n = size(A, 2)
-  @inbounds for j in 1:n
-    xj = x[j] = b[j]
-    for i in j+1:n
-      b[i] -= A.data[i,j] * xj
+function naivesub!(A::UnitLowerTriangular, b::AbstractVector, ii, n)
+    x = b
+    @inbounds for j in 1:n
+        xj = x[ii[j]]
+        for i in j+1:n
+            b[ii[i]] -= A.data[ii[i,j]] * xj
+        end
     end
-  end
-  return nothing
+    return nothing
 end
 
-function naivesolve!(A::AbstractMatrix, x::AbstractVector)
-  naivesub!(UnitLowerTriangular(A), x)
-  naivesub!(UpperTriangular(A), x)
-  return nothing
+function naivesolve!(A::AbstractMatrix, x::AbstractVector, ii, n)
+    naivesub!(UnitLowerTriangular(A), x, ii, n)
+    naivesub!(UpperTriangular(A), x, ii, n)
+    return nothing
 end
 
 export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
