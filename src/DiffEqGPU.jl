@@ -214,9 +214,11 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDA() : CPU()
     if update_matrix
-        @show "before",A
+        #println("\nbefore")
+        #Base.print_matrix(stdout, A)
         @launch version qr_kernel(A,p.len,p.nfacts)
-        @show "after",A
+        #println("\nafter")
+        #Base.print_matrix(stdout, A)
     end
     copyto!(x, b)
     @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
@@ -231,13 +233,11 @@ struct SimpleView
     stride2::Int32 # stride(A, 2)
 end
 
-function Base.getindex(sv::SimpleView, i::Integer, j::Integer)
-    ret = sv.offset1 + i + sv.stride2 * (j-1)
-end
-Base.getindex(sv::SimpleView, i::Integer) = sv.offset1 + i
+@inline Base.getindex(sv::SimpleView, i::Integer, j::Integer) = sv.offset1 + i + sv.stride2 * (j-Int32(1) + sv.offset1)
+@inline Base.getindex(sv::SimpleView, i::Integer) = sv.offset1 + i
 
 function qr_kernel(W,len,nfacts)
-    stride2 = stride(W, 2)
+    stride2 = size(W, 1)
     @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         offset = i*len
         sv = SimpleView(offset, stride2)
