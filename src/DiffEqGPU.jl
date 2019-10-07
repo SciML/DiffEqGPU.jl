@@ -52,7 +52,14 @@ function continuous_affect!_kernel(affect!,event_idx,u,t,p)
     nothing
 end
 
-function GPUifyLoops.launch_config(::typeof(gpu_kernel),maxthreads,context,g,f,du,u,args...;kwargs...)
+function GPUifyLoops.launch_config(::Union{typeof(gpu_kernel),
+                                           typeof(jac_kernel),
+                                           typeof(discrete_condition_kernel),
+                                           typeof(discrete_affect!_kernel),
+                                           typeof(continuous_condition_kernel),
+                                           typeof(continuous_affect!_kernel)},
+                                           maxthreads,context,g,f,du,u,args...;
+                                           kwargs...)
     t = min(maxthreads,size(u,2))
     blocks = ceil(Int,size(u,2)/t)
     (threads=t,blocks=blocks)
@@ -224,6 +231,7 @@ function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
     return nothing
 end
+
 function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
     LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
@@ -256,6 +264,15 @@ function ldiv!_kernel(W,x,len,nfacts)
         nothing
     end
     return nothing
+end
+
+function GPUifyLoops.launch_config(::Union{typeof(qr_kernel),
+                                           typeof(ldiv!_kernel)},
+                                           maxthreads,context,g,W,x,args...;
+                                           kwargs...)
+    t = min(maxthreads,size(x,2))
+    blocks = ceil(Int,size(x,2)/t)
+    (threads=t,blocks=blocks)
 end
 
 function generic_lufact!(A::AbstractMatrix{T}, ii, minmn) where {T}
