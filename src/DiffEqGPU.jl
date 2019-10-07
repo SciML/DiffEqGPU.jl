@@ -213,19 +213,19 @@ end
 ### GPU Factorization
 
 struct LinSolveGPUSplitFactorize
-    len::Int32
-    nfacts::Int32
+    len::Int
+    nfacts::Int
 end
 LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDA() : CPU()
     if update_matrix
-        #println("\nbefore")
-        #Base.print_matrix(stdout, A)
+        println("\nbefore")
+        @show A
         @launch version qr_kernel(A,p.len,p.nfacts)
-        #println("\nafter")
-        #Base.print_matrix(stdout, A)
+        println("\nafter")
+        @show A
     end
     copyto!(x, b)
     @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
@@ -237,15 +237,15 @@ function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
 end
 
 struct SimpleView
-    offset1::Int32
-    stride2::Int32 # stride(A, 2)
+    offset1::Int
+    stride2::Int # stride(A, 2)
 end
 
-@inline Base.getindex(sv::SimpleView, i::Integer, j::Integer) = sv.offset1 + i + sv.stride2 * (j-Int32(1) + sv.offset1)
+@inline Base.getindex(sv::SimpleView, i::Integer, j::Integer) = sv.offset1 + i + sv.stride2 * (j-Int(1) + sv.offset1)
 @inline Base.getindex(sv::SimpleView, i::Integer) = sv.offset1 + i
 
 function qr_kernel(W,len,nfacts)
-    stride2 = size(W, 1)
+    stride2 = size(W, 2)
     @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         offset = i*len
         sv = SimpleView(offset, stride2)
@@ -256,7 +256,7 @@ function qr_kernel(W,len,nfacts)
 end
 
 function ldiv!_kernel(W,x,len,nfacts)
-    stride2 = stride(W, 2)
+    stride2 = size(W, 2)
     @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
         offset = i*len
         sv = SimpleView(offset, stride2)
@@ -266,12 +266,20 @@ function ldiv!_kernel(W,x,len,nfacts)
     return nothing
 end
 
-function GPUifyLoops.launch_config(::Union{typeof(qr_kernel),
-                                           typeof(ldiv!_kernel)},
-                                           maxthreads,context,g,W,x,args...;
+function GPUifyLoops.launch_config(::typeof(qr_kernel),
+                                           maxthreads,context,g,W,len,nfacts;
                                            kwargs...)
-    t = min(maxthreads,size(x,2))
-    blocks = ceil(Int,size(x,2)/t)
+    t = min(maxthreads,nfacts)
+    blocks = ceil(Int,nfacts/t)
+    (threads=t,blocks=blocks)
+end
+
+function GPUifyLoops.launch_config(::typeof(ldiv!_kernel),
+                                           maxthreads,context,g,W,x,len,nfacts,
+                                           args...;
+                                           kwargs...)
+    t = min(maxthreads,nfacts)
+    blocks = ceil(Int,nfacts/t)
     (threads=t,blocks=blocks)
 end
 
@@ -316,6 +324,11 @@ function naivesolve!(A::AbstractMatrix, x::AbstractVector, ii, n)
     naivesub!(UnitLowerTriangular(A), x, ii, n)
     naivesub!(UpperTriangular(A), x, ii, n)
     return nothing
+end
+
+function LinearAlgebra.checksquare(A::CUDAnative.CuDeviceArray)
+    m,n = size(A)
+    m
 end
 
 export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
