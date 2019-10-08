@@ -104,11 +104,11 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     #@assert all(p->p.f === probs[1].f,probs)
 
     if ensemblealg isa EnsembleGPUArray
-        u0 = CuArray(hcat([probs[i].u0 for i in 1:length(probs)]...))
-        p  = CuArray(hcat([probs[i].p  for i in 1:length(probs)]...))
+        u0 = CuArray(hcat([probs[i].u0 for i in 1:length(I)]...))
+        p  = CuArray(hcat([probs[i].p  for i in 1:length(I)]...))
     elseif ensemblealg isa EnsembleCPUArray
-        u0 = hcat([probs[i].u0 for i in 1:length(probs)]...)
-        p  = hcat([probs[i].p  for i in 1:length(probs)]...)
+        u0 = hcat([probs[i].u0 for i in 1:length(I)]...)
+        p  = hcat([probs[i].p  for i in 1:length(I)]...)
     end
 
     _f = let f=probs[1].f.f
@@ -144,6 +144,12 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         colorvec = repeat(probs[1].f.colorvec,length(I))
     else
         colorvec = repeat(1:length(probs[1].u0),length(I))
+    end
+
+    if probs[1].f.colorvec !== nothing
+        jac_prototype = CuArray(repeat(probs[1].f.jac_prototype,length(I)))
+    else
+        jac_prototype = cu(zeros(Float32,length(probs[1].u0)*length(I),length(probs[1].u0)))
     end
 
     if :callback ∉ keys(probs[1].kwargs)
@@ -198,7 +204,10 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
     =#
 
-    f_func = ODEFunction(_f,jac=_jac,colorvec=colorvec,tgrad=_tgrad)
+    f_func = ODEFunction(_f,jac=_jac,
+                        #colorvec=colorvec,
+                        #jac_prototype = jac_prototype,
+                        tgrad=_tgrad)
     prob = ODEProblem(f_func,u0,probs[1].tspan,p;
                       probs[1].kwargs...)
     sol  = solve(prob,alg; callback = _callback,
@@ -222,10 +231,12 @@ function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDA() : CPU()
     if update_matrix
         println("\nbefore")
-        @show A
+        Base.print_matrix(stdout, Array(A))
+        flush(stdout)
+        @show p.len,p.nfacts
         @launch version qr_kernel(A,p.len,p.nfacts)
         println("\nafter")
-        @show A
+        Base.print_matrix(stdout, Array(A))
     end
     copyto!(x, b)
     @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
@@ -245,8 +256,8 @@ end
 @inline Base.getindex(sv::SimpleView, i::Integer) = sv.offset1 + i
 
 function qr_kernel(W,len,nfacts)
-    stride2 = size(W, 2)
-    @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
+    stride2 = size(W, 1)
+    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         offset = i*len
         sv = SimpleView(offset, stride2)
         generic_lufact!(W, sv, len)
@@ -256,8 +267,8 @@ function qr_kernel(W,len,nfacts)
 end
 
 function ldiv!_kernel(W,x,len,nfacts)
-    stride2 = size(W, 2)
-    @loop for i in (0:nfacts-1; (blockIdx().x-1) * blockDim().x + threadIdx().x)
+    stride2 = size(W, 1)
+    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         offset = i*len
         sv = SimpleView(offset, stride2)
         naivesolve!(W, x, sv, len)
