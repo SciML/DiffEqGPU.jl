@@ -230,13 +230,13 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDA() : CPU()
     if update_matrix
-        println("\nbefore")
-        Base.print_matrix(stdout, Array(A))
-        flush(stdout)
+        #println("\nbefore")
+        #Base.print_matrix(stdout, Array(A))
+        #flush(stdout)
         @show p.len,p.nfacts
         @launch version qr_kernel(A,p.len,p.nfacts)
-        println("\nafter")
-        Base.print_matrix(stdout, Array(A))
+        #println("\nafter")
+        #Base.print_matrix(stdout, Array(A))
     end
     copyto!(x, b)
     @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
@@ -260,6 +260,7 @@ function qr_kernel(W,len,nfacts)
     @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         offset = i*len
         sv = SimpleView(offset, stride2)
+        @cuprintf "\n\nouter factorization loop\n"
         generic_lufact!(W, sv, len)
         nothing
     end
@@ -294,19 +295,33 @@ function GPUifyLoops.launch_config(::typeof(ldiv!_kernel),
     (threads=t,blocks=blocks)
 end
 
+function __printjac(A, ii)
+    @cuprintf "%d %d %d\n%d %d %d\n%d %d %d\n" ii[1, 1] ii[1, 2] ii[1, 3] ii[2, 1] ii[2, 2] ii[2, 3] ii[3, 1] ii[3, 2] ii[3, 3]
+    @cuprintf "[%d:%d]\n%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f" ii[1, 1] ii[3, 3] A[ii[1, 1]] A[ii[1, 2]] A[ii[1, 3]] A[ii[2, 1]] A[ii[2, 2]] A[ii[2, 3]] A[ii[3, 1]] A[ii[3, 2]] A[ii[3, 3]]
+end
+
 function generic_lufact!(A::AbstractMatrix{T}, ii, minmn) where {T}
     m = n = minmn
+    @cuprintf "\n\nbefore lufact!\n"
+    __printjac(A, ii)
+    @cuprintf "\n"
     @inbounds for k = 1:minmn
+        @cuprintf "inner factorization loop\n"
         # Scale first column
         Akkinv = inv(A[ii[k,k]])
         for i = k+1:m
+            @cuprintf "L\n"
             A[ii[i,k]] *= Akkinv
         end
         # Update the rest
         for j = k+1:n, i = k+1:m
+            @cuprintf "U\n"
             A[ii[i,j]] -= A[ii[i,k]]*A[ii[k,j]]
         end
     end
+    @cuprintf "after lufact!"
+    __printjac(A, ii)
+    @cuprintf "\n\n\n"
     return nothing
 end
 
