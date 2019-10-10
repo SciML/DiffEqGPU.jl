@@ -90,14 +90,15 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
             else
               I = (batch_size*(i-1)+1):batch_size*i
             end
-            batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+            batch_solve(ensembleprob,alg,ensemblealg,I,interp_points;
+                        kwargs...)
         end
     end
 
     DiffEqBase.EnsembleSolution(hcat(sols...),time,true)
 end
 
-function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+function batch_solve(ensembleprob,alg,ensemblealg,I,interp_points;kwargs...)
     probs = [ensembleprob.prob_func(deepcopy(ensembleprob.prob),i,1) for i in I]
     @assert all(p->p.tspan == probs[1].tspan,probs)
     @assert !isempty(I)
