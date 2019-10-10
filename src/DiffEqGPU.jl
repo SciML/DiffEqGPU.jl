@@ -77,7 +77,8 @@ struct EnsembleGPUArray <: EnsembleArrayAlgorithm end
 function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  alg::Union{DiffEqBase.DEAlgorithm,Nothing},
                  ensemblealg::EnsembleArrayAlgorithm;
-                 trajectories, batch_size = trajectories, kwargs...)
+                 trajectories, batch_size = trajectories, interp_points = 0,
+                 kwargs...)
 
     num_batches = trajectories ÷ batch_size
 
@@ -195,7 +196,10 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
             @launch version continuous_affect!_kernel(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p)
         end
 
-        _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
+        _callback = VectorContinuousCallback(condition,affect!,
+                                             affect_neg!,length(probs),
+                                             save_positions=probs[1].kwargs[:callback].save_positions,
+                                             interp_points = interp_points)
     end
 
     #=

@@ -86,7 +86,8 @@ end
 
 callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=ContinuousCallback(c_condition,c_affect!,save_positions=(false,false)))
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0)
+@time solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0)
+@time solve(callback_monteprob,Tsit5(),EnsembleCPUArray(),trajectories=2,saveat=1.0f0)
 
 #=
 using OrdinaryDiffEq, LinearAlgebra, ParameterizedFunctions
