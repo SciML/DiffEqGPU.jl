@@ -128,5 +128,49 @@ rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 
 @time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
                   EnsembleGPUArray(),trajectories=100,saveat=1.0f0,abstol=1f-8,reltol=1f-8)
-@time sol = solve(monteprob,TRBDF2(),EnsembleThreads(),trajectories=10,
+@time sol = solve(monteprob,TRBDF2(),EnsembleThreads(),trajectories=100,
+                  abstol=1e-8,reltol=1e-8,saveat=1.0f0)
+
+
+
+
+
+using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test
+
+function rober_f(internal_var___du,internal_var___u,internal_var___p,t)
+    @inbounds begin
+        internal_var___du[1] = -(internal_var___p[1]) * internal_var___u[1] + internal_var___p[3] * internal_var___u[2] * internal_var___u[3]
+        internal_var___du[2] = (internal_var___p[1] * internal_var___u[1] - internal_var___p[2] * internal_var___u[2] ^ 2) - internal_var___p[3] * internal_var___u[2] * internal_var___u[3]
+        internal_var___du[3] = internal_var___p[2] * internal_var___u[2] ^ 2
+    end
+    nothing
+end
+
+function rober_jac(internal_var___J,internal_var___u,internal_var___p,t)
+    @inbounds begin
+        internal_var___J[1, 1] = -(internal_var___p[1])
+        internal_var___J[1, 2] = internal_var___p[3] * internal_var___u[3]
+        internal_var___J[1, 3] = internal_var___p[3] * internal_var___u[2]
+        internal_var___J[2, 1] = internal_var___p[1] * 1
+        internal_var___J[2, 2] = -2 * internal_var___p[2] * internal_var___u[2] - internal_var___p[3] * internal_var___u[3]
+        internal_var___J[2, 3] = -(internal_var___p[3]) * internal_var___u[2]
+        internal_var___J[3, 1] = 0 * 1
+        internal_var___J[3, 2] = 2 * internal_var___p[2] * internal_var___u[2]
+        internal_var___J[3, 3] = 0 * 1
+    end
+    nothing
+end
+
+CuArrays.allowscalar(false)
+rober_prob = ODEProblem(ODEFunction(rober_f,jac=rober_jac),Float32[1.0,0.0,0.0],(0.0,1f5),(4f-2,3f7,1f4))
+sol = solve(rober_prob,Rodas5(),abstol=1f-8,reltol=1f-8)
+const pre_p = [rand(Float32,3) for i in 1:100_000]
+prob_func = (prob,i,repeat) -> remake(prob,p=pre_p[i].*prob.p)
+rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
+
+@time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
+                  EnsembleGPUArray(),trajectories=100,saveat=1.0f0,abstol=1f-8,reltol=1f-8)
+@time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
+                  EnsembleCPUArray(),trajectories=100,saveat=1.0f0,abstol=1f-8,reltol=1f-8)
+@time sol = solve(monteprob,TRBDF2(),EnsembleThreads(),trajectories=100,
                   abstol=1e-8,reltol=1e-8,saveat=1.0f0)
