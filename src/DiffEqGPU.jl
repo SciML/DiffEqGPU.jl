@@ -1,7 +1,6 @@
 module DiffEqGPU
 
 using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra
-using StaticArrays
 
 function gpu_kernel(f,du,u,p,t)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
