@@ -87,3 +87,46 @@ callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=ContinuousCallback(c_condi
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
 CuArrays.@allowscalar solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0)
 @test_broken solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10,saveat=1.0f0)[1].retcode == :Success
+
+#=
+using OrdinaryDiffEq, LinearAlgebra, ParameterizedFunctions
+LinearAlgebra.BLAS.set_num_threads(1)
+rober = @ode_def begin
+  dy₁ = -k₁*y₁+k₃*y₂*y₃
+  dy₂ =  k₁*y₁-k₂*y₂^2-k₃*y₂*y₃
+  dy₃ =  k₂*y₂^2
+end k₁ k₂ k₃
+=#
+
+function rober_f(internal_var___du,internal_var___u,internal_var___p,t)
+    @inbounds begin
+        internal_var___du[1] = -(internal_var___p[1]) * internal_var___u[1] + internal_var___p[3] * internal_var___u[2] * internal_var___u[3]
+        internal_var___du[2] = (internal_var___p[1] * internal_var___u[1] - internal_var___p[2] * internal_var___u[2] ^ 2) - internal_var___p[3] * internal_var___u[2] * internal_var___u[3]
+        internal_var___du[3] = internal_var___p[2] * internal_var___u[2] ^ 2
+    end
+    nothing
+end
+
+function rober_jac(internal_var___J,internal_var___u,internal_var___p,t)
+    @inbounds begin
+        internal_var___J[1, 1] = -(internal_var___p[1])
+        internal_var___J[1, 2] = internal_var___p[3] * internal_var___u[3]
+        internal_var___J[1, 3] = internal_var___p[3] * internal_var___u[2]
+        internal_var___J[2, 1] = internal_var___p[1] * 1
+        internal_var___J[2, 2] = -2 * internal_var___p[2] * internal_var___u[2] - internal_var___p[3] * internal_var___u[3]
+        internal_var___J[2, 3] = -(internal_var___p[3]) * internal_var___u[2]
+        internal_var___J[3, 1] = 0 * 1
+        internal_var___J[3, 2] = 2 * internal_var___p[2] * internal_var___u[2]
+        internal_var___J[3, 3] = 0 * 1
+    end
+    nothing
+end
+
+rober_prob = ODEProblem(ODEFunction(rober_f,jac=rober_jac),Float32[1.0,0.0,0.0],(0.0,1f5),(0.04,3f7,1f4))
+sol = solve(rober_prob,Rodas5(),abstol=1f-8,reltol=1f-8)
+rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
+
+@time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
+                  EnsembleGPUArray(),trajectories=100,saveat=1.0f0,abstol=1f-8,reltol=1f-8)
+@time sol = solve(monteprob,TRBDF2(),EnsembleThreads(),trajectories=10,
+                  abstol=1e-8,reltol=1e-8,saveat=1.0f0)
