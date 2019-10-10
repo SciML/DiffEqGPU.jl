@@ -12,7 +12,7 @@ function gpu_kernel(f,du,u,p,t)
 end
 
 function jac_kernel(f,J,u,p,t)
-    @loop for i in (0:(size(u,2)-1); (blockIdx().x-1) * blockDim().x + threadIdx().x)
+    @loop for i in (0:(size(u,2)-1); (blockIdx().x-1) * blockDim().x + threadIdx().x - 1)
         section = 1 + (i*size(u,1)) : ((i+1)*size(u,1))
         @views @inbounds f(J[section,section],u[:,i+1],p[:,i+1],t)
         nothing
@@ -233,7 +233,7 @@ function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
         #println("\nbefore")
         #Base.print_matrix(stdout, Array(A))
         #flush(stdout)
-        @show p.len,p.nfacts
+        #@show p.len,p.nfacts
         @launch version qr_kernel(A,p.len,p.nfacts)
         #println("\nafter")
         #Base.print_matrix(stdout, Array(A))
@@ -257,10 +257,10 @@ end
 
 function qr_kernel(W,len,nfacts)
     stride2 = size(W, 1)
-    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x)
+    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x - 1)
         offset = i*len
         sv = SimpleView(offset, stride2)
-        @cuprintf "\n\nouter factorization loop\n"
+        #@cuprintf "\n\nouter factorization loop\n"
         generic_lufact!(W, sv, len)
         nothing
     end
@@ -269,7 +269,7 @@ end
 
 function ldiv!_kernel(W,x,len,nfacts)
     stride2 = size(W, 1)
-    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x)
+    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x - 1)
         offset = i*len
         sv = SimpleView(offset, stride2)
         naivesolve!(W, x, sv, len)
@@ -303,26 +303,26 @@ end
 
 function generic_lufact!(A::AbstractMatrix{T}, ii, minmn) where {T}
     m = n = minmn
-    @cuprintf "\n\nbefore lufact!\n"
-    __printjac(A, ii)
-    @cuprintf "\n"
+    #@cuprintf "\n\nbefore lufact!\n"
+    #__printjac(A, ii)
+    #@cuprintf "\n"
     @inbounds for k = 1:minmn
-        @cuprintf "inner factorization loop\n"
+        #@cuprintf "inner factorization loop\n"
         # Scale first column
         Akkinv = inv(A[ii[k,k]])
         for i = k+1:m
-            @cuprintf "L\n"
+            #@cuprintf "L\n"
             A[ii[i,k]] *= Akkinv
         end
         # Update the rest
         for j = k+1:n, i = k+1:m
-            @cuprintf "U\n"
+            #@cuprintf "U\n"
             A[ii[i,j]] -= A[ii[i,k]]*A[ii[k,j]]
         end
     end
-    @cuprintf "after lufact!"
-    __printjac(A, ii)
-    @cuprintf "\n\n\n"
+    #@cuprintf "after lufact!"
+    #__printjac(A, ii)
+    #@cuprintf "\n\n\n"
     return nothing
 end
 
