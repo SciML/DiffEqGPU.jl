@@ -64,7 +64,7 @@ function GPUifyLoops.launch_config(::Union{typeof(gpu_kernel),
     (threads=t,blocks=blocks)
 end
 
-function Wfact!_kernel(jac,W,gamma,u,p,t)
+function Wfact!_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         _W = @inbounds reshape(@view(W[:,i]),len,len)
@@ -85,7 +85,7 @@ function Wfact!_kernel(jac,W,gamma,u,p,t)
     return nothing
 end
 
-function Wfact!_t_kernel(jac,W,gamma,u,p,t)
+function Wfact!_t_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         _W = @inbounds reshape(@view(W[:,i]),len,len)
@@ -169,15 +169,15 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
 
     if DiffEqBase.has_jac(probs[1].f)
         _Wfact! = let jac=probs[1].f.jac
-            function (jac,W,gamma,u,p,t)
+            function (W,u,p,gamma,t)
                 version = u isa CuArray ? CUDA() : CPU()
-                @launch version Wfact!_kernel(jac,W,gamma,u,p,t)
+                @launch version Wfact!_kernel(jac,W,u,p,gamma,t)
             end
         end
         _Wfact!_t = let jac=probs[1].f.jac
-            function (jac,W,gamma,u,p,t)
+            function (W,u,p,gamma,t)
                 version = u isa CuArray ? CUDA() : CPU()
-                @launch version Wfact!_t_kernel(jac,W,gamma,u,p,t)
+                @launch version Wfact!_t_kernel(jac,W,u,p,gamma,t)
             end
         end
     else
