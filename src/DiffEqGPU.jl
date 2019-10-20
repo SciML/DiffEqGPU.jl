@@ -64,6 +64,35 @@ function GPUifyLoops.launch_config(::Union{typeof(gpu_kernel),
     (threads=t,blocks=blocks)
 end
 
+function Wfact!_kernel(jac,W,gamma,u,p,t)
+    len = size(u,1)
+    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
+        _W = @view @inbounds reshape(W[:,i],len,len)
+
+        # Compute the Jacobian
+        @views @inbounds jac(_W,u[:,i+1],p[:,i+1],t)
+        @inbounds for i in 1:len^2
+            _W[i] = -_W[i]
+        end
+        @inbounds for j in 1:len
+            _W[j,j] = 1/gamma + _W[j,j]
+        end
+
+        # Compute the lufact!
+        generic_lufact!(_W, len)
+        nothing
+    end
+    return nothing
+end
+
+function GPUifyLoops.launch_config(::Union{typeof(Wfact!_kernel)},
+                                           maxthreads,context,g,jac,W,gamma,u,args...;
+                                           kwargs...)
+    t = min(maxthreads,size(u,2))
+    blocks = ceil(Int,size(u,2)/t)
+    (threads=t,blocks=blocks)
+end
+
 struct FakeIntegrator{uType,tType,P}
     u::uType
     t::tType
@@ -118,14 +147,14 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     end
 
     if DiffEqBase.has_jac(probs[1].f)
-        _jac = let jac=probs[1].f.jac
-            function (J,u,p,t)
+        _Wfact! = let jac=probs[1].f.jac
+            function (jac,W,gamma,u,p,t)
                 version = u isa CuArray ? CUDA() : CPU()
-                @launch version jac_kernel(jac,J,u,p,t)
+                @launch version Wfact!_kernel(jac,W,gamma,u,p,t)
             end
         end
     else
-        _jac = nothing
+        _Wfact! = nothing
     end
 
     if DiffEqBase.has_tgrad(probs[1].f)
@@ -203,7 +232,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
     =#
 
-    f_func = ODEFunction(_f,jac=_jac,
+    f_func = ODEFunction(_f,Wfact = _Wfact!,
                         #colorvec=colorvec,
                         #jac_prototype = jac_prototype,
                         tgrad=_tgrad)
@@ -228,15 +257,6 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDA() : CPU()
-    if update_matrix
-        #println("\nbefore")
-        #Base.print_matrix(stdout, Array(A))
-        #flush(stdout)
-        #@show p.len,p.nfacts
-        @launch version qr_kernel(A,p.len,p.nfacts)
-        #println("\nafter")
-        #Base.print_matrix(stdout, Array(A))
-    end
     copyto!(x, b)
     @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
     return nothing
@@ -246,43 +266,16 @@ function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
     LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
 
-struct SimpleView
-    offset1::Int
-    stride2::Int # stride(A, 2)
-end
-
-@inline Base.getindex(sv::SimpleView, i::Integer, j::Integer) = sv.offset1 + i + sv.stride2 * (j-Int(1) + sv.offset1)
-@inline Base.getindex(sv::SimpleView, i::Integer) = sv.offset1 + i
-
-function qr_kernel(W,len,nfacts)
-    stride2 = size(W, 1)
-    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x - 1)
-        offset = i*len
-        sv = SimpleView(offset, stride2)
-        #@cuprintf "\n\nouter factorization loop\n"
-        generic_lufact!(W, sv, len)
-        nothing
-    end
-    return nothing
-end
-
 function ldiv!_kernel(W,x,len,nfacts)
-    stride2 = size(W, 1)
-    @loop for i in (0:(nfacts-1); (blockIdx().x-1) * blockDim().x + threadIdx().x - 1)
-        offset = i*len
-        sv = SimpleView(offset, stride2)
-        naivesolve!(W, x, sv, len)
+    len = size(u,1)
+    u = reshape(x,len,nfacts)
+    @loop for i in (1:nfacts; (blockIdx().x-1) * blockDim().x + threadIdx().x)
+        _W = @view @inbounds reshape(W[:,i],len,len)
+        _u = @view @inbounds u[:,i]
+        naivesolve!(_W, _u, len)
         nothing
     end
     return nothing
-end
-
-function GPUifyLoops.launch_config(::typeof(qr_kernel),
-                                           maxthreads,context,g,W,len,nfacts;
-                                           kwargs...)
-    t = min(maxthreads,nfacts)
-    blocks = ceil(Int,nfacts/t)
-    (threads=t,blocks=blocks)
 end
 
 function GPUifyLoops.launch_config(::typeof(ldiv!_kernel),
@@ -300,7 +293,7 @@ function __printjac(A, ii)
     @cuprintf "%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f" A[ii[1, 1]] A[ii[1, 2]] A[ii[1, 3]] A[ii[2, 1]] A[ii[2, 2]] A[ii[2, 3]] A[ii[3, 1]] A[ii[3, 2]] A[ii[3, 3]]
 end
 
-function generic_lufact!(A::AbstractMatrix{T}, ii, minmn) where {T}
+function generic_lufact!(A::AbstractMatrix{T}, minmn) where {T}
     m = n = minmn
     #@cuprintf "\n\nbefore lufact!\n"
     #__printjac(A, ii)
@@ -308,15 +301,15 @@ function generic_lufact!(A::AbstractMatrix{T}, ii, minmn) where {T}
     @inbounds for k = 1:minmn
         #@cuprintf "inner factorization loop\n"
         # Scale first column
-        Akkinv = inv(A[ii[k,k]])
+        Akkinv = inv(A[k,k])
         for i = k+1:m
             #@cuprintf "L\n"
-            A[ii[i,k]] *= Akkinv
+            A[i,k] *= Akkinv
         end
         # Update the rest
         for j = k+1:n, i = k+1:m
             #@cuprintf "U\n"
-            A[ii[i,j]] -= A[ii[i,k]]*A[ii[k,j]]
+            A[i,j] -= A[i,k]*A[k,j]
         end
     end
     #@cuprintf "after lufact!"
@@ -325,30 +318,30 @@ function generic_lufact!(A::AbstractMatrix{T}, ii, minmn) where {T}
     return nothing
 end
 
-function naivesub!(A::UpperTriangular, b::AbstractVector, ii, n)
+function naivesub!(A::UpperTriangular, b::AbstractVector, n)
     x = b
     @inbounds for j in n:-1:1
-        xj = x[ii[j]] = A.data[ii[j,j]] \ b[ii[j]]
+        xj = x[j] = A.data[j,j] \ b[j]
         for i in j-1:-1:1 # counterintuitively 1:j-1 performs slightly better
-            b[ii[i]] -= A.data[ii[i,j]] * xj
+            b[i] -= A.data[i,j] * xj
         end
     end
     return nothing
 end
-function naivesub!(A::UnitLowerTriangular, b::AbstractVector, ii, n)
+function naivesub!(A::UnitLowerTriangular, b::AbstractVector, n)
     x = b
     @inbounds for j in 1:n
-        xj = x[ii[j]]
+        xj = x[j]
         for i in j+1:n
-            b[ii[i]] -= A.data[ii[i,j]] * xj
+            b[i] -= A.data[i,j] * xj
         end
     end
     return nothing
 end
 
-function naivesolve!(A::AbstractMatrix, x::AbstractVector, ii, n)
-    naivesub!(UnitLowerTriangular(A), x, ii, n)
-    naivesub!(UpperTriangular(A), x, ii, n)
+function naivesolve!(A::AbstractMatrix, x::AbstractVector, n)
+    naivesub!(UnitLowerTriangular(A), x, n)
+    naivesub!(UpperTriangular(A), x, n)
     return nothing
 end
 
