@@ -57,10 +57,16 @@ function lorenz_jac(J,u,p,t)
  nothing
 end
 
-func = ODEFunction(lorenz,jac=lorenz_jac)
+function lorenz_tgrad(J,u,p,t)
+ nothing
+end
+
+func = ODEFunction(lorenz,jac=lorenz_jac,tgrad=lorenz_tgrad)
 prob_jac = ODEProblem(func,u0,tspan,p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
+@time solve(monteprob_jac,Rodas5(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+@time solve(monteprob_jac,Rodas5(),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 @time solve(monteprob_jac,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 @time solve(monteprob_jac,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=100,saveat=1.0f0)
 

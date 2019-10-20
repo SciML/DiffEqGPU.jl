@@ -67,7 +67,28 @@ end
 function Wfact!_kernel(jac,W,gamma,u,p,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        _W = @view @inbounds reshape(W[:,i],len,len)
+        _W = @inbounds reshape(@view(W[:,i]),len,len)
+
+        # Compute the Jacobian
+        @views @inbounds jac(_W,u[:,i+1],p[:,i+1],t)
+        @inbounds for i in 1:len^2
+            _W[i] = -_W[i]
+        end
+        @inbounds for j in 1:len
+            _W[j,j] = 1 + gamma*_W[j,j]
+        end
+
+        # Compute the lufact!
+        generic_lufact!(_W, len)
+        nothing
+    end
+    return nothing
+end
+
+function Wfact!_t_kernel(jac,W,gamma,u,p,t)
+    len = size(u,1)
+    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
+        _W = @inbounds reshape(@view(W[:,i]),len,len)
 
         # Compute the Jacobian
         @views @inbounds jac(_W,u[:,i+1],p[:,i+1],t)
@@ -85,7 +106,7 @@ function Wfact!_kernel(jac,W,gamma,u,p,t)
     return nothing
 end
 
-function GPUifyLoops.launch_config(::Union{typeof(Wfact!_kernel)},
+function GPUifyLoops.launch_config(::Union{typeof(Wfact!_kernel),typeof(Wfact!_t_kernel)},
                                            maxthreads,context,g,jac,W,gamma,u,args...;
                                            kwargs...)
     t = min(maxthreads,size(u,2))
@@ -153,8 +174,15 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
                 @launch version Wfact!_kernel(jac,W,gamma,u,p,t)
             end
         end
+        _Wfact!_t = let jac=probs[1].f.jac
+            function (jac,W,gamma,u,p,t)
+                version = u isa CuArray ? CUDA() : CPU()
+                @launch version Wfact!_t_kernel(jac,W,gamma,u,p,t)
+            end
+        end
     else
         _Wfact! = nothing
+        _Wfact!_t = nothing
     end
 
     if DiffEqBase.has_tgrad(probs[1].f)
@@ -236,6 +264,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     =#
 
     f_func = ODEFunction(_f,Wfact = _Wfact!,
+                        Wfact_t = _Wfact!_t,
                         #colorvec=colorvec,
                         jac_prototype = jac_prototype,
                         tgrad=_tgrad)
@@ -273,8 +302,8 @@ function ldiv!_kernel(W,x,len,nfacts)
     len = size(u,1)
     u = reshape(x,len,nfacts)
     @loop for i in (1:nfacts; (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        _W = @view @inbounds reshape(W[:,i],len,len)
-        _u = @view @inbounds u[:,i]
+        _W = @inbounds reshape(@view(W[:,i]),len,len)
+        _u = @inbounds @view u[:,i]
         naivesolve!(_W, _u, len)
         nothing
     end
