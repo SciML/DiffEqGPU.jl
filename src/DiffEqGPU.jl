@@ -174,11 +174,14 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         colorvec = repeat(1:length(probs[1].u0),length(I))
     end
 
+    jac_prototype = cu(zeros(Float32,length(probs[1].u0)^2,length(I)))
+    #=
     if probs[1].f.colorvec !== nothing
         jac_prototype = CuArray(repeat(probs[1].f.jac_prototype,length(I)))
     else
-        jac_prototype = cu(zeros(Float32,length(probs[1].u0)*length(I),length(probs[1].u0)))
+        jac_prototype = cu(zeros(Float32,length(probs[1].u0)^2,length(I)))
     end
+    =#
 
     if :callback ∉ keys(probs[1].kwargs)
         _callback = nothing
@@ -234,7 +237,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
 
     f_func = ODEFunction(_f,Wfact = _Wfact!,
                         #colorvec=colorvec,
-                        #jac_prototype = jac_prototype,
+                        jac_prototype = jac_prototype,
                         tgrad=_tgrad)
     prob = ODEProblem(f_func,u0,probs[1].tspan,p;
                       probs[1].kwargs...)
