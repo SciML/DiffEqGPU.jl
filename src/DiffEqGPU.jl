@@ -104,7 +104,7 @@ function GPUifyLoops.launch_config(::Union{typeof(W_kernel),typeof(Wt_kernel)},
     (threads=t,blocks=blocks)
 end
 
-function fact!(W)
+function cuda_lufact!(W)
     T = eltype(W)
     batchsize = size(W, 3)
     batch = size(W)[1:2]
@@ -119,6 +119,15 @@ function fact!(W)
     lda = max(1, stride(W,2))
     info = CuArray{Cint}(undef, length(A))
     CUBLAS.cublasSgetrfBatched(CUBLAS.handle(), batch[1], B, lda, CU_NULL, info, batchsize)
+    return nothing
+end
+
+function cpu_lufact!(W)
+    len = size(W, 1)
+    for i in 1:size(W,3)
+        _W = @inbounds @view(W[:, :, i])
+        generic_lufact!(_W, len)
+    end
     return nothing
 end
 
@@ -181,16 +190,18 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     if DiffEqBase.has_jac(probs[1].f)
         _Wfact! = let jac=probs[1].f.jac
             function (W,u,p,gamma,t)
-                version = u isa CuArray ? CUDA() : CPU()
+                iscuda = u isa CuArray
+                version = iscuda ? CUDA() : CPU()
                 @launch version W_kernel(jac, W, u, p, gamma, t)
-                fact!(W)
+                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
         _Wfact!_t = let jac=probs[1].f.jac
             function (W,u,p,gamma,t)
-                version = u isa CuArray ? CUDA() : CPU()
+                iscuda = u isa CuArray
+                version = iscuda ? CUDA() : CPU()
                 @launch version Wt_kernel(jac, W, u, p, gamma, t)
-                fact!(W)
+                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
     else
