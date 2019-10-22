@@ -1,6 +1,8 @@
 module DiffEqGPU
 
 using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra
+using CUDAdrv: CuPtr, CU_NULL, Mem, CuDefaultStream
+using CuArrays: CUBLAS
 
 function gpu_kernel(f,du,u,p,t)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
@@ -64,12 +66,10 @@ function GPUifyLoops.launch_config(::Union{typeof(gpu_kernel),
     (threads=t,blocks=blocks)
 end
 
-function Wfact!_kernel(jac,W,u,p,gamma,t)
+function W_kernel(jac, W, u, p, gamma, t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         _W = @inbounds @view(W[:, :, i])
-
-        # Compute the Jacobian
         @views @inbounds jac(_W,u[:,i],p[:,i],t)
         @inbounds for i in eachindex(_W)
             _W[i] = gamma*_W[i]
@@ -78,38 +78,48 @@ function Wfact!_kernel(jac,W,u,p,gamma,t)
         @inbounds for i in 1:len
             _W[i, i] = _W[i, i] - _one
         end
-
-        # Compute the lufact!
-        generic_lufact!(_W, len)
         nothing
     end
     return nothing
 end
 
-function Wfact!_t_kernel(jac,W,u,p,gamma,t)
+function Wt_kernel(jac, W, u, p, gamma, t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
         _W = @inbounds @view(W[:, :, i])
-
-        # Compute the Jacobian
         @views @inbounds jac(_W,u[:,i],p[:,i],t)
         @inbounds for i in 1:len
             _W[i, i] = -inv(gamma) + _W[i, i]
         end
-
-        # Compute the lufact!
-        generic_lufact!(_W, len)
         nothing
     end
     return nothing
 end
 
-function GPUifyLoops.launch_config(::Union{typeof(Wfact!_kernel),typeof(Wfact!_t_kernel)},
-                                           maxthreads,context,g,jac,W,gamma,u,args...;
+function GPUifyLoops.launch_config(::Union{typeof(W_kernel),typeof(Wt_kernel)},
+                                           maxthreads,context,g,jac,W,u,args...;
                                            kwargs...)
     t = min(maxthreads,size(u,2))
     blocks = ceil(Int,size(u,2)/t)
     (threads=t,blocks=blocks)
+end
+
+function fact!(W)
+    T = eltype(W)
+    batchsize = size(W, 3)
+    batch = size(W)[1:2]
+    @assert batch[1] == batch[2]
+    A = Vector{CuPtr{T}}(undef, batchsize)
+    ptr = Base.unsafe_convert(CuPtr{T}, Base.cconvert(CuPtr{T}, W))
+    for i in 1:batchsize
+        A[i] = ptr + (i-1) * prod(batch) * sizeof(T)
+    end
+    B = CuVector{eltype(A)}(undef, batchsize)
+    Mem.copy!(B.buf, pointer(A), sizeof(A); async=true, stream=CuDefaultStream())
+    lda = max(1, stride(W,2))
+    info = CuArray{Cint}(undef, length(A))
+    CUBLAS.cublasSgetrfBatched(CUBLAS.handle(), batch[1], B, lda, CU_NULL, info, batchsize)
+    return nothing
 end
 
 struct FakeIntegrator{uType,tType,P}
@@ -172,13 +182,15 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         _Wfact! = let jac=probs[1].f.jac
             function (W,u,p,gamma,t)
                 version = u isa CuArray ? CUDA() : CPU()
-                @launch version Wfact!_kernel(jac,W,u,p,gamma,t)
+                @launch version W_kernel(jac, W, u, p, gamma, t)
+                fact!(W)
             end
         end
         _Wfact!_t = let jac=probs[1].f.jac
             function (W,u,p,gamma,t)
                 version = u isa CuArray ? CUDA() : CPU()
-                @launch version Wfact!_t_kernel(jac,W,u,p,gamma,t)
+                @launch version Wt_kernel(jac, W, u, p, gamma, t)
+                fact!(W)
             end
         end
     else
