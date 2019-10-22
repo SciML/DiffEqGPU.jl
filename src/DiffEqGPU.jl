@@ -281,10 +281,8 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
     end
 
-    #=
-    internalnorm(u::CuArray,t) = sqrt(maximum(reduce((x,y)->x^2 + y^2, u, dim=1))/size(u0,1))
+    internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
     internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
-    =#
 
     f_func = ODEFunction(_f,Wfact = _Wfact!,
                         Wfact_t = _Wfact!_t,
