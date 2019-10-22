@@ -67,9 +67,7 @@ end
 function Wfact!_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        section = 1 + ((i-1)*len) : (i*len)
-        _W = @inbounds @view(W[section,section])
-        #_W = @inbounds reshape(@view(W[:,i]),len,len)
+        _W = @inbounds @view(W[:, :, i])
 
         # Compute the Jacobian
         @views @inbounds jac(_W,u[:,i],p[:,i],t)
@@ -91,9 +89,7 @@ end
 function Wfact!_t_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        section = 1 + ((i-1)*len) : (i*len)
-        _W = @inbounds @view(W[section,section])
-        #_W = @inbounds reshape(@view(W[:,i]),len,len)
+        _W = @inbounds @view(W[:, :, i])
 
         # Compute the Jacobian
         @views @inbounds jac(_W,u[:,i],p[:,i],t)
@@ -154,12 +150,15 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
+    len = length(probs[1].u0)
     if ensemblealg isa EnsembleGPUArray
         u0 = CuArray(hcat([probs[i].u0 for i in 1:length(I)]...))
         p  = CuArray(hcat([probs[i].p  for i in 1:length(I)]...))
+        jac_prototype = cu(zeros(Float32,len,len,length(I)))
     elseif ensemblealg isa EnsembleCPUArray
         u0 = hcat([probs[i].u0 for i in 1:length(I)]...)
         p  = hcat([probs[i].p  for i in 1:length(I)]...)
+        jac_prototype = zeros(len,len,length(I))
     end
 
     _f = let f=probs[1].f.f
@@ -204,7 +203,6 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         colorvec = repeat(1:length(probs[1].u0),length(I))
     end
 
-    jac_prototype = cu(zeros(Float32,length(probs[1].u0)^2,length(I)))
     #=
     if probs[1].f.colorvec !== nothing
         jac_prototype = CuArray(repeat(probs[1].f.jac_prototype,length(I)))
@@ -302,9 +300,8 @@ end
 
 function ldiv!_kernel(W,u,len,nfacts)
     @loop for i in (1:nfacts; (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        #_W = @inbounds reshape(@view(W[:,i]),len,len)
         section = 1 + ((i-1)*len) : (i*len)
-        _W = @inbounds @view(W[section,section])
+        _W = @inbounds @view(W[:, :, i])
         _u = @inbounds @view u[section]
         naivesolve!(_W, _u, len)
         nothing
@@ -352,7 +349,14 @@ function generic_lufact!(A::AbstractMatrix{T}, minmn) where {T}
     return nothing
 end
 
-function naivesub!(A::UpperTriangular, b::AbstractVector, n)
+struct MyL{T} # UnitLowerTriangular
+    data::T
+end
+struct MyU{T} # UpperTriangular
+    data::T
+end
+
+function naivesub!(A::MyU, b::AbstractVector, n)
     x = b
     @inbounds for j in n:-1:1
         xj = x[j] = A.data[j,j] \ b[j]
@@ -362,7 +366,7 @@ function naivesub!(A::UpperTriangular, b::AbstractVector, n)
     end
     return nothing
 end
-function naivesub!(A::UnitLowerTriangular, b::AbstractVector, n)
+function naivesub!(A::MyL, b::AbstractVector, n)
     x = b
     @inbounds for j in 1:n
         xj = x[j]
@@ -374,14 +378,9 @@ function naivesub!(A::UnitLowerTriangular, b::AbstractVector, n)
 end
 
 function naivesolve!(A::AbstractMatrix, x::AbstractVector, n)
-    naivesub!(UnitLowerTriangular(A), x, n)
-    naivesub!(UpperTriangular(A), x, n)
+    naivesub!(MyL(A), x, n)
+    naivesub!(MyU(A), x, n)
     return nothing
-end
-
-function LinearAlgebra.checksquare(A::CUDAnative.CuDeviceArray)
-    m,n = size(A)
-    m
 end
 
 export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
