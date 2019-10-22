@@ -67,15 +67,18 @@ end
 function Wfact!_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        _W = @inbounds reshape(@view(W[:,i]),len,len)
+        section = 1 + ((i-1)*size(u,1)) : (i*size(u,1))
+        _W = @inbounds @view(W[section,section])
+        #_W = @inbounds reshape(@view(W[:,i]),len,len)
 
         # Compute the Jacobian
-        @views @inbounds jac(_W,u[:,i+1],p[:,i+1],t)
-        @inbounds for i in 1:len^2
-            _W[i] = -_W[i]
+        @views @inbounds jac(_W,u[:,i],p[:,i],t)
+        @inbounds for i in eachindex(_W)
+            _W[i] = gamma*_W[i]
         end
-        @inbounds for j in 1:len
-            _W[j,j] = 1 + gamma*_W[j,j]
+        _one = one(eltype(_W))
+        @inbounds for i in diagind(_W)
+            _W[i] = _W[i] - _one
         end
 
         # Compute the lufact!
@@ -88,15 +91,14 @@ end
 function Wfact!_t_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        _W = @inbounds reshape(@view(W[:,i]),len,len)
+        section = 1 + ((i-1)*size(u,1)) : (i*size(u,1))
+        _W = @inbounds @view(W[section,section])
+        #_W = @inbounds reshape(@view(W[:,i]),len,len)
 
         # Compute the Jacobian
-        @views @inbounds jac(_W,u[:,i+1],p[:,i+1],t)
-        @inbounds for i in 1:len^2
-            _W[i] = -_W[i]
-        end
-        @inbounds for j in 1:len
-            _W[j,j] = 1/gamma + _W[j,j]
+        @views @inbounds jac(_W,u[:,i],p[:,i],t)
+        @inbounds for i in diagind(_W)
+            _W[i] = -inv(gamma) + _W[i]
         end
 
         # Compute the lufact!
