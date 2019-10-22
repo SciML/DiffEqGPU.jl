@@ -75,8 +75,8 @@ function Wfact!_kernel(jac,W,u,p,gamma,t)
             _W[i] = gamma*_W[i]
         end
         _one = one(eltype(_W))
-        @inbounds for i in 1:len+1:len^2
-            _W[i] = _W[i] - _one
+        @inbounds for i in 1:len
+            _W[i, i] = _W[i, i] - _one
         end
 
         # Compute the lufact!
