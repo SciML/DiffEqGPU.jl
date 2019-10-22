@@ -67,7 +67,7 @@ end
 function Wfact!_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        section = 1 + ((i-1)*size(u,1)) : (i*size(u,1))
+        section = 1 + ((i-1)*len) : (i*len)
         _W = @inbounds @view(W[section,section])
         #_W = @inbounds reshape(@view(W[:,i]),len,len)
 
@@ -77,7 +77,7 @@ function Wfact!_kernel(jac,W,u,p,gamma,t)
             _W[i] = gamma*_W[i]
         end
         _one = one(eltype(_W))
-        @inbounds for i in diagind(_W)
+        @inbounds for i in 1:len+1:len^2
             _W[i] = _W[i] - _one
         end
 
@@ -91,14 +91,14 @@ end
 function Wfact!_t_kernel(jac,W,u,p,gamma,t)
     len = size(u,1)
     @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        section = 1 + ((i-1)*size(u,1)) : (i*size(u,1))
+        section = 1 + ((i-1)*len) : (i*len)
         _W = @inbounds @view(W[section,section])
         #_W = @inbounds reshape(@view(W[:,i]),len,len)
 
         # Compute the Jacobian
         @views @inbounds jac(_W,u[:,i],p[:,i],t)
-        @inbounds for i in diagind(_W)
-            _W[i] = -inv(gamma) + _W[i]
+        @inbounds for i in 1:len
+            _W[i, i] = -inv(gamma) + _W[i, i]
         end
 
         # Compute the lufact!
@@ -300,12 +300,12 @@ function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
     LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
 
-function ldiv!_kernel(W,x,len,nfacts)
-    len = size(u,1)
-    u = reshape(x,len,nfacts)
+function ldiv!_kernel(W,u,len,nfacts)
     @loop for i in (1:nfacts; (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        _W = @inbounds reshape(@view(W[:,i]),len,len)
-        _u = @inbounds @view u[:,i]
+        #_W = @inbounds reshape(@view(W[:,i]),len,len)
+        section = 1 + ((i-1)*len) : (i*len)
+        _W = @inbounds @view(W[section,section])
+        _u = @inbounds @view u[section]
         naivesolve!(_W, _u, len)
         nothing
     end
