@@ -17,13 +17,13 @@ const dt = 1f-1
 const tspan = (0.0f0, 10.0f0)
 
 const odeoop = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0),  Float32[10, 28, 8/3])
-sol2 = solve(odeoop,GPUSimpleTsit5(),dt)
+sol2 = solve(odeoop,GPUSimpleTsit5(),dt=dt)
 cps = Array([@SVector [10f0,28f0,8/3f0] for i in 1:32])
 ps = CuArray([@SVector [10f0,28f0,8/3f0] for i in 1:32])
 CuArrays.allowscalar(false)
 
 function f(p)
-    solve(odeoop,GPUSimpleTsit5(),dt)
+    solve(odeoop,GPUSimpleTsit5(),dt=dt)
 end
 
 map(f,cps)
