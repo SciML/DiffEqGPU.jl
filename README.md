@@ -22,4 +22,4 @@ different choices of `u0` or `p`. For these cases, DiffEqGPU exports the followi
 - `EnsembleCPUArray`: A test version for analyzing the overhead of the array-based parallelism setup.
 
 For more information on using the ensemble interface, see 
-[the DiffEqDocs page on ensembles](http://docs.juliadiffeq.org/latest/features/ensemble.html)
+[the DiffEqDocs page on ensembles](http://docs.juliadiffeq.org/dev/features/ensemble.html)
