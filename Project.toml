@@ -13,6 +13,9 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 
 [compat]
 DiffEqBase = "6.5"
+GPUifyLoops = "0.2"
+CUDAdrv = "4.0"
+CUDAnative = "2.5"
 OrdinaryDiffEq = "5.23"
 julia = "1"
 
