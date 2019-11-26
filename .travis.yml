@@ -1,10 +1,10 @@
 # Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
 os:
-  - linux
+  #- linux
   #- osx
 julia:
-  - 1.0
+  #- 1.0
   #- nightly
 matrix:
   allow_failures:
