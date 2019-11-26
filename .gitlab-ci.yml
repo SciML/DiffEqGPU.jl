@@ -1,58 +1,24 @@
-image: "julia:1"
+include:
+  - 'https://raw.githubusercontent.com/JuliaGPU/gitlab-ci/master/templates/v6.yml'
+
+image: nvidia/cuda:10.1-devel-ubuntu18.04
 
 variables:
-  JULIA_DEPOT_PATH: "$CI_PROJECT_DIR/.julia/"
   JULIA_NUM_THREADS: '8'
 
-cache:
-  paths:
-    - .julia/
 
-build:
-  stage: build
-  tags:
-    - 'p6000'
-  script:
-    - curl https://julialang-s3.julialang.org/bin/linux/x64/1.1/julia-1.1.1-linux-x86_64.tar.gz -o julia.tar.gz
-    - unp julia.tar.gz
-    - export PATH="$(pwd)/julia-1.1.1/bin:$PATH"
-    - julia -e "using InteractiveUtils;
-                versioninfo()"
-    - julia --project -e "using Pkg;
-                          Pkg.update();
-                          Pkg.instantiate();"
-  only:
-  - master
-  - tags
-  - external
-  - pushes
-  artifacts:
-    untracked: true
-    paths:
-      - .julia/**/*
-      - julia-1.1.1/**/*
+# Julia versions
 
-test-GPU:
-  stage: test
+julia:1.1:
+  extends:
+    - .julia:1.1
+    - .test
   tags:
-    - 'p6000'
-  dependencies:
-    - build
-  variables:
-    GROUP: "GPU"
-  script:
-    - export PATH="$(pwd)/julia-1.1.1/bin:$PATH"
-    - julia -e "using InteractiveUtils;
-                versioninfo()"
-    - julia --project -e "using Pkg;
-                          Pkg.test(\"DiffEqGPU\"; coverage=true);"
-  only:
-  - master
-  - tags
-  - external
-  - pushes
-  artifacts:
-    untracked: true
-    paths:
-      - .julia/**/*
-      - julia-1.1.1/**/*
+    - p6000
+
+julia:1.2:
+  extends:
+    - .julia:1.2
+    - .test
+  tags:
+    - p6000
