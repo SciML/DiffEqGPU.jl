@@ -105,20 +105,7 @@ function GPUifyLoops.launch_config(::Union{typeof(W_kernel),typeof(Wt_kernel)},
 end
 
 function cuda_lufact!(W)
-    T = eltype(W)
-    batchsize = size(W, 3)
-    batch = size(W)[1:2]
-    @assert batch[1] == batch[2]
-    A = Vector{CuPtr{T}}(undef, batchsize)
-    ptr = Base.unsafe_convert(CuPtr{T}, Base.cconvert(CuPtr{T}, W))
-    for i in 1:batchsize
-        A[i] = ptr + (i-1) * prod(batch) * sizeof(T)
-    end
-    B = CuVector{eltype(A)}(undef, batchsize)
-    Mem.copy!(B.buf, pointer(A), sizeof(A); async=true, stream=CuDefaultStream())
-    lda = max(1, stride(W,2))
-    info = CuArray{Cint}(undef, length(A))
-    CUBLAS.cublasSgetrfBatched(CUBLAS.handle(), batch[1], B, lda, CU_NULL, info, batchsize)
+    CuArrays.CUBLAS.getrf_strided_batched!(W, false)
     return nothing
 end
 
