@@ -1,10 +1,10 @@
 # Documentation: http://docs.travis-ci.com/user/languages/julia/
 language: julia
 os:
-  - linux
+  #- linux
   #- osx
 julia:
-  - 1.0
+  #- 1.0
   #- nightly
 matrix:
   allow_failures:
@@ -12,6 +12,8 @@ matrix:
   fast_finish: true
 notifications:
   email: false
+script:
+  - echo "Travis should be skipped!"
 after_success:
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
