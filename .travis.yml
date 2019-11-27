@@ -13,8 +13,7 @@ matrix:
 notifications:
   email: false
 script:
-#  - if [[ -a .git/shallow ]]; then git fetch --unshallow; fi
-#  - julia --project -e 'using Pkg; Pkg.build(); Pkg.test(; coverage=true)';
+  - echo "Travis should be skipped!"
 after_success:
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Codecov.submit(process_folder())'
   - julia -e 'using Pkg; Pkg.add("Coverage"); using Coverage; Coveralls.submit(process_folder())'
