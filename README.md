@@ -191,3 +191,16 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 This will `pmap` over the batches, and thus if you have 4 processes each with
 a GPU, each batch of 10,000 trajectories will be run simultaneously. If you have
 two processes with two GPUs, this will do two sets of 10,000 at a time.
+
+#### Optimal Numbers of Trajectories
+
+There is a balance between two things for choosing the number of trajectories:
+
+- The number of trajectories needs to be high enough that the work per kernel
+  is sufficient to overcome the kernel call cost.
+- More trajectories means that every trajectory will need more time steps since
+  the adaptivity syncs all solves.
+
+From our testing, the balance is found at around 10,000 trajectories being optimal.
+Thus for larger sets of trajectories, use a batch size of 10,000. Of course,
+benchmark for yourself on your own setup!
