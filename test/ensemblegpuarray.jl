@@ -141,12 +141,21 @@ function rober_jac(internal_var___J,internal_var___u,internal_var___p,t)
     nothing
 end
 
-rober_prob = ODEProblem(ODEFunction(rober_f,jac=rober_jac),Float32[1.0,0.0,0.0],(0.0,1f5),(0.04,3f7,1f4))
+function rober_tgrad(J,u,p,t)
+ nothing
+end
+
+rober_prob = ODEProblem(ODEFunction(rober_f,jac=rober_jac,tgrad=rober_tgrad),
+                        Float32[1.0,0.0,0.0],(0.0f0,1f5),(0.04f0,3f7,1f4))
 sol = solve(rober_prob,Rodas5(),abstol=1f-8,reltol=1f-8)
+sol = solve(rober_prob,TRBDF2(),abstol=1f-4,reltol=1f-1)
 rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 
-@time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
+@time sol = solve(rober_monteprob,Rodas5(linsolve=LinSolveGPUSplitFactorize()),
                   EnsembleGPUArray(),trajectories=10,saveat=1.0f0,abstol=1f-8,
                   reltol=1f-8)
+@time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
+                  EnsembleGPUArray(),trajectories=10,saveat=1.0f0,abstol=1f-4,
+                  reltol=1f-1)
 @time sol = solve(monteprob,TRBDF2(),EnsembleThreads(),trajectories=10,
-                  abstol=1e-8,reltol=1e-8,saveat=1.0f0)
+                  abstol=1e-4,reltol=1e-1,saveat=1.0f0)
