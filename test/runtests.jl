@@ -12,7 +12,9 @@ if Base.JLOptions().check_bounds == 1
 end
 @assert Base.JLOptions().check_bounds == 0
 
-using Safetestsets, Test
+using SafeTestsets, Test
 
-@time @safetestset begin include("ensemblegpuarray.jl") end end
-@time @testset begin include("distributed_multi_gpu.jl") end end
+@time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
+
+# Not safe because distributed doesn't play nicely with modules.
+@time @testset "Distributed Multi-GPU" begin include("distributed_multi_gpu.jl") end

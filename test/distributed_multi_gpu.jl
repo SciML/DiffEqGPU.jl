@@ -39,30 +39,12 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 @test all(all(sol2[i].prob.p .== pre_p[i].*p) for i in 1:10)
 
 #To set 1 GPU per device:
-#
+#=
 import CUDAdrv, CUDAnative
 addprocs(numgpus)
 @info "Setting up DArray{CuArray} with" N=nworkers() NCUDAdevices=length(CUDAdrv.devices())
 let gpuworkers = asyncmap(collect(zip(workers(), CUDAdrv.devices()))) do (p, d)
   remotecall_wait(CUDAnative.device!, p, d)
   p
-end
-
-#=
-# Provide a convenience function distributeCuda
-# that will move an Array to a set of remote workers
-# that have a GPU attached.
-import CUDAdrv, CUDAnative
-@info "Setting up DArray{CuArray} with" N=nworkers() NCUDAdevices=length(CUDAdrv.devices())
-let gpuworkers = asyncmap(collect(zip(workers(), CUDAdrv.devices()))) do (p, d)
-      remotecall_wait(CUDAnative.device!, p, d)
-      p
-  end
-  @assert length(gpuworkers) == length(CUDAdrv.devices())
-  global distributeCuda
-  function distributeCuda(A)
-      dA  = distribute(A, procs = gpuworkers)
-      return DistributedArrays.map_localparts(CuArray, dA)
-  end
 end
 =#
