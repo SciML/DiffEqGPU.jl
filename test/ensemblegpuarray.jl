@@ -157,5 +157,5 @@ rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 @time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
                   EnsembleGPUArray(),trajectories=10,saveat=1.0f0,abstol=1f-4,
                   reltol=1f-1)
-@time sol = solve(monteprob,TRBDF2(),EnsembleThreads(),trajectories=10,
+@time sol = solve(rober_monteprob,TRBDF2(),EnsembleThreads(),trajectories=10,
                   abstol=1e-4,reltol=1e-1,saveat=1.0f0)
