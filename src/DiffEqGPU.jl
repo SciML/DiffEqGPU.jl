@@ -1,6 +1,6 @@
 module DiffEqGPU
 
-using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra
+using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra, Distributed
 using CUDAdrv: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CuArrays: CUBLAS
 
@@ -137,7 +137,7 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
 
     num_batches * batch_size != trajectories && (num_batches += 1)
     time = @elapsed begin
-        sols = map(1:num_batches) do i
+        sols = pmap(1:num_batches) do i
             if i == num_batches
               I = (batch_size*(i-1)+1):trajectories
             else
