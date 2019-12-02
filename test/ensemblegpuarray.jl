@@ -15,10 +15,7 @@ tspan = (0.0f0,100.0f0)
 p = (10.0f0,28.0f0,8/3f0)
 prob = ODEProblem(lorenz,u0,tspan,p)
 const pre_p = [rand(Float32,3) for i in 1:10]
-prob_func = (prob,i,repeat) -> begin
-    @show i
-    remake(prob,p=pre_p[i].*p)
-end
+prob_func = (prob,i,repeat) -> remake(prob,p=pre_p[i].*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
