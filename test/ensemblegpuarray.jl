@@ -18,6 +18,8 @@ const pre_p = [rand(Float32,3) for i in 1:10]
 prob_func = (prob,i,repeat) -> remake(prob,p=pre_p[i].*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
+@info "Explicit Methods"
+
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
 @time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10,saveat=1.0f0)
@@ -40,6 +42,8 @@ solve(monteprob,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 solve(monteprob,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 @test_broken solve(monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 =#
+
+@info "Implicit Methods"
 
 function lorenz_jac(J,u,p,t)
  @inbounds begin
@@ -75,6 +79,8 @@ monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 @time solve(monteprob_jac,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleCPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
 @time solve(monteprob_jac,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleGPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
 
+@info "Callbacks"
+
 condition = function (u,t,integrator)
     @inbounds u[1] > 5
 end
@@ -85,7 +91,7 @@ end
 
 callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=DiscreteCallback(condition,affect!,save_positions=(false,false)))
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10,saveat=1.0f0)
+@time solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10,saveat=1.0f0)
 
 c_condition = function (u,t,integrator)
     @inbounds u[1] - 3
@@ -98,6 +104,8 @@ end
 callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=ContinuousCallback(c_condition,c_affect!,save_positions=(false,false)))
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
 @test_broken solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0).retcode == :Success
+
+@info "ROBER"
 
 #=
 using OrdinaryDiffEq, LinearAlgebra, ParameterizedFunctions

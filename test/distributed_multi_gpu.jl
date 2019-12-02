@@ -16,9 +16,9 @@ addprocs(2)
     tspan = (0.0f0,100.0f0)
     p = (10.0f0,28.0f0,8/3f0)
     Random.seed!(1)
-    const pre_p_distributed = [rand(Float32,3) for i in 1:10]
+    pre_p_distributed = [rand(Float32,3) for i in 1:10]
     function prob_func_distributed(prob,i,repeat)
-        OrdinaryDiffEq.remake(prob,p=pre_p[i].*p)
+        remake(prob,p=pre_p_distributed[i].*p)
     end
 end
 
@@ -35,14 +35,15 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
 @test length(filter(x -> x.u != sol2.u[6].u, sol.u)) != 0 # 0 element array
-@test all(all(sol[i].prob.p .== pre_p[i].*p) for i in 1:10)
-@test all(all(sol2[i].prob.p .== pre_p[i].*p) for i in 1:10)
+@test all(all(sol[i].prob.p .== pre_p_distributed[i].*p) for i in 1:10)
+@test all(all(sol2[i].prob.p .== pre_p_distributed[i].*p) for i in 1:10)
 
 #To set 1 GPU per device:
 #=
-import CUDAdrv, CUDAnative
+using Distributed
 addprocs(numgpus)
-@info "Setting up DArray{CuArray} with" N=nworkers() NCUDAdevices=length(CUDAdrv.devices())
+import CUDAdrv, CUDAnative
+
 let gpuworkers = asyncmap(collect(zip(workers(), CUDAdrv.devices()))) do (p, d)
   remotecall_wait(CUDAnative.device!, p, d)
   p
