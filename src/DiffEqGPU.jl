@@ -175,21 +175,27 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     if ensemblealg isa EnsembleGPUArray
         u0 = CuArray(hcat([probs[i].u0 for i in 1:length(I)]...))
         p  = CuArray(hcat([probs[i].p  for i in 1:length(I)]...))
-        jac_prototype = DiffEqBase.has_jac(probs[1].f) ? cu(zeros(Float32,len,len,length(I))) : nothing
     elseif ensemblealg isa EnsembleCPUArray
         u0 = hcat([probs[i].u0 for i in 1:length(I)]...)
         p  = hcat([probs[i].p  for i in 1:length(I)]...)
-        jac_prototype = DiffEqBase.has_jac(probs[1].f) ? zeros(len,len,length(I)) : nothing
     end
 
-    if probs[1].f.colorvec !== nothing
-        colorvec = repeat(probs[1].f.colorvec,length(I))
+    if DiffEqBase.has_jac(probs[1].f)
+        jac_prototype = ensemblealg isa EnsembleGPUArray ?
+                        cu(zeros(Float32,len,len,length(I))) :
+                        zeros(Float32,len,len,length(I))
+        if probs[1].f.colorvec !== nothing
+            colorvec = repeat(probs[1].f.colorvec,length(I))
+        else
+            colorvec = repeat(1:length(probs[1].u0),length(I))
+        end
     else
-        colorvec = repeat(1:length(probs[1].u0),length(I))
+        jac_prototype = nothing
+        colorvec = nothing
     end
 
     _callback = generate_callback(probs[1],ensemblealg)
-    prob = generate_problem(probs[1],u0,p,jac_prototype)
+    prob = generate_problem(probs[1],u0,p,jac_prototype,colorvec)
 
     internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
     internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
@@ -203,7 +209,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
 end
 
-function generate_problem(prob,u0,p,jac_prototype)
+function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
     _f = let f=prob.f.f
         function (du,u,p,t)
             version = u isa CuArray ? CUDA() : CPU()
@@ -250,6 +256,63 @@ function generate_problem(prob,u0,p,jac_prototype)
                         jac_prototype = jac_prototype,
                         tgrad=_tgrad)
     prob = ODEProblem(f_func,u0,prob.tspan,p;
+                      prob.kwargs...)
+end
+
+function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
+    _f = let f=prob.f.f
+        function (du,u,p,t)
+            version = u isa CuArray ? CUDA() : CPU()
+            @launch version gpu_kernel(f,du,u,p,t)
+        end
+    end
+
+    _g = let f=prob.f.g
+        function (du,u,p,t)
+            version = u isa CuArray ? CUDA() : CPU()
+            @launch version gpu_kernel(f,du,u,p,t)
+        end
+    end
+
+    if DiffEqBase.has_jac(prob.f)
+        _Wfact! = let jac=prob.f.jac
+            function (W,u,p,gamma,t)
+                iscuda = u isa CuArray
+                version = iscuda ? CUDA() : CPU()
+                @launch version W_kernel(jac, W, u, p, gamma, t)
+                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+            end
+        end
+        _Wfact!_t = let jac=prob.f.jac
+            function (W,u,p,gamma,t)
+                iscuda = u isa CuArray
+                version = iscuda ? CUDA() : CPU()
+                @launch version Wt_kernel(jac, W, u, p, gamma, t)
+                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+            end
+        end
+    else
+        _Wfact! = nothing
+        _Wfact!_t = nothing
+    end
+
+    if DiffEqBase.has_tgrad(prob.f)
+        _tgrad = let tgrad=prob.f.tgrad
+            function (J,u,p,t)
+                version = u isa CuArray ? CUDA() : CPU()
+                @launch version gpu_kernel(tgrad,J,u,p,t)
+            end
+        end
+    else
+        _tgrad = nothing
+    end
+
+    f_func = SDEFunction(_f,_g,Wfact = _Wfact!,
+                        Wfact_t = _Wfact!_t,
+                        #colorvec=colorvec,
+                        jac_prototype = jac_prototype,
+                        tgrad=_tgrad)
+    prob = SDEProblem(f_func,_g,u0,prob.tspan,p;
                       prob.kwargs...)
 end
 
