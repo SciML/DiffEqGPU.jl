@@ -221,6 +221,28 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     end
     =#
 
+    _callback = generate_callback(probs,ensemblealg)
+
+    internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
+    internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
+
+    f_func = ODEFunction(_f,Wfact = _Wfact!,
+                        Wfact_t = _Wfact!_t,
+                        #colorvec=colorvec,
+                        jac_prototype = jac_prototype,
+                        tgrad=_tgrad)
+    prob = ODEProblem(f_func,u0,probs[1].tspan,p;
+                      probs[1].kwargs...)
+    sol  = solve(prob,alg; callback = _callback,
+                 #internalnorm=internalnorm,
+                 kwargs...)
+
+    us = Array.(sol.u)
+    solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
+    [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
+end
+
+function generate_callback(probs,ensemblealg)
     if :callback ∉ keys(probs[1].kwargs)
         _callback = nothing
     elseif probs[1].kwargs[:callback] isa DiscreteCallback
@@ -267,24 +289,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
 
         _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
     end
-
-    internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
-    internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
-
-    f_func = ODEFunction(_f,Wfact = _Wfact!,
-                        Wfact_t = _Wfact!_t,
-                        #colorvec=colorvec,
-                        jac_prototype = jac_prototype,
-                        tgrad=_tgrad)
-    prob = ODEProblem(f_func,u0,probs[1].tspan,p;
-                      probs[1].kwargs...)
-    sol  = solve(prob,alg; callback = _callback,
-                 #internalnorm=internalnorm,
-                 kwargs...)
-
-    us = Array.(sol.u)
-    solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
-    [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
+    _callback
 end
 
 ### GPU Factorization
