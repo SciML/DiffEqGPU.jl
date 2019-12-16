@@ -136,14 +136,29 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
     num_batches = trajectories ÷ batch_size
 
     num_batches * batch_size != trajectories && (num_batches += 1)
-    time = @elapsed begin
-        sols = pmap(1:num_batches) do i
-            if i == num_batches
-              I = (batch_size*(i-1)+1):trajectories
-            else
-              I = (batch_size*(i-1)+1):batch_size*i
+
+    if nprocs() == 1
+        # While pmap works, this makes much better error messages.
+        time = @elapsed begin
+            sols = map(1:num_batches) do i
+                if i == num_batches
+                  I = (batch_size*(i-1)+1):trajectories
+                else
+                  I = (batch_size*(i-1)+1):batch_size*i
+                end
+                batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
             end
-            batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+        end
+    else
+        time = @elapsed begin
+            sols = pmap(1:num_batches) do i
+                if i == num_batches
+                  I = (batch_size*(i-1)+1):trajectories
+                else
+                  I = (batch_size*(i-1)+1):batch_size*i
+                end
+                batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+            end
         end
     end
 
@@ -160,22 +175,50 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     if ensemblealg isa EnsembleGPUArray
         u0 = CuArray(hcat([probs[i].u0 for i in 1:length(I)]...))
         p  = CuArray(hcat([probs[i].p  for i in 1:length(I)]...))
-        jac_prototype = cu(zeros(Float32,len,len,length(I)))
     elseif ensemblealg isa EnsembleCPUArray
         u0 = hcat([probs[i].u0 for i in 1:length(I)]...)
         p  = hcat([probs[i].p  for i in 1:length(I)]...)
-        jac_prototype = zeros(len,len,length(I))
     end
 
-    _f = let f=probs[1].f.f
+    if DiffEqBase.has_jac(probs[1].f)
+        jac_prototype = ensemblealg isa EnsembleGPUArray ?
+                        cu(zeros(Float32,len,len,length(I))) :
+                        zeros(Float32,len,len,length(I))
+        if probs[1].f.colorvec !== nothing
+            colorvec = repeat(probs[1].f.colorvec,length(I))
+        else
+            colorvec = repeat(1:length(probs[1].u0),length(I))
+        end
+    else
+        jac_prototype = nothing
+        colorvec = nothing
+    end
+
+    _callback = generate_callback(probs[1],ensemblealg)
+    prob = generate_problem(probs[1],u0,p,jac_prototype,colorvec)
+
+    internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
+    internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
+
+    sol  = solve(prob,alg; callback = _callback,
+                 #internalnorm=internalnorm,
+                 kwargs...)
+
+    us = Array.(sol.u)
+    solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
+    [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
+end
+
+function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
+    _f = let f=prob.f.f
         function (du,u,p,t)
             version = u isa CuArray ? CUDA() : CPU()
             @launch version gpu_kernel(f,du,u,p,t)
         end
     end
 
-    if DiffEqBase.has_jac(probs[1].f)
-        _Wfact! = let jac=probs[1].f.jac
+    if DiffEqBase.has_jac(prob.f)
+        _Wfact! = let jac=prob.f.jac
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDA() : CPU()
@@ -183,7 +226,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
-        _Wfact!_t = let jac=probs[1].f.jac
+        _Wfact!_t = let jac=prob.f.jac
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDA() : CPU()
@@ -196,8 +239,8 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         _Wfact!_t = nothing
     end
 
-    if DiffEqBase.has_tgrad(probs[1].f)
-        _tgrad = let tgrad=probs[1].f.tgrad
+    if DiffEqBase.has_tgrad(prob.f)
+        _tgrad = let tgrad=prob.f.tgrad
             function (J,u,p,t)
                 version = u isa CuArray ? CUDA() : CPU()
                 @launch version gpu_kernel(tgrad,J,u,p,t)
@@ -207,30 +250,83 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         _tgrad = nothing
     end
 
-    if probs[1].f.colorvec !== nothing
-        colorvec = repeat(probs[1].f.colorvec,length(I))
-    else
-        colorvec = repeat(1:length(probs[1].u0),length(I))
+    f_func = ODEFunction(_f,Wfact = _Wfact!,
+                        Wfact_t = _Wfact!_t,
+                        #colorvec=colorvec,
+                        jac_prototype = jac_prototype,
+                        tgrad=_tgrad)
+    prob = ODEProblem(f_func,u0,prob.tspan,p;
+                      prob.kwargs...)
+end
+
+function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
+    _f = let f=prob.f.f
+        function (du,u,p,t)
+            version = u isa CuArray ? CUDA() : CPU()
+            @launch version gpu_kernel(f,du,u,p,t)
+        end
     end
 
-    #=
-    if probs[1].f.colorvec !== nothing
-        jac_prototype = CuArray(repeat(probs[1].f.jac_prototype,length(I)))
-    else
-        jac_prototype = cu(zeros(Float32,length(probs[1].u0)^2,length(I)))
+    _g = let f=prob.f.g
+        function (du,u,p,t)
+            version = u isa CuArray ? CUDA() : CPU()
+            @launch version gpu_kernel(f,du,u,p,t)
+        end
     end
-    =#
 
-    if :callback ∉ keys(probs[1].kwargs)
+    if DiffEqBase.has_jac(prob.f)
+        _Wfact! = let jac=prob.f.jac
+            function (W,u,p,gamma,t)
+                iscuda = u isa CuArray
+                version = iscuda ? CUDA() : CPU()
+                @launch version W_kernel(jac, W, u, p, gamma, t)
+                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+            end
+        end
+        _Wfact!_t = let jac=prob.f.jac
+            function (W,u,p,gamma,t)
+                iscuda = u isa CuArray
+                version = iscuda ? CUDA() : CPU()
+                @launch version Wt_kernel(jac, W, u, p, gamma, t)
+                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+            end
+        end
+    else
+        _Wfact! = nothing
+        _Wfact!_t = nothing
+    end
+
+    if DiffEqBase.has_tgrad(prob.f)
+        _tgrad = let tgrad=prob.f.tgrad
+            function (J,u,p,t)
+                version = u isa CuArray ? CUDA() : CPU()
+                @launch version gpu_kernel(tgrad,J,u,p,t)
+            end
+        end
+    else
+        _tgrad = nothing
+    end
+
+    f_func = SDEFunction(_f,_g,Wfact = _Wfact!,
+                        Wfact_t = _Wfact!_t,
+                        #colorvec=colorvec,
+                        jac_prototype = jac_prototype,
+                        tgrad=_tgrad)
+    prob = SDEProblem(f_func,_g,u0,prob.tspan,p;
+                      prob.kwargs...)
+end
+
+function generate_callback(prob,ensemblealg)
+    if :callback ∉ keys(prob.kwargs)
         _callback = nothing
-    elseif probs[1].kwargs[:callback] isa DiscreteCallback
+    elseif prob.kwargs[:callback] isa DiscreteCallback
         if ensemblealg isa EnsembleGPUArray
             cur = CuArray([false for i in 1:length(probs)])
         else
             cur = [false for i in 1:length(probs)]
         end
-        _condition = probs[1].kwargs[:callback].condition
-        _affect!   = probs[1].kwargs[:callback].affect!
+        _condition = prob.kwargs[:callback].condition
+        _affect!   = prob.kwargs[:callback].affect!
 
         condition = function (u,t,integrator)
             version = u isa CuArray ? CUDA() : CPU()
@@ -243,11 +339,11 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
             @launch version discrete_affect!_kernel(_affect!,cur,integrator.u,integrator.t,integrator.p)
         end
 
-        _callback = DiscreteCallback(condition,affect!,save_positions=probs[1].kwargs[:callback].save_positions)
-    elseif probs[1].kwargs[:callback] isa ContinuousCallback
-        _condition   = probs[1].kwargs[:callback].condition
-        _affect!     = probs[1].kwargs[:callback].affect!
-        _affect_neg! = probs[1].kwargs[:callback].affect_neg!
+        _callback = DiscreteCallback(condition,affect!,save_positions=prob.kwargs[:callback].save_positions)
+    elseif prob.kwargs[:callback] isa ContinuousCallback
+        _condition   = prob.kwargs[:callback].condition
+        _affect!     = prob.kwargs[:callback].affect!
+        _affect_neg! = prob.kwargs[:callback].affect_neg!
 
         condition = function (out,u,t,integrator)
             version = u isa CuArray ? CUDA() : CPU()
@@ -265,26 +361,9 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
             @launch version continuous_affect!_kernel(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p)
         end
 
-        _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=probs[1].kwargs[:callback].save_positions)
+        _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=prob.kwargs[:callback].save_positions)
     end
-
-    internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
-    internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
-
-    f_func = ODEFunction(_f,Wfact = _Wfact!,
-                        Wfact_t = _Wfact!_t,
-                        #colorvec=colorvec,
-                        jac_prototype = jac_prototype,
-                        tgrad=_tgrad)
-    prob = ODEProblem(f_func,u0,probs[1].tspan,p;
-                      probs[1].kwargs...)
-    sol  = solve(prob,alg; callback = _callback,
-                 #internalnorm=internalnorm,
-                 kwargs...)
-
-    us = Array.(sol.u)
-    solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
-    [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
+    _callback
 end
 
 ### GPU Factorization
