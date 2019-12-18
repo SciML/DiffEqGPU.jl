@@ -173,6 +173,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
 
     len = length(probs[1].u0)
     if ensemblealg isa EnsembleGPUArray
+        # it's 1:length(I) since probs is generated above with for i in I
         u0 = CuArray(hcat([probs[i].u0 for i in 1:length(I)]...))
         p  = CuArray(hcat([probs[i].p  for i in 1:length(I)]...))
     elseif ensemblealg isa EnsembleCPUArray
@@ -194,7 +195,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
         colorvec = nothing
     end
 
-    _callback = generate_callback(probs[1],ensemblealg)
+    _callback = generate_callback(probs[1],length(I),ensemblealg)
     prob = generate_problem(probs[1],u0,p,jac_prototype,colorvec)
 
     internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
@@ -205,7 +206,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
                  kwargs...)
 
     us = Array.(sol.u)
-    solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
+    solus = [[@view(us[i][:,j]) for i in 1:length(us)] for j in 1:length(probs)]
     [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
 end
 
@@ -316,14 +317,14 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
                       prob.kwargs...)
 end
 
-function generate_callback(prob,ensemblealg)
+function generate_callback(prob,I,ensemblealg)
     if :callback ∉ keys(prob.kwargs)
         _callback = nothing
     elseif prob.kwargs[:callback] isa DiscreteCallback
         if ensemblealg isa EnsembleGPUArray
-            cur = CuArray([false for i in 1:length(probs)])
+            cur = CuArray([false for i in 1:I])
         else
-            cur = [false for i in 1:length(probs)]
+            cur = [false for i in 1:I]
         end
         _condition = prob.kwargs[:callback].condition
         _affect!   = prob.kwargs[:callback].affect!
@@ -361,7 +362,7 @@ function generate_callback(prob,ensemblealg)
             @launch version continuous_affect!_kernel(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p)
         end
 
-        _callback = VectorContinuousCallback(condition,affect!,affect_neg!,length(probs),save_positions=prob.kwargs[:callback].save_positions)
+        _callback = VectorContinuousCallback(condition,affect!,affect_neg!,I,save_positions=prob.kwargs[:callback].save_positions)
     end
     _callback
 end
