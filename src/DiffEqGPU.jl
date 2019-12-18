@@ -173,11 +173,12 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
 
     len = length(probs[1].u0)
     if ensemblealg isa EnsembleGPUArray
-        u0 = CuArray(hcat([probs[i].u0 for i in I]...))
-        p  = CuArray(hcat([probs[i].p  for i in I]...))
+        # it's 1:length(I) since probs is generated above with for i in I
+        u0 = CuArray(hcat([probs[i].u0 for i in 1:length(I)]...))
+        p  = CuArray(hcat([probs[i].p  for i in 1:length(I)]...))
     elseif ensemblealg isa EnsembleCPUArray
-        u0 = hcat([probs[i].u0 for i in I]...)
-        p  = hcat([probs[i].p  for i in I]...)
+        u0 = hcat([probs[i].u0 for i in 1:length(I)]...)
+        p  = hcat([probs[i].p  for i in 1:length(I)]...)
     end
 
     if DiffEqBase.has_jac(probs[1].f)
