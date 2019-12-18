@@ -205,7 +205,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
                  kwargs...)
 
     us = Array.(sol.u)
-    solus = [[us[i][:,j] for i in 1:length(us)] for j in 1:length(probs)]
+    solus = [[@view(us[i][:,j]) for i in 1:length(us)] for j in 1:length(probs)]
     [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
 end
 
