@@ -157,8 +157,9 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                 else
                   I = (batch_size*(i-1)+1):batch_size*i
                 end
-                batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+                x = batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
                 yield()
+                x
             end
         end
     end
