@@ -15,7 +15,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 [compat]
 CUDAdrv = "4.0, 5.0, 6.0"
 CUDAnative = "2.5, 3.0"
-CuArrays = "1.4"
+CuArrays = "1.4, 2.0"
 DiffEqBase = "6.5"
 GPUifyLoops = "0.2"
 OrdinaryDiffEq = "5.23"
