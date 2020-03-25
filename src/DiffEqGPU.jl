@@ -203,7 +203,7 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
     internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
 
-    sol  = solve(prob,alg; callback = _callback,
+    sol  = solve(prob,alg; callback = _callback,merge_callbacks = false,
                  #internalnorm=internalnorm,
                  kwargs...)
 
