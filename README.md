@@ -33,7 +33,7 @@ different choices of `u0` or `p`. For these cases, DiffEqGPU exports the followi
 - `EnsembleCPUArray`: A test version for analyzing the overhead of the array-based parallelism setup.
 
 For more information on using the ensemble interface, see
-[the DiffEqDocs page on ensembles](http://docs.juliadiffeq.org/dev/features/ensemble.html)
+[the DiffEqDocs page on ensembles](http://docs.juliadiffeq.org/dev/features/ensemble)
 
 For example, the following solves the Lorenz equation with 10,000 separate random parameters on the GPU:
 
