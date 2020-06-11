@@ -168,7 +168,7 @@ Then setup the calls to work with distributed processes:
     CuArrays.allowscalar(false)
     u0 = Float32[1.0;0.0;0.0]
     tspan = (0.0f0,100.0f0)
-    p = (10.0f0,28.0f0,8/3f0)
+    p = [10.0f0,28.0f0,8/3f0]
     Random.seed!(1)
     function prob_func_distributed(prob,i,repeat)
         remake(prob,p=rand(3).*p)
@@ -217,7 +217,7 @@ addprocs(2)
     CuArrays.allowscalar(false)
     u0 = Float32[1.0;0.0;0.0]
     tspan = (0.0f0,100.0f0)
-    p = (10.0f0,28.0f0,8/3f0)
+    p = [10.0f0,28.0f0,8/3f0]
     Random.seed!(1)
     pre_p_distributed = [rand(Float32,3) for i in 1:100_000]
     function prob_func_distributed(prob,i,repeat)
