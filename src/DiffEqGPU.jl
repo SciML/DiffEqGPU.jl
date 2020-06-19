@@ -134,8 +134,15 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  trajectories, batch_size = trajectories, kwargs...)
 
     num_batches = trajectories ÷ batch_size
-
     num_batches * batch_size != trajectories && (num_batches += 1)
+
+    if num_batches == 1 && ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION
+       time = @elapsed sol = batch_solve(ensembleprob,alg,ensemblealg,1:trajectories;kwargs...)
+       return DiffEqBase.EnsembleSolution(sol,time,true)
+    end
+
+    converged::Bool = false
+    u = ensembleprob.u_init === nothing ? similar(batch_solve(ensembleprob,alg,ensemblealg,1:batch_size;kwargs...), 0) : ensembleprob.u_init
 
     if nprocs() == 1
         # While pmap works, this makes much better error messages.
@@ -146,7 +153,13 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                 else
                   I = (batch_size*(i-1)+1):batch_size*i
                 end
-                batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+                batch_data = batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+                if ensembleprob.reduction !== DiffEqBase.DEFAULT_REDUCTION
+                  u, _ = ensembleprob.reduction(u,batch_data,I)
+                  return u
+                else
+                  batch_data
+                end
             end
         end
     else
@@ -159,12 +172,21 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                 end
                 x = batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
                 yield()
-                x
+                if ensembleprob.reduction !== DiffEqBase.DEFAULT_REDUCTION
+                  u, _ = ensembleprob.reduction(u,x,I)
+                else
+                  x
+                end
+
             end
         end
     end
 
-    DiffEqBase.EnsembleSolution(hcat(sols...),time,true)
+    if ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION
+        DiffEqBase.EnsembleSolution(hcat(sols...),time,true)
+    else
+        DiffEqBase.EnsembleSolution(sols[end], time, true)
+    end
 end
 
 function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
