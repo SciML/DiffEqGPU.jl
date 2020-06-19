@@ -19,3 +19,4 @@ using SafeTestsets, Test
 @time @safetestset "EnsembleGPUArray Input Types" begin include("ensemblegpuarray_inputtypes.jl") end
 # Not safe because distributed doesn't play nicely with modules.
 @time @testset "Distributed Multi-GPU" begin include("distributed_multi_gpu.jl") end
+@time @testset "Distributed Multi-GPU" begin include("reduction.jl") end
