@@ -1,5 +1,6 @@
 # Pkg.test runs with --check_bounds=1, forcing all bounds checks.
 # This is incompatible with GPUifyLoops.
+# TODO: Is this needed any longer?
 if Base.JLOptions().check_bounds == 1
   cmd = Cmd(filter(arg->!startswith(arg, "--check-bounds"), Base.julia_cmd().exec))
   code = """
