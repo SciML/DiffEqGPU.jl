@@ -1,58 +1,41 @@
 module DiffEqGPU
 
-using GPUifyLoops, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra, Distributed
+using KernelAbstractions, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra, Distributed
 using CUDAdrv: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CuArrays: CUBLAS
 
-function gpu_kernel(f,du,u,p,t)
-    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        @views @inbounds f(du[:,i],u[:,i],p[:,i],t)
-        nothing
-    end
-    nothing
+@kernel function gpu_kernel(f,du,u,p,t)
+    i = @index(Global, Linear)
+    @views @inbounds f(du[:,i],u[:,i],p[:,i],t)
 end
 
-function jac_kernel(f,J,u,p,t)
-    @loop for i in (0:(size(u,2)-1); (blockIdx().x-1) * blockDim().x + threadIdx().x - 1)
-        section = 1 + (i*size(u,1)) : ((i+1)*size(u,1))
-        @views @inbounds f(J[section,section],u[:,i+1],p[:,i+1],t)
-        nothing
-    end
-    nothing
+@kernel function jac_kernel(f,J,u,p,t)
+    i = @index(Global, Linear)-1
+    section = 1 + (i*size(u,1)) : ((i+1)*size(u,1))
+    @views @inbounds f(J[section,section],u[:,i+1],p[:,i+1],t)
 end
 
-function discrete_condition_kernel(condition,cur,u,t,p)
-    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        @views @inbounds cur[i] = condition(u[:,i],t,FakeIntegrator(u[:,i],t,p[:,i]))
-        nothing
-    end
-    nothing
+@kernel function discrete_condition_kernel(condition,cur,u,t,p)
+    i = @index(Global, Linear)
+    @views @inbounds cur[i] = condition(u[:,i],t,FakeIntegrator(u[:,i],t,p[:,i]))
 end
 
-function discrete_affect!_kernel(affect!,cur,u,t,p)
-    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        @views @inbounds cur[i] && affect!(FakeIntegrator(u[:,i],t,p[:,i]))
-        nothing
-    end
-    nothing
+@kernel function discrete_affect!_kernel(affect!,cur,u,t,p)
+    i = @index(Global, Linear)
+    @views @inbounds cur[i] && affect!(FakeIntegrator(u[:,i],t,p[:,i]))
 end
 
-function continuous_condition_kernel(condition,out,u,t,p)
-    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        @views @inbounds out[i] = condition(u[:,i],t,FakeIntegrator(u[:,i],t,p[:,i]))
-        nothing
-    end
-    nothing
+@kernel function continuous_condition_kernel(condition,out,u,t,p)
+    i = @index(Global, Linear)
+    @views @inbounds out[i] = condition(u[:,i],t,FakeIntegrator(u[:,i],t,p[:,i]))
 end
 
-function continuous_affect!_kernel(affect!,event_idx,u,t,p)
-    @loop for i in ((event_idx,); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        @views @inbounds affect!(FakeIntegrator(u[:,i],t,p[:,i]))
-        nothing
-    end
-    nothing
+@kernel function continuous_affect!_kernel(affect!,event_idx,u,t,p)
+    i = @index(Global, Linear)
+    @views @inbounds affect!(FakeIntegrator(u[:,i],t,p[:,i]))
 end
 
+#=
 function GPUifyLoops.launch_config(::Union{typeof(gpu_kernel),
                                            typeof(jac_kernel),
                                            typeof(discrete_condition_kernel),
@@ -65,37 +48,33 @@ function GPUifyLoops.launch_config(::Union{typeof(gpu_kernel),
     blocks = ceil(Int,size(u,2)/t)
     (threads=t,blocks=blocks)
 end
+=#
 
-function W_kernel(jac, W, u, p, gamma, t)
+@kernel function W_kernel(jac, W, u, p, gamma, t)
+    i = @index(Global, Linear)
     len = size(u,1)
-    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        _W = @inbounds @view(W[:, :, i])
-        @views @inbounds jac(_W,u[:,i],p[:,i],t)
-        @inbounds for i in eachindex(_W)
-            _W[i] = gamma*_W[i]
-        end
-        _one = one(eltype(_W))
-        @inbounds for i in 1:len
-            _W[i, i] = _W[i, i] - _one
-        end
-        nothing
+    _W = @inbounds @view(W[:, :, i])
+    @views @inbounds jac(_W,u[:,i],p[:,i],t)
+    @inbounds for i in eachindex(_W)
+        _W[i] = gamma*_W[i]
     end
-    return nothing
+    _one = one(eltype(_W))
+    @inbounds for i in 1:len
+        _W[i, i] = _W[i, i] - _one
+    end
 end
 
-function Wt_kernel(jac, W, u, p, gamma, t)
+@kernel function Wt_kernel(jac, W, u, p, gamma, t)
+    i = @index(Global, Linear)
     len = size(u,1)
-    @loop for i in (1:size(u,2); (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        _W = @inbounds @view(W[:, :, i])
-        @views @inbounds jac(_W,u[:,i],p[:,i],t)
-        @inbounds for i in 1:len
-            _W[i, i] = -inv(gamma) + _W[i, i]
-        end
-        nothing
+    _W = @inbounds @view(W[:, :, i])
+    @views @inbounds jac(_W,u[:,i],p[:,i],t)
+    @inbounds for i in 1:len
+        _W[i, i] = -inv(gamma) + _W[i, i]
     end
-    return nothing
 end
 
+#=
 function GPUifyLoops.launch_config(::Union{typeof(W_kernel),typeof(Wt_kernel)},
                                            maxthreads,context,g,jac,W,u,args...;
                                            kwargs...)
@@ -103,6 +82,7 @@ function GPUifyLoops.launch_config(::Union{typeof(W_kernel),typeof(Wt_kernel)},
     blocks = ceil(Int,size(u,2)/t)
     (threads=t,blocks=blocks)
 end
+=#
 
 function cuda_lufact!(W)
     CuArrays.CUBLAS.getrf_strided_batched!(W, false)
@@ -238,7 +218,7 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
     _f = let f=prob.f.f
         function (du,u,p,t)
             version = u isa CuArray ? CUDA() : CPU()
-            @launch version gpu_kernel(f,du,u,p,t)
+            wait(version, gpu_kernel(version)(f,du,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
         end
     end
 
@@ -247,7 +227,7 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDA() : CPU()
-                @launch version W_kernel(jac, W, u, p, gamma, t)
+                wait(version, W_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -255,7 +235,7 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDA() : CPU()
-                @launch version Wt_kernel(jac, W, u, p, gamma, t)
+                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -268,7 +248,7 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
         _tgrad = let tgrad=prob.f.tgrad
             function (J,u,p,t)
                 version = u isa CuArray ? CUDA() : CPU()
-                @launch version gpu_kernel(tgrad,J,u,p,t)
+                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
             end
         end
     else
@@ -288,14 +268,14 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
     _f = let f=prob.f.f
         function (du,u,p,t)
             version = u isa CuArray ? CUDA() : CPU()
-            @launch version gpu_kernel(f,du,u,p,t)
+            wait(version, gpu_kernel(version)(f,du,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
         end
     end
 
     _g = let f=prob.f.g
         function (du,u,p,t)
             version = u isa CuArray ? CUDA() : CPU()
-            @launch version gpu_kernel(f,du,u,p,t)
+            wait(version, gpu_kernel(version)(f,du,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
         end
     end
 
@@ -304,7 +284,7 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDA() : CPU()
-                @launch version W_kernel(jac, W, u, p, gamma, t)
+                wait(version, W_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -312,7 +292,7 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDA() : CPU()
-                @launch version Wt_kernel(jac, W, u, p, gamma, t)
+                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -325,7 +305,7 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
         _tgrad = let tgrad=prob.f.tgrad
             function (J,u,p,t)
                 version = u isa CuArray ? CUDA() : CPU()
-                @launch version gpu_kernel(tgrad,J,u,p,t)
+                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
             end
         end
     else
@@ -355,13 +335,13 @@ function generate_callback(prob,I,ensemblealg)
 
         condition = function (u,t,integrator)
             version = u isa CuArray ? CUDA() : CPU()
-            @launch version discrete_condition_kernel(_condition,cur,u,t,integrator.p)
+            wait(version, discrete_condition_kernel(version)(_condition,cur,u,t,integrator.p;ndrange=size(u,2),dependencies=Event(version)))
             any(cur)
         end
 
         affect! = function (integrator)
             version = integrator.u isa CuArray ? CUDA() : CPU()
-            @launch version discrete_affect!_kernel(_affect!,cur,integrator.u,integrator.t,integrator.p)
+            wait(version, discrete_affect!_kernel(version)(_affect!,cur,integrator.u,integrator.t,integrator.p;ndrange=size(integrator.u,2),dependencies=Event(version)))
         end
 
         _callback = DiscreteCallback(condition,affect!,save_positions=prob.kwargs[:callback].save_positions)
@@ -372,18 +352,18 @@ function generate_callback(prob,I,ensemblealg)
 
         condition = function (out,u,t,integrator)
             version = u isa CuArray ? CUDA() : CPU()
-            @launch version continuous_condition_kernel(_condition,out,u,t,integrator.p)
+            wait(version, continuous_condition_kernel(version)(_condition,out,u,t,integrator.p;ndrange=size(u,2),dependencies=Event(version)))
             nothing
         end
 
         affect! = function (integrator,event_idx)
             version = integrator.u isa CuArray ? CUDA() : CPU()
-            @launch version continuous_affect!_kernel(_affect!,event_idx,integrator.u,integrator.t,integrator.p)
+            wait(version, continuous_affect!_kernel(version)(_affect!,event_idx,integrator.u,integrator.t,integrator.p;ndrange=size(integrator.u,2),dependencies=Event(version)))
         end
 
         affect_neg! = function (integrator,event_idx)
             version = integrator.u isa CuArray ? CUDA() : CPU()
-            @launch version continuous_affect!_kernel(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p)
+            wait(version, continuous_affect!_kernel(version)(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p;ndrange=size(integrator.u,2),dependencies=Event(version)))
         end
 
         _callback = VectorContinuousCallback(condition,affect!,affect_neg!,I,save_positions=prob.kwargs[:callback].save_positions)
@@ -402,7 +382,7 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDA() : CPU()
     copyto!(x, b)
-    @launch version ldiv!_kernel(A,x,p.len,p.nfacts)
+    wait(version, ldiv!_kernel(version)(A,x,p.len,p.nfacts;ndrange=p.nfacts,dependencies=Event(version)))
     return nothing
 end
 
@@ -410,17 +390,15 @@ function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
     LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
 
-function ldiv!_kernel(W,u,len,nfacts)
-    @loop for i in (1:nfacts; (blockIdx().x-1) * blockDim().x + threadIdx().x)
-        section = 1 + ((i-1)*len) : (i*len)
-        _W = @inbounds @view(W[:, :, i])
-        _u = @inbounds @view u[section]
-        naivesolve!(_W, _u, len)
-        nothing
-    end
-    return nothing
+@kernel function ldiv!_kernel(W,u,len,nfacts)
+    i = @index(Global, Linear)
+    section = 1 + ((i-1)*len) : (i*len)
+    _W = @inbounds @view(W[:, :, i])
+    _u = @inbounds @view u[section]
+    naivesolve!(_W, _u, len)
 end
 
+#=
 function GPUifyLoops.launch_config(::typeof(ldiv!_kernel),
                                            maxthreads,context,g,W,x,len,nfacts,
                                            args...;
@@ -429,6 +407,7 @@ function GPUifyLoops.launch_config(::typeof(ldiv!_kernel),
     blocks = ceil(Int,nfacts/t)
     (threads=t,blocks=blocks)
 end
+=#
 
 function __printjac(A, ii)
     @cuprintf "[%d, %d]\n" ii.offset1 ii.stride2
