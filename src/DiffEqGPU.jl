@@ -1,8 +1,8 @@
 module DiffEqGPU
 
-using KernelAbstractions, CuArrays, CUDAnative, DiffEqBase, LinearAlgebra, Distributed
-using CUDAdrv: CuPtr, CU_NULL, Mem, CuDefaultStream
-using CuArrays: CUBLAS
+using KernelAbstractions, CUDA, DiffEqBase, LinearAlgebra, Distributed
+using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
+using CUDA: CUBLAS
 
 @kernel function gpu_kernel(f,du,u,p,t)
     i = @index(Global, Linear)

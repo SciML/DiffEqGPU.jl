@@ -1,6 +1,6 @@
 using Distributed
 addprocs(2)
-@everywhere using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test, Random
+@everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
 
 @everywhere begin
     function lorenz_distributed(du,u,p,t)
@@ -11,7 +11,7 @@ addprocs(2)
      end
      nothing
     end
-    CuArrays.allowscalar(false)
+    CUDA.allowscalar(false)
     u0 = Float32[1.0;0.0;0.0]
     tspan = (0.0f0,100.0f0)
     p = (10.0f0,28.0f0,8/3f0)

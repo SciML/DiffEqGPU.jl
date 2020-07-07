@@ -1,4 +1,4 @@
-using GPUifyLoops, CuArrays, SimpleDiffEq
+using GPUifyLoops, CUDA, SimpleDiffEq
 using StaticArrays
 
 function loop(u, p, t)
@@ -20,7 +20,7 @@ const odeoop = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0),  Float32
 sol2 = solve(odeoop,GPUSimpleTsit5(),dt=dt)
 cps = Array([@SVector [10f0,28f0,8/3f0] for i in 1:32])
 ps = CuArray([@SVector [10f0,28f0,8/3f0] for i in 1:32])
-CuArrays.allowscalar(false)
+CUDA.allowscalar(false)
 
 function f(p)
     solve(odeoop,GPUSimpleTsit5(),dt=dt)
@@ -42,7 +42,7 @@ map(_f2,ps)
 
 
 using GPUifyLoops, SimpleDiffEq, StaticArrays
-using CuArrays, Cthulhu
+using CUDA, Cthulhu
 
 function loop(u, p, t)
     @inbounds begin
@@ -61,7 +61,7 @@ dt = 1f-1
 odeoop = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0),  Float32[10, 28, 8/3])
 sol2 = solve(odeoop,GPUSimpleATsit5(),save_everystep=false).u[end]
 ps = CuArray([@SVector [10f0,28f0,8/3f0] for i in 1:10])
-CuArrays.allowscalar(false)
+CUDA.allowscalar(false)
 
 function f(p)
     prob = ODEProblem{false}(loop, su0, (0.0f0, 10.0f0),  p)
@@ -87,7 +87,7 @@ end
 _f2 = GPUifyLoops.contextualize(f2)
 map(_f2,ps)
 
-using GPUifyLoops, CuArrays, SimpleDiffEq
+using GPUifyLoops, CUDA, SimpleDiffEq
 using StaticArrays, Cthulhu
 
 function loop(u, p, t)
@@ -115,7 +115,7 @@ odeoop = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0),  Float32[10, 2
 sol2 = solve(odeoop,GPUSimpleTsit5(),dt=dt)
 ps = CuArray([@SVector [10f0,28f0,8/3f0] for i in 1:600])
 _ps = [@SVector [10f0,28f0,8/3f0] for i in 1:600]
-CuArrays.allowscalar(false)
+CUDA.allowscalar(false)
 
 function f(p)
     prob = ODEProblem{false}(loop, su0, (0.0f0, 10.0f0),  p)

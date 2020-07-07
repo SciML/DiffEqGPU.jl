@@ -1,4 +1,4 @@
-using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test
+using DiffEqGPU, CUDA, OrdinaryDiffEq, Test
 
 function lorenz(du,u,p,t)
  @inbounds begin
@@ -9,7 +9,7 @@ function lorenz(du,u,p,t)
  nothing
 end
 
-CuArrays.allowscalar(false)
+CUDA.allowscalar(false)
 u0 = Float32[1.0;0.0;0.0]
 tspan = (0.0f0,100.0f0)
 p = (10.0f0,28.0f0,8/3f0)
