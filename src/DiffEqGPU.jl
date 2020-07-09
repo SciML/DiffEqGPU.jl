@@ -85,7 +85,7 @@ end
 =#
 
 function cuda_lufact!(W)
-    CuArrays.CUBLAS.getrf_strided_batched!(W, false)
+    CUBLAS.getrf_strided_batched!(W, false)
     return nothing
 end
 
