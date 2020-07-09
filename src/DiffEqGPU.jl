@@ -37,7 +37,7 @@ end
 end
 
 maxthreads(::CPU) = typemax(UInt64)
-maxthreads(::CUDA) = CUDAnative.max_block_size.x
+maxthreads(::CUDADevice) = CUDA.max_block_size.x
 
 function workgroupsize(backend, n)
     threads = min(maxthreads(backend),n)
