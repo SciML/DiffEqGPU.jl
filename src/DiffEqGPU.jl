@@ -40,9 +40,7 @@ maxthreads(::CPU) = 1024
 maxthreads(::CUDADevice) = 256
 
 function workgroupsize(backend, n)
-    threads = min(maxthreads(backend),n)
-    blocks = ceil(Int,n/threads)
-    return threads, blocks
+    min(maxthreads(backend),n)
 end
 
 @kernel function W_kernel(jac, W, u, p, gamma, t)
