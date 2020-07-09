@@ -36,8 +36,8 @@ end
     @views @inbounds affect!(FakeIntegrator(u[:,i],t,p[:,i]))
 end
 
-maxthreads(::CPU) = typemax(UInt64)
-maxthreads(::CUDADevice) = CUDA.max_block_size.x
+maxthreads(::CPU) = 1024
+maxthreads(::CUDADevice) = 256
 
 function workgroupsize(backend, n)
     threads = min(maxthreads(backend),n)
