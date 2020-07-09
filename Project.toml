@@ -1,7 +1,7 @@
 name = "DiffEqGPU"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 authors = ["Chris Rackauckas", "JuliaDiffEq"]
-version = "1.5.0"
+version = "1.4.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
