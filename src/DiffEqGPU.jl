@@ -3,6 +3,7 @@ module DiffEqGPU
 using KernelAbstractions, CUDA, DiffEqBase, LinearAlgebra, Distributed
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
+using ForwardDiff
 
 @kernel function gpu_kernel(f,du,u,p,t)
     i = @index(Global, Linear)
@@ -169,6 +170,11 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
     end
 end
 
+diffeqgpunorm(u::CuArray,t) = sqrt(sum(abs2, u)/length(u))
+diffeqgpunorm(u::Union{AbstractFloat,Complex},t) = abs(u)
+diffeqgpunorm(u::CuArray{<:ForwardDiff.Dual},t) = sqrt(sum(abs2∘ForwardDiff.value, u)/length(u))
+diffeqgpunorm(u::ForwardDiff.Dual,t) = abs(ForwardDiff.value(u))
+
 function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     probs = [ensembleprob.prob_func(deepcopy(ensembleprob.prob),i,1) for i in I]
     @assert all(p->p.tspan == probs[1].tspan,probs)
@@ -202,11 +208,8 @@ function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
     _callback = generate_callback(probs[1],length(I),ensemblealg)
     prob = generate_problem(probs[1],u0,p,jac_prototype,colorvec)
 
-    internalnorm(u::CuArray,t) = sqrt(maximum(sum(abs2, u, dims=1)/size(u, 1)))
-    internalnorm(u::Union{AbstractFloat,Complex},t) = abs(u)
-
     sol  = solve(prob,alg; callback = _callback,merge_callbacks = false,
-                 #internalnorm=internalnorm,
+                 internalnorm=diffeqgpunorm,
                  kwargs...)
 
     us = Array.(sol.u)
