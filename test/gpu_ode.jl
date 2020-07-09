@@ -1,4 +1,4 @@
-using GPUifyLoops, CUDA, SimpleDiffEq
+using KernelAbstractions, CUDA, SimpleDiffEq
 using StaticArrays
 
 function loop(u, p, t)

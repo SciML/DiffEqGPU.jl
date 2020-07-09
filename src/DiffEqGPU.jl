@@ -36,20 +36,14 @@ end
     @views @inbounds affect!(FakeIntegrator(u[:,i],t,p[:,i]))
 end
 
-#=
-function GPUifyLoops.launch_config(::Union{typeof(gpu_kernel),
-                                           typeof(jac_kernel),
-                                           typeof(discrete_condition_kernel),
-                                           typeof(discrete_affect!_kernel),
-                                           typeof(continuous_condition_kernel),
-                                           typeof(continuous_affect!_kernel)},
-                                           maxthreads,context,g,f,du,u,args...;
-                                           kwargs...)
-    t = min(maxthreads,size(u,2))
-    blocks = ceil(Int,size(u,2)/t)
-    (threads=t,blocks=blocks)
+maxthreads(::CPU) = typemax(UInt64)
+maxthreads(::CUDA) = CUDAnative.max_block_size.x
+
+function workgroupsize(backend, n)
+    threads = min(maxthreads(backend),n)
+    blocks = ceil(Int,n/threads)
+    return threads, blocks
 end
-=#
 
 @kernel function W_kernel(jac, W, u, p, gamma, t)
     i = @index(Global, Linear)
@@ -74,16 +68,6 @@ end
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
 end
-
-#=
-function GPUifyLoops.launch_config(::Union{typeof(W_kernel),typeof(Wt_kernel)},
-                                           maxthreads,context,g,jac,W,u,args...;
-                                           kwargs...)
-    t = min(maxthreads,size(u,2))
-    blocks = ceil(Int,size(u,2)/t)
-    (threads=t,blocks=blocks)
-end
-=#
 
 function cuda_lufact!(W)
     CUBLAS.getrf_strided_batched!(W, false)
@@ -221,7 +205,10 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
     _f = let f=prob.f.f
         function (du,u,p,t)
             version = u isa CuArray ? CUDADevice() : CPU()
-            wait(version, gpu_kernel(version)(f,du,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(u,2))
+            wait(version, gpu_kernel(version)(f,du,u,p,t;ndrange=size(u,2),
+                                              dependencies=Event(version),
+                                              workgroupsize=wgs))
         end
     end
 
@@ -230,7 +217,11 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
-                wait(version, W_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
+                wgs = workgroupsize(version,size(u,2))
+                wait(version, W_kernel(version)(jac, W, u, p, gamma, t;
+                                                ndrange=size(u,2),
+                                                dependencies=Event(version),
+                                                workgroupsize=wgs))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -238,7 +229,11 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
-                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
+                wgs = workgroupsize(version,size(u,2))
+                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t;
+                                                 ndrange=size(u,2),
+                                                 dependencies=Event(version),
+                                                 workgroupsize=wgs))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -251,7 +246,11 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
         _tgrad = let tgrad=prob.f.tgrad
             function (J,u,p,t)
                 version = u isa CuArray ? CUDADevice() : CPU()
-                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
+                wgs = workgroupsize(version,size(u,2))
+                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;
+                                                  ndrange=size(u,2),
+                                                  dependencies=Event(version),
+                                                  workgroupsize=wgs))
             end
         end
     else
@@ -271,14 +270,22 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
     _f = let f=prob.f.f
         function (du,u,p,t)
             version = u isa CuArray ? CUDADevice() : CPU()
-            wait(version, gpu_kernel(version)(f,du,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(u,2))
+            wait(version, gpu_kernel(version)(f,du,u,p,t;
+                                              ndrange=size(u,2),
+                                              dependencies=Event(version),
+                                              workgroupsize=wgs))
         end
     end
 
     _g = let f=prob.f.g
         function (du,u,p,t)
             version = u isa CuArray ? CUDADevice() : CPU()
-            wait(version, gpu_kernel(version)(f,du,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(u,2))
+            wait(version, gpu_kernel(version)(f,du,u,p,t;
+                                              ndrange=size(u,2),
+                                              dependencies=Event(version),
+                                              workgroupsize=wgs))
         end
     end
 
@@ -287,7 +294,11 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
-                wait(version, W_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
+                wgs = workgroupsize(version,size(u,2))
+                wait(version, W_kernel(version)(jac, W, u, p, gamma, t;
+                                                ndrange=size(u,2),
+                                                dependencies=Event(version),
+                                                workgroupsize=wgs))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -295,7 +306,11 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
-                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t; ndrange=size(u,2),dependencies=Event(version)))
+                wgs = workgroupsize(version,size(u,2))
+                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t;
+                                                 ndrange=size(u,2),
+                                                 dependencies=Event(version),
+                                                 workgroupsize=wgs))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
@@ -308,7 +323,11 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
         _tgrad = let tgrad=prob.f.tgrad
             function (J,u,p,t)
                 version = u isa CuArray ? CUDADevice() : CPU()
-                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;ndrange=size(u,2),dependencies=Event(version)))
+                wgs = workgroupsize(version,size(u,2))
+                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;
+                                                  ndrange=size(u,2),
+                                                  dependencies=Event(version),
+                                                  workgroupsize=wgs))
             end
         end
     else
@@ -338,13 +357,21 @@ function generate_callback(prob,I,ensemblealg)
 
         condition = function (u,t,integrator)
             version = u isa CuArray ? CUDADevice() : CPU()
-            wait(version, discrete_condition_kernel(version)(_condition,cur,u,t,integrator.p;ndrange=size(u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(u,2))
+            wait(version, discrete_condition_kernel(version)(_condition,cur,u,t,integrator.p;
+                                                             ndrange=size(u,2),
+                                                             dependencies=Event(version),
+                                                             workgroupsize=wgs))
             any(cur)
         end
 
         affect! = function (integrator)
             version = integrator.u isa CuArray ? CUDADevice() : CPU()
-            wait(version, discrete_affect!_kernel(version)(_affect!,cur,integrator.u,integrator.t,integrator.p;ndrange=size(integrator.u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(integrator.u,2))
+            wait(version, discrete_affect!_kernel(version)(_affect!,cur,integrator.u,integrator.t,integrator.p;
+                                                           ndrange=size(integrator.u,2),
+                                                           dependencies=Event(version),
+                                                           workgroupsize=wgs))
         end
 
         _callback = DiscreteCallback(condition,affect!,save_positions=prob.kwargs[:callback].save_positions)
@@ -355,18 +382,30 @@ function generate_callback(prob,I,ensemblealg)
 
         condition = function (out,u,t,integrator)
             version = u isa CuArray ? CUDADevice() : CPU()
-            wait(version, continuous_condition_kernel(version)(_condition,out,u,t,integrator.p;ndrange=size(u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(u,2))
+            wait(version, continuous_condition_kernel(version)(_condition,out,u,t,integrator.p;
+                                                               ndrange=size(u,2),
+                                                               dependencies=Event(version),
+                                                               workgroupsize=wgs))
             nothing
         end
 
         affect! = function (integrator,event_idx)
             version = integrator.u isa CuArray ? CUDADevice() : CPU()
-            wait(version, continuous_affect!_kernel(version)(_affect!,event_idx,integrator.u,integrator.t,integrator.p;ndrange=size(integrator.u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(integrator.u,2))
+            wait(version, continuous_affect!_kernel(version)(_affect!,event_idx,integrator.u,integrator.t,integrator.p;
+                                                             ndrange=size(integrator.u,2),
+                                                             dependencies=Event(version),
+                                                             workgroupsize=wgs))
         end
 
         affect_neg! = function (integrator,event_idx)
             version = integrator.u isa CuArray ? CUDADevice() : CPU()
-            wait(version, continuous_affect!_kernel(version)(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p;ndrange=size(integrator.u,2),dependencies=Event(version)))
+            wgs = workgroupsize(version,size(integrator.u,2))
+            wait(version, continuous_affect!_kernel(version)(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p;
+                                                             ndrange=size(integrator.u,2),
+                                                             dependencies=Event(version),
+                                                             workgroupsize=wgs))
         end
 
         _callback = VectorContinuousCallback(condition,affect!,affect_neg!,I,save_positions=prob.kwargs[:callback].save_positions)
@@ -385,7 +424,11 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDADevice() : CPU()
     copyto!(x, b)
-    wait(version, ldiv!_kernel(version)(A,x,p.len,p.nfacts;ndrange=p.nfacts,dependencies=Event(version)))
+    wgs = workgroupsize(version,p.nfacts)
+    wait(version, ldiv!_kernel(version)(A,x,p.len,p.nfacts;
+                                        ndrange=p.nfacts,
+                                        dependencies=Event(version),
+                                        workgroupsize=wgs))
     return nothing
 end
 
@@ -400,17 +443,6 @@ end
     _u = @inbounds @view u[section]
     naivesolve!(_W, _u, len)
 end
-
-#=
-function GPUifyLoops.launch_config(::typeof(ldiv!_kernel),
-                                           maxthreads,context,g,W,x,len,nfacts,
-                                           args...;
-                                           kwargs...)
-    t = min(maxthreads,nfacts)
-    blocks = ceil(Int,nfacts/t)
-    (threads=t,blocks=blocks)
-end
-=#
 
 function __printjac(A, ii)
     @cuprintf "[%d, %d]\n" ii.offset1 ii.stride2
