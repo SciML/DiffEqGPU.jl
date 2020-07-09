@@ -45,4 +45,4 @@ sim4 = @time solve(prob2,Tsit5(),EnsembleGPUArray(),trajectories=100,batch_size=
 
 @test sum(sim1.u) == sim2.u
 @test sim2.u ≈ sim3.u
-@test sim2.u == sim4.u
+@test sim2.u ≈ sim4.u
