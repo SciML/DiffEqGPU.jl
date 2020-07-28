@@ -32,8 +32,9 @@ end
 end
 
 @kernel function continuous_affect!_kernel(affect!,event_idx,u,t,p)
-    i = @index(Global, Linear)
-    @views @inbounds affect!(FakeIntegrator(u[:,i],t,p[:,i]))
+    for i in event_idx
+        @views @inbounds affect!(FakeIntegrator(u[:,i],t,p[:,i]))
+    end
 end
 
 maxthreads(::CPU) = 1024
