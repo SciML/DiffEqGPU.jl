@@ -434,7 +434,7 @@ function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}},f,u0_prototype)
     LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
 
-@kernel function ldiv!_kernel(W,@Const(u),@Const(len),@Const(nfacts))
+@kernel function ldiv!_kernel(W,u,@Const(len),@Const(nfacts))
     i = @index(Global, Linear)
     section = 1 + ((i-1)*len) : (i*len)
     _W = @inbounds @view(W[:, :, i])
