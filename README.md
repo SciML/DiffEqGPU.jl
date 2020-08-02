@@ -70,7 +70,7 @@ Not everything is supported yet, but most of the standard features have support,
 #### Current Limitations
 
 If you receive a compilation error, it is likely because something is not allowed by the automated
-kernel building of [GPUifyLoops.jl](https://github.com/vchuravy/GPUifyLoops.jl). The most common issues are:
+kernel building of [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl). The most common issues are:
 
 - Bounds checking is not allowed
 - Return values are not allowed
