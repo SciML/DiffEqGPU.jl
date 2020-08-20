@@ -4,6 +4,8 @@ using KernelAbstractions, CUDA, DiffEqBase, LinearAlgebra, Distributed
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
 using ForwardDiff
+import ZygoteRules
+using RecursiveArrayTools
 import Base.Threads
 
 @kernel function gpu_kernel(@Const(f),du,@Const(u),@Const(p),@Const(t))
@@ -203,13 +205,17 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
     #@assert all(p->p.f === probs[1].f,probs)
 
     len = length(probs[1].u0)
+
+    u0 = reduce(hcat,[probs[i].u0 for i in 1:length(I)])
+    p  = reduce(hcat,[probs[i].p  for i in 1:length(I)])
+    sol, solus = batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
+    [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
+end
+
+function batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
     if ensemblealg isa EnsembleGPUArray
-        # it's 1:length(I) since probs is generated above with for i in I
-        u0 = CuArray(hcat([probs[i].u0 for i in 1:length(I)]...))
-        p  = CuArray(hcat([probs[i].p  for i in 1:length(I)]...))
-    elseif ensemblealg isa EnsembleCPUArray
-        u0 = hcat([probs[i].u0 for i in 1:length(I)]...)
-        p  = hcat([probs[i].p  for i in 1:length(I)]...)
+        u0 = CuArray(u0)
+        p  = CuArray(p)
     end
 
     if DiffEqBase.has_jac(probs[1].f)
@@ -240,7 +246,81 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
 
     us = Array.(sol.u)
     solus = [[@view(us[i][:,j]) for i in 1:length(us)] for j in 1:length(probs)]
-    [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
+    (sol,solus)
+end
+
+function seed_duals(x::Matrix{V},::Type{T},
+                    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(@view(x[:,1]),typemax(Int64)),
+                    ) where {V,T,N}
+  seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N,V})
+  duals = [ForwardDiff.Dual{T}(x[i,j],seeds[i]) for i in 1:size(x,1), j in 1:size(x,2)]
+end
+
+function extract_dus(us)
+  jsize = size(us[1],1), ForwardDiff.npartials(us[1][1])
+  utype = typeof(ForwardDiff.value(us[1][1]))
+  map(1:size(us[1],2)) do k
+      map(us) do u
+        du_i = zeros(utype, jsize)
+        for i in size(u,1)
+          du_i[i, :] = ForwardDiff.partials(u[i,k])
+        end
+        du_i
+      end
+  end
+end
+
+struct DiffEqGPUAdjTag end
+
+ZygoteRules.@adjoint function batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
+    pdual = seed_duals(p,DiffEqGPUAdjTag)
+    u0 = convert.(eltype(pdual),u0)
+
+    if ensemblealg isa EnsembleGPUArray
+        u0     = CuArray(u0)
+        pdual  = CuArray(pdual)
+    end
+
+    if DiffEqBase.has_jac(probs[1].f)
+        jac_prototype = ensemblealg isa EnsembleGPUArray ?
+                        cu(zeros(Float32,len,len,length(I))) :
+                        zeros(Float32,len,len,length(I))
+        if probs[1].f.colorvec !== nothing
+            colorvec = repeat(probs[1].f.colorvec,length(I))
+        else
+            colorvec = repeat(1:length(probs[1].u0),length(I))
+        end
+    else
+        jac_prototype = nothing
+        colorvec = nothing
+    end
+
+    _callback = generate_callback(probs[1],length(I),ensemblealg)
+    prob = generate_problem(probs[1],u0,pdual,jac_prototype,colorvec)
+
+    sol  = solve(prob,alg; callback = _callback,merge_callbacks = false,
+                 internalnorm=diffeqgpunorm,
+                 kwargs...)
+
+    us = Array.(sol.u)
+    solus = [[ForwardDiff.value.(@view(us[i][:,j])) for i in 1:length(us)] for j in 1:length(probs)]
+    function batch_solve_up_adjoint(Δ)
+        dus = extract_dus(us)
+        _Δ = Δ[2]
+        adj = map(eachindex(dus)) do j
+            sum(eachindex(dus[j])) do i
+                J = dus[j][i]
+                if _Δ[j] isa AbstractVector
+                    v = _Δ[j][i]
+                else
+                    v = @view _Δ[j][i]
+                end
+                J'v
+            end
+        end
+        (ntuple(_->nothing, 6)...,VectorOfArray(adj))
+    end
+    (sol,solus),batch_solve_up_adjoint
 end
 
 function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
