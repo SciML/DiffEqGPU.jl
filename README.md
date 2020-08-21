@@ -1,6 +1,6 @@
 # DiffEqGPU
 
-[![GitlabCI](https://gitlab.com/JuliaGPU/DiffEqGPU-jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/DiffEqGPU-jl/pipelines)
+[![GitlabCI](https://gitlab.com/JuliaGPU/DiffEqGPU.jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/DiffEqGPU.jl/pipelines)
 
 This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making
 use of GPUs in the differential equation solvers.
