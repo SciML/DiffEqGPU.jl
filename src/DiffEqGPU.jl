@@ -176,9 +176,9 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
     if ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION
         if cpu_trajectories != 0
           wait(t)
-          sols = reduce(vcat,vcat(sols,take!(cpu_sols)))
+          sols = vcat(reduce(hcat,sols),take!(cpu_sols))
         else
-          sols = reduce(vcat,sols)
+          sols = reduce(hcat,sols)
         end
         DiffEqBase.EnsembleSolution(sols,time,true)
     else
