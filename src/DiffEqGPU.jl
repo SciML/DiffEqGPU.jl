@@ -103,7 +103,7 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  unstable_check = (dt,u,p,t)->false,
                  kwargs...)
 
-    cpu_trajectories = ensemblealg isa EnsembleGPUArray ? round(Int,trajectories * ensemblealg.cpu_offload) : 0
+    cpu_trajectories = (ensemblealg isa EnsembleGPUArray && ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION) ? round(Int,trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
 
     num_batches = gpu_trajectories ÷ batch_size
