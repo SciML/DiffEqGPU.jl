@@ -40,7 +40,7 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 #=
 solve(monteprob,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 solve(monteprob,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
-@test_broken solve(monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
+@test_broken solve(monteprob,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 =#
 
 @info "Implicit Methods"
@@ -74,10 +74,10 @@ func = ODEFunction(lorenz,jac=lorenz_jac,tgrad=lorenz_tgrad)
 prob_jac = ODEProblem(func,u0,tspan,p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
-@time solve(monteprob_jac,Rodas5(linsolve=LinSolveGPUSplitFactorize()),EnsembleCPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
-@time solve(monteprob_jac,Rodas5(linsolve=LinSolveGPUSplitFactorize()),EnsembleGPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
-@time solve(monteprob_jac,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleCPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
-@time solve(monteprob_jac,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),EnsembleGPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
+@time solve(monteprob_jac,Rodas5(),EnsembleCPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
+@time solve(monteprob_jac,Rodas5(),EnsembleGPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
+@time solve(monteprob_jac,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
+@time solve(monteprob_jac,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=10,saveat=1.0f0)
 
 @info "Callbacks"
 
@@ -151,10 +151,10 @@ sol = solve(rober_prob,Rodas5(),abstol=1f-8,reltol=1f-8)
 sol = solve(rober_prob,TRBDF2(),abstol=1f-4,reltol=1f-1)
 rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 
-@time sol = solve(rober_monteprob,Rodas5(linsolve=LinSolveGPUSplitFactorize()),
+@time sol = solve(rober_monteprob,Rodas5(),
                   EnsembleGPUArray(),trajectories=10,saveat=1.0f0,abstol=1f-8,
                   reltol=1f-8)
-@time sol = solve(rober_monteprob,TRBDF2(linsolve=LinSolveGPUSplitFactorize()),
+@time sol = solve(rober_monteprob,TRBDF2(),
                   EnsembleGPUArray(),trajectories=10,saveat=1.0f0,abstol=1f-4,
                   reltol=1f-1)
 @time sol = solve(rober_monteprob,TRBDF2(),EnsembleThreads(),trajectories=10,

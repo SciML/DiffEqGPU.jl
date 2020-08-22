@@ -229,7 +229,13 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
     _callback = generate_callback(probs[1],length(I),ensemblealg)
     prob = generate_problem(probs[1],u0,p,jac_prototype,colorvec)
 
-    sol  = solve(prob,alg; callback = _callback,merge_callbacks = false,
+    if hasproperty(alg, :linsolve)
+        _alg = remake(alg,linsolve = LinSolveGPUSplitFactorize())
+    else
+        _alg = alg
+    end
+
+    sol  = solve(prob,_alg; callback = _callback,merge_callbacks = false,
                  internalnorm=diffeqgpunorm,
                  kwargs...)
 
