@@ -187,9 +187,9 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
     end
 end
 
-diffeqgpunorm(u::AbstractArray,t) = sqrt(sum(abs2, u)/length(u))
+diffeqgpunorm(u::AbstractArray,t) = sqrt.(sum(abs2, u)./length(u))
 diffeqgpunorm(u::Union{AbstractFloat,Complex},t) = abs(u)
-diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual},t) = sqrt(sum(abs2∘ForwardDiff.value, u)/length(u))
+diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual},t) = sqrt.(sum(abs2∘ForwardDiff.value, u)./length(u))
 diffeqgpunorm(u::ForwardDiff.Dual,t) = abs(ForwardDiff.value(u))
 
 function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwargs...)
