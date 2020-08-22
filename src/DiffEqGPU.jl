@@ -4,6 +4,7 @@ using KernelAbstractions, CUDA, DiffEqBase, LinearAlgebra, Distributed
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
 using ForwardDiff
+import Base.Threads
 
 @kernel function gpu_kernel(@Const(f),du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
@@ -89,7 +90,10 @@ end
 
 abstract type EnsembleArrayAlgorithm <: DiffEqBase.EnsembleAlgorithm end
 struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
-struct EnsembleGPUArray <: EnsembleArrayAlgorithm end
+struct EnsembleGPUArray <: EnsembleArrayAlgorithm
+    cpu_offload::Float64
+    EnsembleGPUArray(cpu_offload=0.2) = new(cpu_offload)
+end
 
 function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  alg::Union{DiffEqBase.DEAlgorithm,Nothing},
@@ -98,11 +102,33 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  unstable_check = (dt,u,p,t)->false,
                  kwargs...)
 
-    num_batches = trajectories ÷ batch_size
-    num_batches * batch_size != trajectories && (num_batches += 1)
+    cpu_trajectories = ensemblealg isa EnsembleGPUArray ? round(Int,trajectories * ensemblealg.cpu_offload) : 0.0
+    gpu_trajectories = trajectories - cpu_trajectories
+
+    num_batches = gpu_trajectories ÷ batch_size
+    num_batches * batch_size != gpu_trajectories && (num_batches += 1)
+
+    if cpu_trajectories != 0 && ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION
+
+        cpu_II = (gpu_trajectories+1):trajectories
+        function f()
+            solve_batch(ensembleprob,alg,EnsembleThreads(),cpu_II,nothing;kwargs...)
+        end
+
+        cpu_sols = Channel{Core.Compiler.return_type(f,Tuple{})}(1)
+        t = @task begin
+            put!(cpu_sols,f())
+        end
+        schedule(t)
+    end
+
 
     if num_batches == 1 && ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION
-       time = @elapsed sol = batch_solve(ensembleprob,alg,ensemblealg,1:trajectories;unstable_check=unstable_check,kwargs...)
+       time = @elapsed sol = batch_solve(ensembleprob,alg,ensemblealg,1:gpu_trajectories;unstable_check=unstable_check,kwargs...)
+       if cpu_trajectories != 0
+         wait(t)
+         sol = vcat(sol,take!(cpu_sols))
+       end
        return DiffEqBase.EnsembleSolution(sol,time,true)
     end
 
@@ -114,7 +140,7 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
         time = @elapsed begin
             sols = map(1:num_batches) do i
                 if i == num_batches
-                  I = (batch_size*(i-1)+1):trajectories
+                  I = (batch_size*(i-1)+1):gpu_trajectories
                 else
                   I = (batch_size*(i-1)+1):batch_size*i
                 end
@@ -131,7 +157,7 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
         time = @elapsed begin
             sols = pmap(1:num_batches) do i
                 if i == num_batches
-                  I = (batch_size*(i-1)+1):trajectories
+                  I = (batch_size*(i-1)+1):gpu_trajectories
                 else
                   I = (batch_size*(i-1)+1):batch_size*i
                 end
@@ -148,7 +174,13 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
     end
 
     if ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION
-        DiffEqBase.EnsembleSolution(hcat(sols...),time,true)
+        if cpu_trajectories != 0
+          wait(t)
+          sols = reduce(hcat,hcat(sols,take!(cpu_sols)))
+        else
+          sols = reduce(hcat,sols)
+        end
+        DiffEqBase.EnsembleSolution(sols,time,true)
     else
         DiffEqBase.EnsembleSolution(sols[end], time, true)
     end
@@ -159,7 +191,7 @@ diffeqgpunorm(u::Union{AbstractFloat,Complex},t) = abs(u)
 diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual},t) = sqrt(sum(abs2∘ForwardDiff.value, u)/length(u))
 diffeqgpunorm(u::ForwardDiff.Dual,t) = abs(ForwardDiff.value(u))
 
-function batch_solve(ensembleprob,alg,ensemblealg,I;kwargs...)
+function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwargs...)
     if ensembleprob.safetycopy
         probs = [ensembleprob.prob_func(deepcopy(ensembleprob.prob),i,1) for i in I]
     else
@@ -511,6 +543,40 @@ function naivesolve!(A::AbstractMatrix, x::AbstractVector, n)
     naivesub!(MyL(A), x, n)
     naivesub!(MyU(A), x, n)
     return nothing
+end
+
+function solve_batch(prob,alg,ensemblealg::EnsembleThreads,II,pmap_batch_size;kwargs...)
+
+  if length(II) == 1 || Threads.nthreads() == 1
+    return DiffEqBase.solve_batch(prob,alg,EnsembleSerial(),II,pmap_batch_size;kwargs...)
+  end
+
+  if typeof(prob.prob) <: DiffEqBase.AbstractJumpProblem && length(II) != 1
+    probs = [deepcopy(prob.prob) for i in 1:Threads.nthreads()]
+  else
+    probs = prob.prob
+  end
+
+  #
+  batch_size = length(II)÷(Threads.nthreads()-1)
+
+  batch_data = tmap(1:(Threads.nthreads()-1)) do i
+    if i == Threads.nthreads()-1
+      I_local = II[(batch_size*(i-1)+1):end]
+    else
+      I_local = II[(batch_size*(i-1)+1):(batch_size*i)]
+    end
+    DiffEqBase.solve_batch(prob,alg,EnsembleSerial(),I_local,pmap_batch_size;kwargs...)
+  end
+  DiffEqBase.tighten_container_eltype(batch_data)
+end
+
+function tmap(f,args...)
+  batch_data = Vector{Core.Compiler.return_type(f,Tuple{typeof.(getindex.(args,1))...})}(undef,length(args[1]))
+  Threads.@threads for i in 1:length(args[1])
+      batch_data[i] = f(getindex.(args,i)...)
+  end
+  reduce(vcat,batch_data)
 end
 
 export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
