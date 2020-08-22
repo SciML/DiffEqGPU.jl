@@ -1,6 +1,6 @@
 # DiffEqGPU
 
-[![GitlabCI](https://gitlab.com/JuliaGPU/DiffEqGPU-jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/DiffEqGPU-jl/pipelines)
+[![GitlabCI](https://gitlab.com/JuliaGPU/DiffEqGPU.jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/DiffEqGPU.jl/pipelines)
 
 This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making
 use of GPUs in the differential equation solvers.
@@ -52,7 +52,7 @@ tspan = (0.0f0,100.0f0)
 p = [10.0f0,28.0f0,8/3f0]
 prob = ODEProblem(lorenz,u0,tspan,p)
 prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func)
+monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
 @time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
 ```
 
@@ -70,7 +70,7 @@ Not everything is supported yet, but most of the standard features have support,
 #### Current Limitations
 
 If you receive a compilation error, it is likely because something is not allowed by the automated
-kernel building of [GPUifyLoops.jl](https://github.com/vchuravy/GPUifyLoops.jl). The most common issues are:
+kernel building of [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl). The most common issues are:
 
 - Bounds checking is not allowed
 - Return values are not allowed
