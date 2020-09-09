@@ -15,7 +15,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 CUDA = "1"
 DiffEqBase = "6.5"
 ForwardDiff = "0.10"
-KernelAbstractions = "0.2, 0.3"
+KernelAbstractions = "0.2, 0.3, 0.4"
 julia = "1.5"
 
 [extras]
