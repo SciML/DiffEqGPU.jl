@@ -89,7 +89,9 @@ affect! = function (integrator)
     @inbounds integrator.u[1] = -4
 end
 
-callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=DiscreteCallback(condition,affect!,save_positions=(false,false)))
+# test discrete
+discrete_callback = DiscreteCallback(condition,affect!,save_positions=(false,false))
+callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=discrete_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
 @time solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10,saveat=1.0f0)
 
@@ -101,9 +103,22 @@ c_affect! = function (integrator)
     @inbounds integrator.u[1] += 20
 end
 
-callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=ContinuousCallback(c_condition,c_affect!,save_positions=(false,false)))
+# test continuous
+continuous_callback = ContinuousCallback(c_condition,c_affect!,save_positions=(false,false))
+callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=continuous_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
 solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0)
+
+# test callback set
+callback_set = CallbackSet(discrete_callback, continuous_callback)
+callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=callback_set)
+callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0)
+
+# test merge
+callback_prob = ODEProblem(lorenz,u0,tspan,p,callback=discrete_callback)
+callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+solve(callback_monteprob,Tsit5(),EnsembleGPUArray(),trajectories=2,saveat=1.0f0, callback=continuous_callback)
 
 @info "ROBER"
 

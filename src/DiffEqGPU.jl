@@ -226,7 +226,7 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
         colorvec = nothing
     end
 
-    _callback = generate_callback(probs[1],length(I),ensemblealg)
+    _callback = generate_callback(probs[1],length(I),ensemblealg; kwargs...)
     prob = generate_problem(probs[1],u0,p,jac_prototype,colorvec)
 
     if hasproperty(alg, :linsolve)
@@ -235,9 +235,8 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
         _alg = alg
     end
 
-    sol  = solve(prob,_alg; callback = _callback,merge_callbacks = false,
-                 internalnorm=diffeqgpunorm,
-                 kwargs...)
+    sol  = solve(prob,_alg; kwargs..., callback = _callback,merge_callbacks = false,
+                 internalnorm=diffeqgpunorm)
 
     us = Array.(sol.u)
     solus = [[@view(us[i][:,j]) for i in 1:length(us)] for j in 1:length(probs)]
@@ -386,74 +385,95 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
                       prob.kwargs...)
 end
 
-function generate_callback(prob,I,ensemblealg)
-    if :callback ∉ keys(prob.kwargs)
-        _callback = nothing
-    elseif prob.kwargs[:callback] isa DiscreteCallback
-        if ensemblealg isa EnsembleGPUArray
-            cur = CuArray([false for i in 1:I])
-        else
-            cur = [false for i in 1:I]
-        end
-        _condition = prob.kwargs[:callback].condition
-        _affect!   = prob.kwargs[:callback].affect!
+function generate_callback(callback::DiscreteCallback,I,ensemblealg)
+    if ensemblealg isa EnsembleGPUArray
+        cur = CuArray([false for i in 1:I])
+    else
+        cur = [false for i in 1:I]
+    end
+    _condition = callback.condition
+    _affect!   = callback.affect!
 
-        condition = function (u,t,integrator)
-            version = u isa CuArray ? CUDADevice() : CPU()
-            wgs = workgroupsize(version,size(u,2))
-            wait(version, discrete_condition_kernel(version)(_condition,cur,u,t,integrator.p;
-                                                             ndrange=size(u,2),
-                                                             dependencies=Event(version),
-                                                             workgroupsize=wgs))
-            any(cur)
-        end
+    condition = function (u,t,integrator)
+        version = u isa CuArray ? CUDADevice() : CPU()
+        wgs = workgroupsize(version,size(u,2))
+        wait(version, discrete_condition_kernel(version)(_condition,cur,u,t,integrator.p;
+                                                         ndrange=size(u,2),
+                                                         dependencies=Event(version),
+                                                         workgroupsize=wgs))
+        any(cur)
+    end
 
-        affect! = function (integrator)
-            version = integrator.u isa CuArray ? CUDADevice() : CPU()
-            wgs = workgroupsize(version,size(integrator.u,2))
-            wait(version, discrete_affect!_kernel(version)(_affect!,cur,integrator.u,integrator.t,integrator.p;
-                                                           ndrange=size(integrator.u,2),
+    affect! = function (integrator)
+        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        wgs = workgroupsize(version,size(integrator.u,2))
+        wait(version, discrete_affect!_kernel(version)(_affect!,cur,integrator.u,integrator.t,integrator.p;
+                                                       ndrange=size(integrator.u,2),
+                                                       dependencies=Event(version),
+                                                       workgroupsize=wgs))
+    end
+
+    return DiscreteCallback(condition,affect!,save_positions=callback.save_positions) 
+end
+
+function generate_callback(callback::ContinuousCallback,I,ensemblealg)
+    _condition   = callback.condition
+    _affect!     = callback.affect!
+    _affect_neg! = callback.affect_neg!
+
+    condition = function (out,u,t,integrator)
+        version = u isa CuArray ? CUDADevice() : CPU()
+        wgs = workgroupsize(version,size(u,2))
+        wait(version, continuous_condition_kernel(version)(_condition,out,u,t,integrator.p;
+                                                           ndrange=size(u,2),
                                                            dependencies=Event(version),
                                                            workgroupsize=wgs))
-        end
-
-        _callback = DiscreteCallback(condition,affect!,save_positions=prob.kwargs[:callback].save_positions)
-    elseif prob.kwargs[:callback] isa ContinuousCallback
-        _condition   = prob.kwargs[:callback].condition
-        _affect!     = prob.kwargs[:callback].affect!
-        _affect_neg! = prob.kwargs[:callback].affect_neg!
-
-        condition = function (out,u,t,integrator)
-            version = u isa CuArray ? CUDADevice() : CPU()
-            wgs = workgroupsize(version,size(u,2))
-            wait(version, continuous_condition_kernel(version)(_condition,out,u,t,integrator.p;
-                                                               ndrange=size(u,2),
-                                                               dependencies=Event(version),
-                                                               workgroupsize=wgs))
-            nothing
-        end
-
-        affect! = function (integrator,event_idx)
-            version = integrator.u isa CuArray ? CUDADevice() : CPU()
-            wgs = workgroupsize(version,size(integrator.u,2))
-            wait(version, continuous_affect!_kernel(version)(_affect!,event_idx,integrator.u,integrator.t,integrator.p;
-                                                             ndrange=size(integrator.u,2),
-                                                             dependencies=Event(version),
-                                                             workgroupsize=wgs))
-        end
-
-        affect_neg! = function (integrator,event_idx)
-            version = integrator.u isa CuArray ? CUDADevice() : CPU()
-            wgs = workgroupsize(version,size(integrator.u,2))
-            wait(version, continuous_affect!_kernel(version)(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p;
-                                                             ndrange=size(integrator.u,2),
-                                                             dependencies=Event(version),
-                                                             workgroupsize=wgs))
-        end
-
-        _callback = VectorContinuousCallback(condition,affect!,affect_neg!,I,save_positions=prob.kwargs[:callback].save_positions)
+        nothing
     end
-    _callback
+
+    affect! = function (integrator,event_idx)
+        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        wgs = workgroupsize(version,size(integrator.u,2))
+        wait(version, continuous_affect!_kernel(version)(_affect!,event_idx,integrator.u,integrator.t,integrator.p;
+                                                         ndrange=size(integrator.u,2),
+                                                         dependencies=Event(version),
+                                                         workgroupsize=wgs))
+    end
+
+    affect_neg! = function (integrator,event_idx)
+        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        wgs = workgroupsize(version,size(integrator.u,2))
+        wait(version, continuous_affect!_kernel(version)(_affect_neg!,event_idx,integrator.u,integrator.t,integrator.p;
+                                                         ndrange=size(integrator.u,2),
+                                                         dependencies=Event(version),
+                                                         workgroupsize=wgs))
+    end
+
+    return VectorContinuousCallback(condition,affect!,affect_neg!,I,save_positions=callback.save_positions)
+end
+
+function generate_callback(callback::CallbackSet,I,ensemblealg)
+    return CallbackSet(map(cb->generate_callback(cb,I,ensemblealg), 
+            (callback.continuous_callbacks..., callback.discrete_callbacks...))...)
+end
+
+generate_callback(::Tuple{},I,ensemblealg) = nothing
+
+function generate_callback(x)
+    # will catch any VectorContinuousCallbacks
+    error("Callback unsupported") 
+end
+
+function generate_callback(prob,I,ensemblealg; kwargs...)
+    prob_cb = get(prob.kwargs, :callback, ())
+    kwarg_cb = get(kwargs, :merge_callbacks, false) ? get(kwargs, :callback, ()) : ()
+
+    if isempty(prob_cb) && isempty(kwarg_cb)
+        return nothing
+    else
+        return CallbackSet(generate_callback(prob_cb,I,ensemblealg), 
+                           generate_callback(kwarg_cb,I,ensemblealg))
+    end
 end
 
 ### GPU Factorization
