@@ -235,9 +235,8 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
         _alg = alg
     end
 
-    sol  = solve(prob,_alg; callback = _callback,merge_callbacks = false,
-                 internalnorm=diffeqgpunorm,
-                 kwargs...)
+    sol  = solve(prob,_alg; kwargs..., callback = _callback,merge_callbacks = false,
+                 internalnorm=diffeqgpunorm)
 
     us = Array.(sol.u)
     solus = [[@view(us[i][:,j]) for i in 1:length(us)] for j in 1:length(probs)]
@@ -469,7 +468,7 @@ function generate_callback(prob,I,ensemblealg; kwargs...)
     prob_cb = get(prob.kwargs, :callback, ())
     kwarg_cb = get(kwargs, :merge_callbacks, false) ? get(kwargs, :callback, ()) : ()
 
-    if isempty(prob_cb) && isempty(kw_cb)
+    if isempty(prob_cb) && isempty(kwarg_cb)
         return nothing
     else
         return CallbackSet(generate_callback(prob_cb,I,ensemblealg), 
