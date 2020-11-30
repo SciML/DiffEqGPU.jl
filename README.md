@@ -1,5 +1,7 @@
 # DiffEqGPU
 
+[![Build Status](https://github.com/SciML/DiffEqGPU.jl/workflows/CI/badge.svg)](https://github.com/SciML/DiffEqGPU.jl/actions?query=workflow%3ACI)
+
 [![GitlabCI](https://gitlab.com/JuliaGPU/DiffEqGPU.jl/badges/master/pipeline.svg)](https://gitlab.com/JuliaGPU/DiffEqGPU.jl/pipelines)
 
 This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making
