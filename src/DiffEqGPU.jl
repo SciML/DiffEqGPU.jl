@@ -196,9 +196,13 @@ diffeqgpunorm(u::ForwardDiff.Dual,t) = abs(ForwardDiff.value(u))
 
 function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwargs...)
     if ensembleprob.safetycopy
-        probs = [ensembleprob.prob_func(deepcopy(ensembleprob.prob),i,1) for i in I]
+        probs = map(I) do i
+            ensembleprob.prob_func(deepcopy(ensembleprob.prob),i,1)
+        end
     else
-        probs = [ensembleprob.prob_func(ensembleprob.prob,i,1) for i in I]
+        probs = map(I) do i
+            ensembleprob.prob_func(ensembleprob.prob,i,1)
+        end
     end
     @assert all(p->p.tspan == probs[1].tspan,probs)
     @assert !isempty(I)
@@ -206,8 +210,8 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
 
     len = length(probs[1].u0)
 
-    u0 = reduce(hcat,[probs[i].u0 for i in 1:length(I)])
-    p  = reduce(hcat,[probs[i].p  for i in 1:length(I)])
+    u0 = reduce(hcat,probs[i].u0 for i in 1:length(I))
+    p  = reduce(hcat,probs[i].p  for i in 1:length(I))
     sol, solus = batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
     [ensembleprob.output_func(DiffEqBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
 end
@@ -304,6 +308,7 @@ ZygoteRules.@adjoint function batch_solve_up(ensembleprob,probs,alg,ensemblealg,
 
     us = Array.(sol.u)
     solus = [[ForwardDiff.value.(@view(us[i][:,j])) for i in 1:length(us)] for j in 1:length(probs)]
+
     function batch_solve_up_adjoint(Δ)
         dus = extract_dus(us)
         _Δ = Δ[2]
@@ -318,7 +323,7 @@ ZygoteRules.@adjoint function batch_solve_up(ensembleprob,probs,alg,ensemblealg,
                 J'v
             end
         end
-        (ntuple(_->nothing, 6)...,VectorOfArray(adj))
+        (ntuple(_->nothing, 6)...,Array(VectorOfArray(adj)))
     end
     (sol,solus),batch_solve_up_adjoint
 end
@@ -493,7 +498,7 @@ function generate_callback(callback::DiscreteCallback,I,ensemblealg)
                                                        workgroupsize=wgs))
     end
 
-    return DiscreteCallback(condition,affect!,save_positions=callback.save_positions) 
+    return DiscreteCallback(condition,affect!,save_positions=callback.save_positions)
 end
 
 function generate_callback(callback::ContinuousCallback,I,ensemblealg)
@@ -533,7 +538,7 @@ function generate_callback(callback::ContinuousCallback,I,ensemblealg)
 end
 
 function generate_callback(callback::CallbackSet,I,ensemblealg)
-    return CallbackSet(map(cb->generate_callback(cb,I,ensemblealg), 
+    return CallbackSet(map(cb->generate_callback(cb,I,ensemblealg),
             (callback.continuous_callbacks..., callback.discrete_callbacks...))...)
 end
 
@@ -541,7 +546,7 @@ generate_callback(::Tuple{},I,ensemblealg) = nothing
 
 function generate_callback(x)
     # will catch any VectorContinuousCallbacks
-    error("Callback unsupported") 
+    error("Callback unsupported")
 end
 
 function generate_callback(prob,I,ensemblealg; kwargs...)
@@ -551,7 +556,7 @@ function generate_callback(prob,I,ensemblealg; kwargs...)
     if isempty(prob_cb) && isempty(kwarg_cb)
         return nothing
     else
-        return CallbackSet(generate_callback(prob_cb,I,ensemblealg), 
+        return CallbackSet(generate_callback(prob_cb,I,ensemblealg),
                            generate_callback(kwarg_cb,I,ensemblealg))
     end
 end
