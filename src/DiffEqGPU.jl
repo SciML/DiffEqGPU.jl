@@ -91,9 +91,6 @@ struct FakeIntegrator{uType,tType,P}
     p::P
 end
 
-@noinline isderiving() = false
-ZygoteRules.@adjoint isderiving() = true, _ -> nothing
-
 abstract type EnsembleArrayAlgorithm <: DiffEqBase.EnsembleAlgorithm end
 struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
 struct EnsembleGPUArray <: EnsembleArrayAlgorithm
@@ -101,9 +98,13 @@ struct EnsembleGPUArray <: EnsembleArrayAlgorithm
 end
 
 # Work around the fact that Zygote cannot handle the task system
+# Work around the fact that Zygote isderiving fails with constants?
 function EnsembleGPUArray()
-    cpu_offload = isderiving() ? 0.0 : 0.2
-    EnsembleGPUArray(cpu_offload)
+    EnsembleGPUArray(0.2)
+end
+
+ZygoteRules.@adjoint function EnsembleGPUArray()
+    EnsembleGPUArray(0.0), _ -> nothing
 end
 
 function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
@@ -216,8 +217,6 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
-    len = length(probs[1].u0)
-
     u0 = reduce(hcat,probs[i].u0 for i in 1:length(I))
     p  = reduce(hcat,probs[i].p  for i in 1:length(I))
     sol, solus = batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
@@ -229,6 +228,8 @@ function batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
         u0 = CuArray(u0)
         p  = CuArray(p)
     end
+
+    len = length(probs[1].u0)
 
     if DiffEqBase.has_jac(probs[1].f)
         jac_prototype = ensemblealg isa EnsembleGPUArray ?
@@ -293,6 +294,8 @@ ZygoteRules.@adjoint function batch_solve_up(ensembleprob,probs,alg,ensemblealg,
         pdual  = CuArray(pdual)
     end
 
+    len = length(probs[1].u0)
+
     if DiffEqBase.has_jac(probs[1].f)
         jac_prototype = ensemblealg isa EnsembleGPUArray ?
                         cu(zeros(Float32,len,len,length(I))) :
@@ -310,9 +313,14 @@ ZygoteRules.@adjoint function batch_solve_up(ensembleprob,probs,alg,ensemblealg,
     _callback = generate_callback(probs[1],length(I),ensemblealg)
     prob = generate_problem(probs[1],u0,pdual,jac_prototype,colorvec)
 
-    sol  = solve(prob,alg; callback = _callback,merge_callbacks = false,
-                 internalnorm=diffeqgpunorm,
-                 kwargs...)
+    if hasproperty(alg, :linsolve)
+        _alg = remake(alg,linsolve = LinSolveGPUSplitFactorize())
+    else
+        _alg = alg
+    end
+
+    sol  = solve(prob,_alg; kwargs..., callback = _callback,merge_callbacks = false,
+                 internalnorm=diffeqgpunorm)
 
     us = Array.(sol.u)
     solus = [[ForwardDiff.value.(@view(us[i][:,j])) for i in 1:length(us)] for j in 1:length(probs)]
