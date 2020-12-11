@@ -91,11 +91,19 @@ struct FakeIntegrator{uType,tType,P}
     p::P
 end
 
+@noinline isderiving() = false
+ZygoteRules.@adjoint isderiving() = true, _ -> nothing
+
 abstract type EnsembleArrayAlgorithm <: DiffEqBase.EnsembleAlgorithm end
 struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
 struct EnsembleGPUArray <: EnsembleArrayAlgorithm
     cpu_offload::Float64
-    EnsembleGPUArray(cpu_offload=0.2) = new(cpu_offload)
+end
+
+# Work around the fact that Zygote cannot handle the task system
+function EnsembleGPUArray()
+    cpu_offload = isderiving() ? 0.0 : 0.2
+    EnsembleGPUArray(cpu_offload)
 end
 
 function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
