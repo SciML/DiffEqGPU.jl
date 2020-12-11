@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqSensitivity, Flux, DiffEqGPU, StaticArrays, CUDA, Test
+using OrdinaryDiffEq, DiffEqSensitivity, Flux, DiffEqGPU, CUDA, Test
 CUDA.allowscalar(false)
 
 function model()
