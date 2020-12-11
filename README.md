@@ -5,6 +5,8 @@
 This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making
 use of GPUs in the differential equation solvers.
 
+
+
 ## Within-Method GPU Parallelism with Direct CuArray Usage
 
 The native Julia libraries, including (but not limited to) OrdinaryDiffEq, StochasticDiffEq, and DelayDiffEq, are
