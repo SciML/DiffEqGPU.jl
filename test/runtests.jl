@@ -19,5 +19,6 @@ using SafeTestsets, Test
 @time @safetestset "EnsembleGPUArray SDE" begin include("ensemblegpuarray_sde.jl") end
 @time @safetestset "EnsembleGPUArray Input Types" begin include("ensemblegpuarray_inputtypes.jl") end
 @time @safetestset "Reduction" begin include("reduction.jl") end
+@time @safetestset "Reverse Mode AD" begin include("reverse_ad_tests.jl") end
 # Not safe because distributed doesn't play nicely with modules.
 @time @testset "Distributed Multi-GPU" begin include("distributed_multi_gpu.jl") end
