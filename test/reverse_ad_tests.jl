@@ -2,7 +2,9 @@ using OrdinaryDiffEq, DiffEqSensitivity, Flux, DiffEqGPU, CUDA, Test
 CUDA.allowscalar(false)
 
 function modelf(du,u,p,t)
-  du[1] = 1.01 * u[1] * p[1] * p[2]
+  @inbounds begin
+    du[1] = 1.01 * u[1] * p[1] * p[2]
+  end
 end
 
 function model()
