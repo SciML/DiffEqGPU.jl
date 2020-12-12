@@ -1,8 +1,12 @@
 using OrdinaryDiffEq, DiffEqSensitivity, Flux, DiffEqGPU, CUDA, Test
 CUDA.allowscalar(false)
 
+function modelf(du,u,p,t)
+  du[1] = 1.01 * u[1] * p[1] * p[2]
+end
+
 function model()
-  prob = ODEProblem((du, u, p, t) -> du[1] = 1.01 * u[1] * p[1] * p[2], u0, (0.0, 1.0), pa)
+  prob = ODEProblem(modelf, u0, (0.0, 1.0), pa)
 
   function prob_func(prob, i, repeat)
     remake(prob, u0 = 0.5 .+ i/100 .* prob.u0)
