@@ -18,6 +18,7 @@ CUDA = "1, 2.0"
 DiffEqBase = "6.5"
 ForwardDiff = "0.10"
 KernelAbstractions = "0.2, 0.3, 0.4"
+RecursiveArrayTools = "2"
 ZygoteRules = "0.2"
 julia = "1.5"
 
