@@ -114,6 +114,10 @@ function DiffEqBase.__solve(ensembleprob::DiffEqBase.AbstractEnsembleProblem,
                  unstable_check = (dt,u,p,t)->false,
                  kwargs...)
 
+    if trajectories == 1
+        return DiffEqBase.__solve(ensembleprob,alg,EnsembleSerial();trajectories=1,kwargs...)
+    end
+
     cpu_trajectories = (ensemblealg isa EnsembleGPUArray && ensembleprob.reduction === DiffEqBase.DEFAULT_REDUCTION) ? round(Int,trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
 
