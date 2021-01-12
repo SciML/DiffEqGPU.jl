@@ -2,7 +2,7 @@ steps:
   - label: "Julia 1.5"
     plugins:
       - JuliaCI/julia#v0.6:
-          version: "1.5"
+          version: "1.4"
       - JuliaCI/julia-test#v0.3:
       # - JuliaCI/julia-coverage#v0.3:
       #     codecov: true
