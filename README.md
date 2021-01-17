@@ -24,7 +24,7 @@ equation which is sufficiently large or expensive. This does not require DiffEqG
 For example, the following is a GPU-accelerated solve with `Tsit5`:
 
 ```julia
-using OrdinaryDiffEq, CuArrays, LinearAlgebra
+using OrdinaryDiffEq, CUDA, LinearAlgebra
 u0 = cu(rand(1000))
 A  = cu(randn(1000,1000))
 f(du,u,p,t)  = mul!(du,A,u)
