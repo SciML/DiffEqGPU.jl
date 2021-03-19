@@ -1,5 +1,9 @@
+"""
+$(DocStringExtensions.README)
+"""
 module DiffEqGPU
 
+using DocStringExtensions
 using KernelAbstractions, CUDA, DiffEqBase, LinearAlgebra, Distributed
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
