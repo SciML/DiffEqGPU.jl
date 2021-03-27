@@ -77,11 +77,35 @@ end
     end
 end
 
+@kernel function W_kernel_oop(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
+    i = @index(Global, Linear)
+    len = size(u,1)
+    _W = @inbounds @view(W[:, :, i])
+    @views @inbounds _W[:] = jac(u[:,i],p[:,i],t)
+    @inbounds for i in eachindex(_W)
+        _W[i] = gamma*_W[i]
+    end
+    _one = one(eltype(_W))
+    @inbounds for i in 1:len
+        _W[i, i] = _W[i, i] - _one
+    end
+end
+
 @kernel function Wt_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u,1)
     _W = @inbounds @view(W[:, :, i])
     @views @inbounds jac(_W,u[:,i],p[:,i],t)
+    @inbounds for i in 1:len
+        _W[i, i] = -inv(gamma) + _W[i, i]
+    end
+end
+
+@kernel function Wt_kernel_oop(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
+    i = @index(Global, Linear)
+    len = size(u,1)
+    _W = @inbounds @view(W[:, :, i])
+    @views @inbounds _W[:] = jac(u[:,i],p[:,i],t)
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
@@ -376,24 +400,24 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
     end
 
     if SciMLBase.has_jac(prob.f)
-        _Wfact! = let jac=prob.f.jac
+        _Wfact! = let jac=prob.f.jac, kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
                 wgs = workgroupsize(version,size(u,2))
-                wait(version, W_kernel(version)(jac, W, u, p, gamma, t;
+                wait(version, kernel(version)(jac, W, u, p, gamma, t;
                                                 ndrange=size(u,2),
                                                 dependencies=Event(version),
                                                 workgroupsize=wgs))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
-        _Wfact!_t = let jac=prob.f.jac
+        _Wfact!_t = let jac=prob.f.jac, kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
                 wgs = workgroupsize(version,size(u,2))
-                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t;
+                wait(version, kernel(version)(jac, W, u, p, gamma, t;
                                                  ndrange=size(u,2),
                                                  dependencies=Event(version),
                                                  workgroupsize=wgs))
@@ -406,11 +430,11 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
     end
 
     if SciMLBase.has_tgrad(prob.f)
-        _tgrad = let tgrad=prob.f.tgrad
+        _tgrad = let tgrad=prob.f.tgrad, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
             function (J,u,p,t)
                 version = u isa CuArray ? CUDADevice() : CPU()
                 wgs = workgroupsize(version,size(u,2))
-                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;
+                wait(version, kernel(version)(tgrad,J,u,p,t;
                                                   ndrange=size(u,2),
                                                   dependencies=Event(version),
                                                   workgroupsize=wgs))
@@ -441,11 +465,11 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
         end
     end
 
-    _g = let f=prob.f.g
+    _g = let f=prob.f.g, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du,u,p,t)
             version = u isa CuArray ? CUDADevice() : CPU()
             wgs = workgroupsize(version,size(u,2))
-            wait(version, gpu_kernel(version)(f,du,u,p,t;
+            wait(version, kernel(version)(f,du,u,p,t;
                                               ndrange=size(u,2),
                                               dependencies=Event(version),
                                               workgroupsize=wgs))
@@ -453,24 +477,24 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
     end
 
     if SciMLBase.has_jac(prob.f)
-        _Wfact! = let jac=prob.f.jac
+        _Wfact! = let jac=prob.f.jac, kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
                 wgs = workgroupsize(version,size(u,2))
-                wait(version, W_kernel(version)(jac, W, u, p, gamma, t;
+                wait(version, kernel(version)(jac, W, u, p, gamma, t;
                                                 ndrange=size(u,2),
                                                 dependencies=Event(version),
                                                 workgroupsize=wgs))
                 iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
             end
         end
-        _Wfact!_t = let jac=prob.f.jac
+        _Wfact!_t = let jac=prob.f.jac, kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
             function (W,u,p,gamma,t)
                 iscuda = u isa CuArray
                 version = iscuda ? CUDADevice() : CPU()
                 wgs = workgroupsize(version,size(u,2))
-                wait(version, Wt_kernel(version)(jac, W, u, p, gamma, t;
+                wait(version, kernel(version)(jac, W, u, p, gamma, t;
                                                  ndrange=size(u,2),
                                                  dependencies=Event(version),
                                                  workgroupsize=wgs))
@@ -482,12 +506,12 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
         _Wfact!_t = nothing
     end
 
-    if SciMLBase.has_tgrad(prob.f)
+    if SciMLBase.has_tgrad(prob.f), kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         _tgrad = let tgrad=prob.f.tgrad
             function (J,u,p,t)
                 version = u isa CuArray ? CUDADevice() : CPU()
                 wgs = workgroupsize(version,size(u,2))
-                wait(version, gpu_kernel(version)(tgrad,J,u,p,t;
+                wait(version, kernel(version)(tgrad,J,u,p,t;
                                                   ndrange=size(u,2),
                                                   dependencies=Event(version),
                                                   workgroupsize=wgs))
