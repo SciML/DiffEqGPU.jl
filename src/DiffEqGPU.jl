@@ -18,24 +18,24 @@ import Base.Threads
     @views @inbounds f(du[:,i],u[:,i],p[:,i],t)
 end
 
-@kernel function gpu_kernel_oop(@Const(f),du,@Const(u),@Const(p),@Const(t))
+@kernel function gpu_kernel_oop(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
     @views @inbounds du[:,i] = f(u[:,i],p[:,i],t)
 end
 
-@kernel function jac_kernel(@Const(f),J,@Const(u),@Const(p),@Const(t))
+@kernel function jac_kernel(f,J,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)-1
     section = 1 + (i*size(u,1)) : ((i+1)*size(u,1))
     @views @inbounds f(J[section,section],u[:,i+1],p[:,i+1],t)
 end
 
-@kernel function jac_kernel_oop(@Const(f),J,@Const(u),@Const(p),@Const(t))
+@kernel function jac_kernel_oop(f,J,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)-1
     section = 1 + (i*size(u,1)) : ((i+1)*size(u,1))
     @views @inbounds J[section,section] = f(u[:,i+1],p[:,i+1],t)
 end
 
-@kernel function discrete_condition_kernel(@Const(condition),cur,@Const(u),@Const(t),@Const(p))
+@kernel function discrete_condition_kernel(condition,cur,@Const(u),@Const(t),@Const(p))
     i = @index(Global, Linear)
     @views @inbounds cur[i] = condition(u[:,i],t,FakeIntegrator(u[:,i],t,p[:,i]))
 end
