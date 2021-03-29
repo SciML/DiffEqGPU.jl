@@ -1,7 +1,7 @@
 name = "DiffEqGPU"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 authors = ["Chris Rackauckas", "JuliaDiffEq"]
-version = "1.9.1"
+version = "1.10.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -20,7 +20,7 @@ CUDA = "2"
 DiffEqBase = "6.5"
 DocStringExtensions = "0.8"
 ForwardDiff = "0.10"
-KernelAbstractions = "0.5"
+KernelAbstractions = "0.5.5"
 RecursiveArrayTools = "2"
 SciMLBase = "1.8"
 ZygoteRules = "0.2"
