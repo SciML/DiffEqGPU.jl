@@ -2,13 +2,9 @@
 
 | Julia       | GPU CI                                                          |
 | ----------- | --------------------------------------------------------------- |
-| 1.5         | [![Build status][buildkite-julia1-img]][buildkite-url]          |
-| 1.6-nightly | [![Build status][buildkite-julia1.6nightly-img]][buildkite-url] |
-| nightly     | [![Build status][buildkite-julianightly-img]][buildkite-url]    |
+| 1.x         | [![Build status][buildkite-julia1-img]][buildkite-url]          |
 
 [buildkite-julia1-img]: https://badge.buildkite.com/409ab4d885030062681a444328868d2e8ad117cadc0a7e1424.svg?branch=master&step=Julia%201.5
-[buildkite-julia1.6nightly-img]: https://badge.buildkite.com/409ab4d885030062681a444328868d2e8ad117cadc0a7e1424.svg?branch=master&step=Julia%201.6-nightly
-[buildkite-julianightly-img]: https://badge.buildkite.com/409ab4d885030062681a444328868d2e8ad117cadc0a7e1424.svg?branch=master&step=Julia%20nightly
 [buildkite-url]: https://buildkite.com/julialang/diffeqgpu-dot-jl
 
 This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making
