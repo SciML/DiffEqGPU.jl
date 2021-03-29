@@ -1,38 +1,10 @@
 steps:
-  - label: "Julia 1.5"
+  - label: "Julia 1"
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.5"
+          version: "1"
       - JuliaCI/julia-test#v1:
-          coverage: false # 1000x slowdown
-    agents:
-      queue: "juliagpu"
-      cuda: "*"
-    timeout_in_minutes: 60
-    # Don't run Buildkite if the commit message includes the text [skip tests]
-    if: build.message !~ /\[skip tests\]/
-
-  - label: "Julia 1.6-nightly"
-    plugins:
-      - JuliaCI/julia#v1:
-          version: "1.6-nightly"
-      - JuliaCI/julia-test#v1:
-      # - JuliaCI/julia-coverage#v1:
-      #     codecov: true
-    agents:
-      queue: "juliagpu"
-      cuda: "*"
-    timeout_in_minutes: 60
-    # Don't run Buildkite if the commit message includes the text [skip tests]
-    if: build.message !~ /\[skip tests\]/
-
-  - label: "Julia nightly"
-    plugins:
-      - JuliaCI/julia#v1:
-          version: "nightly"
-      - JuliaCI/julia-test#v1:
-      # - JuliaCI/julia-coverage#v1:
-      #     codecov: true
+           coverage: false # 1000x slowdown
     agents:
       queue: "juliagpu"
       cuda: "*"
@@ -41,5 +13,6 @@ steps:
     if: build.message !~ /\[skip tests\]/
 
 env:
+  GROUP: GPU
   JULIA_PKG_SERVER: "" # it often struggles with our large artifacts
   # SECRET_CODECOV_TOKEN: "..."
