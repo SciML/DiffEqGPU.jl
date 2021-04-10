@@ -5,6 +5,7 @@ module DiffEqGPU
 
 using DocStringExtensions
 using KernelAbstractions, CUDA, SciMLBase, DiffEqBase, LinearAlgebra, Distributed
+using CUDAKernels
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
 using ForwardDiff
