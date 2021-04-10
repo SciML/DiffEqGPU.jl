@@ -17,7 +17,7 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
-CUDA = "2, 3"
+CUDA = "2"
 DiffEqBase = "6.5"
 DocStringExtensions = "0.8"
 ForwardDiff = "0.10"
