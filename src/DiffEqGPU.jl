@@ -20,7 +20,10 @@ end
 
 @kernel function gpu_kernel_oop(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
-    @views @inbounds du[:,i] = f(u[:,i],p[:,i],t)
+    @views @inbounds x = f(u[:,i],p[:,i],t)
+    @inbounds for j in 1:size(du,1)
+        du[j,i] = x[j]
+    end
 end
 
 @kernel function jac_kernel(f,J,@Const(u),@Const(p),@Const(t))
@@ -32,7 +35,10 @@ end
 @kernel function jac_kernel_oop(f,J,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)-1
     section = 1 + (i*size(u,1)) : ((i+1)*size(u,1))
-    @views @inbounds J[section,section] = f(u[:,i+1],p[:,i+1],t)
+    @views @inbounds x = f(u[:,i+1],p[:,i+1],t)
+    @inbounds for j in section, k in section
+        J[k,j] = x[k,j]
+    end
 end
 
 @kernel function discrete_condition_kernel(condition,cur,@Const(u),@Const(t),@Const(p))
@@ -81,7 +87,10 @@ end
     i = @index(Global, Linear)
     len = size(u,1)
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds _W[:] = jac(u[:,i],p[:,i],t)
+    @views @inbounds x = jac(u[:,i],p[:,i],t)
+    @inbounds for j in 1:length(_W)
+        _W[j] = x[j]
+    end
     @inbounds for i in eachindex(_W)
         _W[i] = gamma*_W[i]
     end
@@ -105,7 +114,10 @@ end
     i = @index(Global, Linear)
     len = size(u,1)
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds _W[:] = jac(u[:,i],p[:,i],t)
+    @views @inbounds x = jac(u[:,i],p[:,i],t)
+    @inbounds for j in 1:length(_W)
+        _W[j] = x[j]
+    end
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
@@ -506,8 +518,8 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
         _Wfact!_t = nothing
     end
 
-    if SciMLBase.has_tgrad(prob.f), kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
-        _tgrad = let tgrad=prob.f.tgrad
+    if SciMLBase.has_tgrad(prob.f)
+        _tgrad = let tgrad=prob.f.tgrad, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
             function (J,u,p,t)
                 version = u isa CuArray ? CUDADevice() : CPU()
                 wgs = workgroupsize(version,size(u,2))
