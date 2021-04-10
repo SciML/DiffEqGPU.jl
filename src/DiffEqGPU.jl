@@ -274,7 +274,7 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
     #@assert all(p->p.f === probs[1].f,probs)
 
     u0 = reduce(hcat,Array(probs[i].u0) for i in 1:length(I))
-    p  = reduce(hcat,Array(probs[i].p)  for i in 1:length(I))
+    p  = reduce(hcat,probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)  for i in 1:length(I))
     sol, solus = batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
     [ensembleprob.output_func(SciMLBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
 end
