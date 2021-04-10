@@ -5,6 +5,7 @@ version = "1.10.0"
 
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
 DocStringExtensions = "ffbed154-4ef7-542d-bbb7-c09d3a79fcae"
