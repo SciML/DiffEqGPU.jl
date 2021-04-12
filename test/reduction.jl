@@ -6,10 +6,7 @@ using Random;Random.seed!(seed)
 ra = rand(100)
 
 function f!(du,u,p,t)
- @inbounds begin
      du[1] = 1.01*u[1]
- end
- nothing
 end
 
 prob = ODEProblem(f!,[0.5],(0.0,1.0))

@@ -2,13 +2,11 @@ using KernelAbstractions, CUDA, SimpleDiffEq
 using StaticArrays
 
 function loop(u, p, t)
-    @inbounds begin
-        σ = p[1]; ρ = p[2]; β = p[3]
-        du1 = σ*(u[2]-u[1])
-        du2 = u[1]*(ρ-u[3]) - u[2]
-        du3 = u[1]*u[2] - β*u[3]
-        return SVector{3}(du1, du2, du3)
-    end
+    σ = p[1]; ρ = p[2]; β = p[3]
+    du1 = σ*(u[2]-u[1])
+    du2 = u[1]*(ρ-u[3]) - u[2]
+    du3 = u[1]*u[2] - β*u[3]
+    return SVector{3}(du1, du2, du3)
 end
 const func = ODEFunction(loop)
 u0 = 10ones(Float32,3)

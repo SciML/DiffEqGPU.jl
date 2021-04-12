@@ -4,12 +4,9 @@ addprocs(2)
 
 @everywhere begin
     function lorenz_distributed(du,u,p,t)
-     @inbounds begin
-         du[1] = p[1]*(u[2]-u[1])
-         du[2] = u[1]*(p[2]-u[3]) - u[2]
-         du[3] = u[1]*u[2] - p[3]*u[3]
-     end
-     nothing
+        du[1] = p[1]*(u[2]-u[1])
+        du[2] = u[1]*(p[2]-u[3]) - u[2]
+        du[3] = u[1]*u[2] - p[3]*u[3]
     end
     CUDA.allowscalar(false)
     u0 = Float32[1.0;0.0;0.0]
