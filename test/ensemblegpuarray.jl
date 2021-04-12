@@ -1,12 +1,9 @@
 using DiffEqGPU, CUDA, OrdinaryDiffEq, Test
 
 function lorenz(du,u,p,t)
- @inbounds begin
-     du[1] = p[1]*(u[2]-u[1])
-     du[2] = u[1]*(p[2]-u[3]) - u[2]
-     du[3] = u[1]*u[2] - p[3]*u[3]
- end
- nothing
+    du[1] = p[1]*(u[2]-u[1])
+    du[2] = u[1]*(p[2]-u[3]) - u[2]
+    du[3] = u[1]*u[2] - p[3]*u[3]
 end
 
 CUDA.allowscalar(false)
@@ -46,28 +43,25 @@ solve(monteprob,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
 @info "Implicit Methods"
 
 function lorenz_jac(J,u,p,t)
- @inbounds begin
-     σ = p[1]
-     ρ = p[2]
-     β = p[3]
-     x = u[1]
-     y = u[2]
-     z = u[3]
-     J[1,1] = -σ
-     J[2,1] = ρ - z
-     J[3,1] = y
-     J[1,2] = σ
-     J[2,2] = -1
-     J[3,2] = x
-     J[1,3] = 0
-     J[2,3] = -x
-     J[3,3] = -β
- end
- nothing
+    σ = p[1]
+    ρ = p[2]
+    β = p[3]
+    x = u[1]
+    y = u[2]
+    z = u[3]
+    J[1,1] = -σ
+    J[2,1] = ρ - z
+    J[3,1] = y
+    J[1,2] = σ
+    J[2,2] = -1
+    J[3,2] = x
+    J[1,3] = 0
+    J[2,3] = -x
+    J[3,3] = -β
 end
 
 function lorenz_tgrad(J,u,p,t)
- nothing
+    nothing
 end
 
 func = ODEFunction(lorenz,jac=lorenz_jac,tgrad=lorenz_tgrad)
