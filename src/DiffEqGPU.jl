@@ -180,7 +180,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 
         cpu_II = (gpu_trajectories+1):trajectories
         function f()
-            solve_batch(ensembleprob,alg,EnsembleThreads(),cpu_II,nothing;kwargs...)
+            SciMLBase.solve_batch(ensembleprob,alg,EnsembleThreads(),cpu_II,nothing;kwargs...)
         end
 
         cpu_sols = Channel{Core.Compiler.return_type(f,Tuple{})}(1)
