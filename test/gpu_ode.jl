@@ -1,4 +1,4 @@
-using KernelAbstractions, CUDA, SimpleDiffEq
+using KernelAbstractions, CUDAKernels, CUDA, SimpleDiffEq
 using StaticArrays
 
 function loop(u, p, t)
