@@ -9,7 +9,8 @@ using CUDAKernels
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
 using ForwardDiff
-import ZygoteRules
+import ChainRulesCore
+import ChainRulesCore: NoTangent
 using RecursiveArrayTools
 import Base.Threads
 
@@ -155,8 +156,8 @@ function EnsembleGPUArray()
     EnsembleGPUArray(0.2)
 end
 
-ZygoteRules.@adjoint function EnsembleGPUArray()
-    EnsembleGPUArray(0.0), _ -> nothing
+ChainRulesCore.rrule(::EnsembleGPUArray)
+    EnsembleGPUArray(0.0), _ -> NoTangent()
 end
 
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
@@ -341,7 +342,7 @@ end
 
 struct DiffEqGPUAdjTag end
 
-ZygoteRules.@adjoint function batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
+ChainRulesCore.rrule(::batch_solve_up,ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
     pdual = seed_duals(p,DiffEqGPUAdjTag)
     u0 = convert.(eltype(pdual),u0)
 
@@ -395,7 +396,7 @@ ZygoteRules.@adjoint function batch_solve_up(ensembleprob,probs,alg,ensemblealg,
                 J'v
             end
         end
-        (ntuple(_->nothing, 6)...,Array(VectorOfArray(adj)))
+        (ntuple(_->NoTangent(), 7)...,Array(VectorOfArray(adj)))
     end
     (sol,solus),batch_solve_up_adjoint
 end
