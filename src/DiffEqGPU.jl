@@ -342,7 +342,7 @@ end
 
 struct DiffEqGPUAdjTag end
 
-ChainRulesCore.rrule(::typeof(batch_solve_up),ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
+function ChainRulesCore.rrule(::typeof(batch_solve_up),ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
     pdual = seed_duals(p,DiffEqGPUAdjTag)
     u0 = convert.(eltype(pdual),u0)
 
