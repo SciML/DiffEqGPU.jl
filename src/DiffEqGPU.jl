@@ -156,7 +156,7 @@ function EnsembleGPUArray()
     EnsembleGPUArray(0.2)
 end
 
-ChainRulesCore.rrule(::EnsembleGPUArray)
+function ChainRulesCore.rrule(::EnsembleGPUArray)
     EnsembleGPUArray(0.0), _ -> NoTangent()
 end
 
