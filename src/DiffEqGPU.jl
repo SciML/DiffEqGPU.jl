@@ -12,6 +12,7 @@ using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
 using RecursiveArrayTools
+import ZygoteRules
 import Base.Threads
 
 @kernel function gpu_kernel(f,du,@Const(u),@Const(p),@Const(t))
@@ -156,8 +157,12 @@ function EnsembleGPUArray()
     EnsembleGPUArray(0.2)
 end
 
-function ChainRulesCore.rrule(::EnsembleGPUArray)
+function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
     EnsembleGPUArray(0.0), _ -> NoTangent()
+end
+
+ZygoteRules.@adjoint function EnsembleGPUArray()
+    EnsembleGPUArray(0.0), _ -> nothing
 end
 
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
