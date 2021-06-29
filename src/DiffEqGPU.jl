@@ -266,7 +266,8 @@ diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual},t) = sqrt.(sum(abs2∘Forward
 diffeqgpunorm(u::ForwardDiff.Dual,t) = abs(ForwardDiff.value(u))
 
 function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwargs...)
-    if ensembleprob.safetycopy
+    safetycopy = (ensembleprob.safetycopy === nothing) : SciMLBase.DEFAULT_SAFETYCOPY(ensembleprob.prob.prob_func) : ensembleprob.safetycopy
+    if safetycopy
         probs = map(I) do i
             ensembleprob.prob_func(deepcopy(ensembleprob.prob),i,1)
         end
