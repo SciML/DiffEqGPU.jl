@@ -43,6 +43,7 @@ For more information on using the ensemble interface, see
 For example, the following solves the Lorenz equation with 10,000 separate random parameters on the GPU:
 
 ```julia
+using DiffEqGPU, OrdinaryDiffEq
 function lorenz(du,u,p,t)
     du[1] = p[1]*(u[2]-u[1])
     du[2] = u[1]*(p[2]-u[3]) - u[2]
