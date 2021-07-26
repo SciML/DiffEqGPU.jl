@@ -1,7 +1,7 @@
 name = "DiffEqGPU"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 authors = ["Chris Rackauckas", "JuliaDiffEq"]
-version = "1.14.0"
+version = "1.15.0"
 
 [deps]
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
