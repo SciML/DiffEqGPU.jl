@@ -18,7 +18,7 @@ SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
-ChainRulesCore = "0.10.7"
+ChainRulesCore = "0.10.7, 1"
 CUDA = "3.1"
 CUDAKernels = "0.2"
 DiffEqBase = "6.5"
