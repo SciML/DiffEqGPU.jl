@@ -14,10 +14,10 @@ const su0= SVector{3}(u0)
 const dt = 1f-1
 const tspan = (0.0f0, 10.0f0)
 
-const odeoop = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0),  Float32[10, 28, 8/3])
+const odeoop = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0),  Float32.(SA[10, 28, 8/3]))
 sol2 = solve(odeoop,GPUSimpleTsit5(),dt=dt)
-cps = Array([@SVector [10f0,28f0,8/3f0] for i in 1:32])
-ps = CuArray([@SVector [10f0,28f0,8/3f0] for i in 1:32])
+cps = Array([SA[10f0,28f0,8/3f0] for i in 1:32])
+ps = CuArray([SA[10f0,28f0,8/3f0] for i in 1:32])
 CUDA.allowscalar(false)
 
 function f(p)
