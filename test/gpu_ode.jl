@@ -91,16 +91,16 @@ wait(version, f_kernel(version)(ps;ndrange=length(ps)))
 
 # Fails to change parameters
 function f(p)
-    remake(odeoop,p=p)
-    solve(odeoop,GPUSimpleTsit5(),dt=dt)[end]
+    _prob = remake(odeoop,p=p)
+    solve(_prob,GPUSimpleTsit5(),dt=dt)[end]
 end
 
 map(f,cps)
 
 @kernel function f_kernel(ps)
     i = @index(Global)
-    remake(odeoop,p=ps[i])
-    solve(odeoop,GPUSimpleTsit5(),dt=dt)[end]
+    _prob = remake(odeoop,p=ps[i])
+    solve(_prob,GPUSimpleTsit5(),dt=dt)[end]
 end
 
 version = CUDADevice()
