@@ -17,7 +17,7 @@ import ZygoteRules
 import Base.Threads
 using LinearSolve
 #For gpu_tsit5
-using Adapt, SimpleDiffEq, StaticArrays, BenchmarkTools
+using Adapt, SimpleDiffEq
 
 @kernel function gpu_kernel(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
