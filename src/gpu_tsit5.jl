@@ -1,0 +1,454 @@
+
+Adapt.adapt_structure(to, prob::ODEProblem{<:Any, <:Any, iip}) where {iip} =
+    ODEProblem{iip,true}(
+        adapt(to, prob.f),
+        adapt(to, prob.u0),
+        adapt(to, prob.tspan),
+        adapt(to, prob.p);
+        adapt(to, prob.kwargs)...
+    )
+
+
+## CPU solve
+
+# not fully up to date; does not support the options that the GPU solver does
+
+function cpu_solve(prob::ODEProblem, alg::GPUSimpleTsit5; dt = 0.1f0)
+  u0 = prob.u0
+  tspan = prob.tspan
+  f = prob.f
+  p = prob.p
+  t = tspan[1]
+  tf = prob.tspan[2]
+  ts = tspan[1]:dt:tspan[2]
+  us = MVector{101,typeof(u0)}(undef)
+  us[1] = u0
+  u = u0
+  k7 = f(u, p, t)
+
+  cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(eltype(u0))
+  c1, c2, c3, c4, c5, c6 = cs
+  a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+  a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = as
+  btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = btildes
+
+  # FSAL
+  for i in 2:101
+      uprev = u; k1 = k7; t = tspan[1] + dt * i
+      tmp = uprev+dt*a21*k1
+      k2 = f(tmp, p, t+c1*dt)
+      tmp = uprev+dt*(a31*k1+a32*k2)
+      k3 = f(tmp, p, t+c2*dt)
+      tmp = uprev+dt*(a41*k1+a42*k2+a43*k3)
+      k4 = f(tmp, p, t+c3*dt)
+      tmp = uprev+dt*(a51*k1+a52*k2+a53*k3+a54*k4)
+      k5 = f(tmp, p, t+c4*dt)
+      tmp = uprev+dt*(a61*k1+a62*k2+a63*k3+a64*k4+a65*k5)
+      k6 = f(tmp, p, t+dt)
+      u = uprev+dt*(a71*k1+a72*k2+a73*k3+a74*k4+a75*k5+a76*k6)
+      k7 = f(u, p, t+dt)
+      us[i] = u
+  end
+
+  DiffEqBase.build_solution(prob,alg,ts,Array(us),
+                            k = nothing, destats = nothing,
+                            calculate_error = false)
+end
+
+function cpu_kernel(prob, p, dt)
+    cpu_solve(remake(prob; p), GPUSimpleTsit5(); dt)
+end
+
+
+## GPU solver
+
+function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
+                          dt = 0.1f0, saveat = nothing,
+                          save_everystep = true,
+                          # TODO: abstol = 1f-6, reltol = 1f-3,
+                          debug=false)
+    # if saveat is specified, we'll use a vector of timestamps.
+    # otherwise it's a matrix that may be different for each ODE.
+    if saveat === nothing
+        if save_everystep
+            len = length(prob.tspan[1]:dt:prob.tspan[2])
+        else
+            len = 2
+        end
+        ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
+    else
+        error("Not fully implemented yet")  # see the TODO in the kernel
+        ts = saveat
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
+    end
+
+    kernel = @cuda launch=false tsit5_kernel(prob, ps, us, ts, dt,
+                                             Val(saveat !== nothing), Val(save_everystep))
+    if debug
+        @show CUDA.registers(kernel)
+        @show CUDA.memory(kernel)
+    end
+
+    config = launch_configuration(kernel.fun)
+    threads = min(length(ps), config.threads)
+    # XXX: this kernel performs much better with all blocks active
+    blocks = max(cld(length(ps), threads), config.blocks)
+    threads = cld(length(ps), blocks)
+    kernel(prob, ps, us, ts, dt; threads, blocks)
+
+    # we build the actual solution object on the CPU because the GPU would create one
+    # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
+    # no useful operations, etc). That's unfortunate though, since this loop is
+    # generally slower than the entire GPU execution, and necessitates synchronization
+    sols = ODESolution[]
+    for (i,p) in enumerate(Array(ps))
+        ts_view = if saveat === nothing
+             view(ts, :, i)
+        else
+            ts
+        end
+        us_view = view(us, :, i)
+
+        sol = DiffEqBase.build_solution(remake(prob; p),alg,ts_view,us_view,
+                                        k = nothing, destats = nothing,
+                                        calculate_error = false)
+        push!(sols, sol)
+    end
+    sols
+end
+
+function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
+    dt=0.1f0, saveat=nothing,
+    save_everystep=true,
+    abstol = 1f-6, reltol = 1f-3,
+    debug=false)
+    # if saveat is specified, we'll use a vector of timestamps.
+    # otherwise it's a matrix that may be different for each ODE.
+    if saveat === nothing
+        if save_everystep
+            len = length(prob.tspan[1]:dt:prob.tspan[2])
+        else
+            len = 2
+        end
+        ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
+    else
+        error("Not fully implemented yet")  # see the TODO in the kernel
+        ts = saveat
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
+    end
+
+    kernel = @cuda launch = false atsit5_kernel(prob, ps, us, ts, dt, abstol, reltol,
+        Val(saveat !== nothing), Val(save_everystep))
+    if debug
+        @show CUDA.registers(kernel)
+        @show CUDA.memory(kernel)
+    end
+
+    config = launch_configuration(kernel.fun)
+    threads = min(length(ps), config.threads)
+    # XXX: this kernel performs much better with all blocks active
+    blocks = max(cld(length(ps), threads), config.blocks)
+    threads = cld(length(ps), blocks)
+    kernel(prob, ps, us, ts, dt; threads, blocks)
+
+    # we build the actual solution object on the CPU because the GPU would create one
+    # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
+    # no useful operations, etc). That's unfortunate though, since this loop is
+    # generally slower than the entire GPU execution, and necessitates synchronization
+    sols = ODESolution[]
+    for (i, p) in enumerate(Array(ps))
+        ts_view = if saveat === nothing
+            view(ts, :, i)
+        else
+            ts
+        end
+        us_view = view(us, :, i)
+
+        sol = DiffEqBase.build_solution(remake(prob; p), alg, ts_view, us_view,
+            k=nothing, destats=nothing,
+            calculate_error=false)
+        push!(sols, sol)
+    end
+    sols
+end
+
+# saveat is just a bool here:
+#  true: ts is a vector of timestamps to read from
+#  false: each ODE has its own timestamps, so ts is a vector to write to
+function tsit5_kernel(_prob, ps, _us, _ts, dt,
+                      ::Val{saveat}, ::Val{save_everystep}) where {saveat, save_everystep}
+    i = (blockIdx().x-1) * blockDim().x + threadIdx().x
+    i >= length(ps) && return
+
+    # get the actual problem for this thread
+    p = @inbounds ps[i]
+    prob = remake(_prob; p)
+
+    # get the input/output arrays for this thread
+    ts = if saveat
+        _ts
+    else
+        @inbounds view(_ts, :, i)
+    end
+    us = @inbounds view(_us, :, i)
+    # TODO: optimize contiguous view to return a CuDeviceArray
+
+    u0 = prob.u0
+    tspan = prob.tspan
+    f = prob.f
+    p = prob.p
+
+    t = tspan[1]
+    tf = prob.tspan[2]
+
+    @inbounds ts[1] = tspan[1]
+    @inbounds us[1] = u0
+
+    u = u0
+    k7 = f(u, p, t)
+
+    cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(eltype(u0))
+    c1, c2, c3, c4, c5, c6 = cs
+    a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = as
+    btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = btildes
+
+    # FSAL
+    for i in 2:length(ts)
+        uprev = u
+        k1 = k7
+        t = tspan[1] + dt * i
+
+        tmp = uprev+dt*a21*k1
+        k2 = f(tmp, p, t+c1*dt)
+        tmp = uprev+dt*(a31*k1+a32*k2)
+        k3 = f(tmp, p, t+c2*dt)
+        tmp = uprev+dt*(a41*k1+a42*k2+a43*k3)
+        k4 = f(tmp, p, t+c3*dt)
+        tmp = uprev+dt*(a51*k1+a52*k2+a53*k3+a54*k4)
+        k5 = f(tmp, p, t+c4*dt)
+        tmp = uprev+dt*(a61*k1+a62*k2+a63*k3+a64*k4+a65*k5)
+        k6 = f(tmp, p, t+dt)
+        u = uprev+dt*(a71*k1+a72*k2+a73*k3+a74*k4+a75*k5+a76*k6)
+        k7 = f(u, p, t+dt)
+
+        if saveat
+            # TODO
+        elseif save_everystep
+            @inbounds us[i] = u
+            @inbounds ts[i] = t
+        end
+    end
+
+    if !saveat && !save_everystep
+        @inbounds us[2] = u
+        @inbounds ts[2] = t
+    end
+
+    return nothing
+end
+
+function atsit5_kernel(_prob, ps, _us, _ts, dt, abstol, reltol,
+    ::Val{saveat}, ::Val{save_everystep}) where {saveat,save_everystep}
+    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
+    i >= length(ps) && return
+
+    # get the actual problem for this thread
+    p = @inbounds ps[i]
+    prob = remake(_prob; p)
+
+    # get the input/output arrays for this thread
+    ts = if saveat
+        _ts
+    else
+        @inbounds view(_ts, :, i)
+    end
+    us = @inbounds view(_us, :, i)
+    # TODO: optimize contiguous view to return a CuDeviceArray
+
+    u0 = prob.u0
+    tspan = prob.tspan
+    f = prob.f
+    p = prob.p
+
+    t = tspan[1]
+    tf = prob.tspan[2]
+
+    @inbounds ts[1] = tspan[1]
+    @inbounds us[1] = u0
+
+    u = u0
+    k7 = f(u, p, t)
+
+    cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(eltype(u0))
+    c1, c2, c3, c4, c5, c6 = cs
+    a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = as
+    btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = btildes
+
+    # FSAL
+
+    while t < tf
+        uprev = u
+        k1 = k7
+        EEst = Inf
+
+        while EEst > 1.0
+            dt < 1e-14 && error("dt<dtmin")
+
+            tmp = uprev + dt * a21 * k1
+            k2 = f(tmp, p, t + c1 * dt)
+            tmp = uprev + dt * (a31 * k1 + a32 * k2)
+            k3 = f(tmp, p, t + c2 * dt)
+            tmp = uprev + dt * (a41 * k1 + a42 * k2 + a43 * k3)
+            k4 = f(tmp, p, t + c3 * dt)
+            tmp = uprev + dt * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4)
+            k5 = f(tmp, p, t + c4 * dt)
+            tmp = uprev + dt * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5)
+            k6 = f(tmp, p, t + dt)
+            u = uprev + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
+            k7 = f(u, p, t + dt)
+
+            tmp = dt * (btilde1 * k1 + btilde2 * k2 + btilde3 * k3 + btilde4 * k4 +
+                        btilde5 * k5 + btilde6 * k6 + btilde7 * k7)
+            tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
+            EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
+
+            if iszero(EEst)
+                q = inv(qmax)
+            else
+                q11 = EEst^beta1
+                q = q11 / (qold^beta2)
+            end
+
+            if EEst > 1
+                dt = dt / min(inv(qmin), q11 / gamma)
+            else # EEst <= 1
+                q = max(inv(qmax), min(inv(qmin), q / gamma))
+                qold = max(EEst, qoldinit)
+                dtold = dt
+                dt = dt / q #dtnew
+                dt = min(abs(dt), abs(tf - t - dtold))
+                told = t
+                if (tf - t - dtold) < 1e-14
+                    t = tf
+                else
+                    t += dtold
+                end
+
+                if saveat === nothing && save_everystep
+                    push!(us, recursivecopy(u))
+                    push!(ts, t)
+                else
+                    saveat !== nothing
+                    while cur_t <= length(ts) && ts[cur_t] <= t
+                        savet = ts[cur_t]
+                        θ = (savet - told) / dtold
+                        b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = bθs(rs, θ)
+                        us[cur_t] = uprev + dtold * (
+                            b1θ * k1 + b2θ * k2 + b3θ * k3 + b4θ * k4 + b5θ * k5 + b6θ * k6 + b7θ * k7)
+                        cur_t += 1
+                    end
+                end
+
+            end
+        end
+    end
+
+    if saveat === nothing && !save_everystep
+        push!(us, u)
+        push!(ts, t)
+    end
+
+    return nothing
+
+
+
+    # for i in 2:length(ts)
+    #     uprev = u
+    #     k1 = k7
+    #     t = tspan[1] + dt * i
+
+    #     tmp = uprev+dt*a21*k1
+    #     k2 = f(tmp, p, t+c1*dt)
+    #     tmp = uprev+dt*(a31*k1+a32*k2)
+    #     k3 = f(tmp, p, t+c2*dt)
+    #     tmp = uprev+dt*(a41*k1+a42*k2+a43*k3)
+    #     k4 = f(tmp, p, t+c3*dt)
+    #     tmp = uprev+dt*(a51*k1+a52*k2+a53*k3+a54*k4)
+    #     k5 = f(tmp, p, t+c4*dt)
+    #     tmp = uprev+dt*(a61*k1+a62*k2+a63*k3+a64*k4+a65*k5)
+    #     k6 = f(tmp, p, t+dt)
+    #     u = uprev+dt*(a71*k1+a72*k2+a73*k3+a74*k4+a75*k5+a76*k6)
+    #     k7 = f(u, p, t+dt)
+
+    #     if saveat
+    #         # TODO
+    #     elseif save_everystep
+    #         @inbounds us[i] = u
+    #         @inbounds ts[i] = t
+    #     end
+    # end
+
+    # if !saveat && !save_everystep
+    #     @inbounds us[2] = u
+    #     @inbounds ts[2] = t
+    # end
+
+    # return nothing
+end
+
+
+## driver
+
+function loop(u, p, t)
+    σ = p[1]; ρ = p[2]; β = p[3]
+    du1 = σ*(u[2]-u[1])
+    du2 = u[1]*(ρ-u[3]) - u[2]
+    du3 = u[1]*u[2] - β*u[3]
+    return SVector{3}(du1, du2, du3)
+end
+
+function main(; N=1000, benchmark=false, kwargs...)
+    func = ODEFunction(loop)
+    u0 = 10ones(Float32,3)
+    su0= SVector{3}(u0)
+    dt = 1f-1
+    tspan = (0.0f0, 10.0f0)
+
+    prob = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0),  SA_F32[10, 28, 8/3])
+    sol2 = solve(prob,GPUSimpleTsit5(),dt=dt)
+    CUDA.allowscalar(false)
+
+    @info "CPU version"
+    ps = Array([@SVector [10f0,28f0,8/3f0] for i in 1:N])
+    function cpu(prob, ps, dt)
+        map(ps) do p
+            cpu_kernel(prob, p, dt)
+        end
+    end
+    cpu_out = cpu(prob, ps, dt)
+    if benchmark
+        bench = @benchmark $cpu($prob, $ps, $dt)
+        display(bench)
+    end
+
+    @info "GPU version"
+    ps = CuArray([@SVector [10f0,28f0,8/3f0] for i in 1:N])
+    function gpu(prob, ps, dt; debug=false)
+        vectorized_solve(prob, ps, GPUSimpleTsit5(); dt, debug, kwargs...)
+    end
+    gpu(prob, ps, dt; debug=true)
+    synchronize(context())
+    if benchmark
+        bench = @benchmark CUDA.@sync $gpu($prob, $ps, $dt)
+        display(bench)
+        CUDA.unsafe_free!(ps)
+    end
+end
+
+
+
+isinteractive() || main()

@@ -16,6 +16,8 @@ using RecursiveArrayTools
 import ZygoteRules
 import Base.Threads
 using LinearSolve
+#For gpu_tsit5
+using Adapt, SimpleDiffEq, StaticArrays, BenchmarkTools
 
 @kernel function gpu_kernel(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
@@ -793,6 +795,10 @@ function tmap(f,args...)
   end
   reduce(vcat,batch_data)
 end
+
+include("./gpu_tsit5.jl")
+
+export vectorized_solve, vectorized_asolve
 
 export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
 
