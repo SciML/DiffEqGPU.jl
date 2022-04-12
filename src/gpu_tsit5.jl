@@ -70,13 +70,13 @@ end
 function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
     dt=0.1f0, saveat=nothing,
     save_everystep=true,
-    abstol = 1f-6, reltol = 1f-3,
+    abstol=1.0f-6, reltol=1.0f-3,
     debug=false)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
         if save_everystep
-            len = length(prob.tspan[1]:dt:prob.tspan[2])
+            len = length(prob.tspan[1]:dt:prob.tspan[2]) + 40
         else
             len = 2
         end
@@ -100,7 +100,7 @@ function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
     # XXX: this kernel performs much better with all blocks active
     blocks = max(cld(length(ps), threads), config.blocks)
     threads = cld(length(ps), blocks)
-    kernel(prob, ps, us, ts, dt; threads, blocks)
+    kernel(prob, ps, us, ts, dt, abstol, reltol; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -199,6 +199,20 @@ function tsit5_kernel(_prob, ps, _us, _ts, dt,
     return nothing
 end
 
+    
+function build_adaptive_tsit5_controller_cache(::Type{T}) where {T}
+
+    beta1 = T(7 / 50)
+    beta2 = T(2 / 25)
+    qmax = T(10.0)
+    qmin = T(1 / 5)
+    gamma = T(9 / 10)
+    qoldinit = T(1e-4)
+    qold = qoldinit
+
+    return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
+end
+
 function atsit5_kernel(_prob, ps, _us, _ts, dt, abstol, reltol,
     ::Val{saveat}, ::Val{save_everystep}) where {saveat,save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
@@ -237,8 +251,9 @@ function atsit5_kernel(_prob, ps, _us, _ts, dt, abstol, reltol,
     a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = as
     btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = btildes
 
-    # FSAL
+    beta1, beta2, qmax, qmin, gamma, qoldinit, qold = build_adaptive_tsit5_controller_cache(eltype(u0))
 
+    cur_t = 2
     while t < tf
         uprev = u
         k1 = k7
@@ -287,64 +302,33 @@ function atsit5_kernel(_prob, ps, _us, _ts, dt, abstol, reltol,
                     t += dtold
                 end
 
-                if saveat === nothing && save_everystep
-                    push!(us, recursivecopy(u))
-                    push!(ts, t)
+                if save_everystep
+                    @inbounds us[cur_t] = u
+                    @inbounds ts[cur_t] = t
+                    cur_t += 1
+                    # push!(us, u)
+                    # push!(ts, t)
                 else
                     saveat !== nothing
-                    while cur_t <= length(ts) && ts[cur_t] <= t
-                        savet = ts[cur_t]
-                        θ = (savet - told) / dtold
-                        b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = bθs(rs, θ)
-                        us[cur_t] = uprev + dtold * (
-                            b1θ * k1 + b2θ * k2 + b3θ * k3 + b4θ * k4 + b5θ * k5 + b6θ * k6 + b7θ * k7)
-                        cur_t += 1
-                    end
+                    # while cur_t <= length(ts) && ts[cur_t] <= t
+                    #     savet = ts[cur_t]
+                    #     θ = (savet - told) / dtold
+                    #     b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = bθs(rs, θ)
+                    #     us[cur_t] = uprev + dtold * (
+                    #         b1θ * k1 + b2θ * k2 + b3θ * k3 + b4θ * k4 + b5θ * k5 + b6θ * k6 + b7θ * k7)
+                    #     cur_t += 1
+                    # end
                 end
 
             end
         end
     end
 
-    if saveat === nothing && !save_everystep
-        push!(us, u)
-        push!(ts, t)
-    end
+    # if saveat === nothing && !save_everystep
+    #     push!(us, u)
+    #     push!(ts, t)
+    # end
 
     return nothing
-
-
-
-    # for i in 2:length(ts)
-    #     uprev = u
-    #     k1 = k7
-    #     t = tspan[1] + dt * i
-
-    #     tmp = uprev+dt*a21*k1
-    #     k2 = f(tmp, p, t+c1*dt)
-    #     tmp = uprev+dt*(a31*k1+a32*k2)
-    #     k3 = f(tmp, p, t+c2*dt)
-    #     tmp = uprev+dt*(a41*k1+a42*k2+a43*k3)
-    #     k4 = f(tmp, p, t+c3*dt)
-    #     tmp = uprev+dt*(a51*k1+a52*k2+a53*k3+a54*k4)
-    #     k5 = f(tmp, p, t+c4*dt)
-    #     tmp = uprev+dt*(a61*k1+a62*k2+a63*k3+a64*k4+a65*k5)
-    #     k6 = f(tmp, p, t+dt)
-    #     u = uprev+dt*(a71*k1+a72*k2+a73*k3+a74*k4+a75*k5+a76*k6)
-    #     k7 = f(u, p, t+dt)
-
-    #     if saveat
-    #         # TODO
-    #     elseif save_everystep
-    #         @inbounds us[i] = u
-    #         @inbounds ts[i] = t
-    #     end
-    # end
-
-    # if !saveat && !save_everystep
-    #     @inbounds us[2] = u
-    #     @inbounds ts[2] = t
-    # end
-
-    # return nothing
+    
 end
