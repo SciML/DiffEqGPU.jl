@@ -157,7 +157,7 @@ struct EnsembleGPUArray <: EnsembleArrayAlgorithm
 end
 
 ##Each solve on param is done separately with and then all of them get merged
-struct EnsembleGPUArrayAutonomous <: EnsembleArrayAlgorithm
+struct EnsembleGPUAutonomous <: EnsembleArrayAlgorithm
     cpu_offload::Float64
 end
 # Work around the fact that Zygote cannot handle the task system
@@ -166,8 +166,8 @@ function EnsembleGPUArray()
     EnsembleGPUArray(0.2)
 end
 
-function EnsembleGPUArrayAutonomous()
-    EnsembleGPUArrayAutonomous(0.2)
+function EnsembleGPUAutonomous()
+    EnsembleGPUAutonomous(0.2)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
@@ -296,7 +296,7 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
     p  = reduce(hcat,probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)  for i in 1:length(I))
 
     sol, solus = 
-    if ensemblealg isa EnsembleGPUArrayAutonomous
+    if ensemblealg isa EnsembleGPUAutonomous
         ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
         if typeof(alg) <: OrdinaryDiffEq.Tsit5
             #Adaptive version only works with saveat
@@ -828,8 +828,6 @@ end
 
 include("./gpu_tsit5.jl")
 
-export vectorized_solve, vectorized_asolve
-
-export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUArrayAutonomous, LinSolveGPUSplitFactorize
+export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUAutonomous, LinSolveGPUSplitFactorize
 
 end # module
