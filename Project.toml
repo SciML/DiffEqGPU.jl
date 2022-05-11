@@ -16,9 +16,11 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SimpleDiffEq = "05bca326-078c-5bf0-a5bf-ce7c7982d7fd"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]

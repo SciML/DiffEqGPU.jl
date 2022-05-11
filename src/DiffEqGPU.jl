@@ -17,7 +17,8 @@ import ZygoteRules
 import Base.Threads
 using LinearSolve
 #For gpu_tsit5
-using Adapt, SimpleDiffEq
+using Adapt, SimpleDiffEq, StaticArrays
+import OrdinaryDiffEq
 
 @kernel function gpu_kernel(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
@@ -155,10 +156,18 @@ struct EnsembleGPUArray <: EnsembleArrayAlgorithm
     cpu_offload::Float64
 end
 
+##Each solve on param is done separately with and then all of them get merged
+struct EnsembleGPUArrayAutonomous <: EnsembleArrayAlgorithm
+    cpu_offload::Float64
+end
 # Work around the fact that Zygote cannot handle the task system
 # Work around the fact that Zygote isderiving fails with constants?
 function EnsembleGPUArray()
     EnsembleGPUArray(0.2)
+end
+
+function EnsembleGPUArrayAutonomous()
+    EnsembleGPUArrayAutonomous(0.2)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
@@ -285,7 +294,28 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
 
     u0 = reduce(hcat,Array(probs[i].u0) for i in 1:length(I))
     p  = reduce(hcat,probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)  for i in 1:length(I))
-    sol, solus = batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
+
+    sol, solus = 
+    if ensemblealg isa EnsembleGPUArrayAutonomous
+        ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
+        if typeof(alg) <: OrdinaryDiffEq.Tsit5
+            #Adaptive version only works with saveat
+            if haskey(kwargs, :saveat)
+                saveat = kwargs[:saveat]
+                solus = vectorized_asolve(ensembleprob.prob, ps, GPUSimpleATsit5(); saveat)
+            else
+                solus = vectorized_solve(ensembleprob.prob, ps, GPUSimpleTsit5())
+            end
+            _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
+            sol = solve(ensembleprob.prob, alg; kwargs..., callback=_callback, merge_callbacks=false,
+                internalnorm=diffeqgpunorm)
+            sol, solus
+        else
+            error("We don't have solvers implemented for this algorithm yet")
+        end
+    elseif ensemblealg isa EnsembleGPUArray
+        batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
+    end
     [ensembleprob.output_func(SciMLBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
 end
 
@@ -800,6 +830,6 @@ include("./gpu_tsit5.jl")
 
 export vectorized_solve, vectorized_asolve
 
-export EnsembleCPUArray, EnsembleGPUArray, LinSolveGPUSplitFactorize
+export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUArrayAutonomous, LinSolveGPUSplitFactorize
 
 end # module
