@@ -18,7 +18,7 @@ import Base.Threads
 using LinearSolve
 #For gpu_tsit5
 using Adapt, SimpleDiffEq, StaticArrays
-import OrdinaryDiffEq
+using OrdinaryDiffEq
 
 @kernel function gpu_kernel(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
@@ -156,6 +156,10 @@ struct EnsembleGPUArray <: EnsembleArrayAlgorithm
     cpu_offload::Float64
 end
 
+##Solvers for EnsembleGPUAutonomous
+abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
+struct GPUTsit5 <: GPUODEAlgorithm end
+
 ##Each solve on param is done separately with and then all of them get merged
 struct EnsembleGPUAutonomous <: EnsembleArrayAlgorithm
     cpu_offload::Float64
@@ -179,7 +183,7 @@ ZygoteRules.@adjoint function EnsembleGPUArray()
 end
 
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
-                 alg::Union{SciMLBase.DEAlgorithm,Nothing},
+                 alg::Union{SciMLBase.DEAlgorithm,Nothing,DiffEqGPU.GPUODEAlgorithm},
                  ensemblealg::EnsembleArrayAlgorithm;
                  trajectories, batch_size = trajectories,
                  unstable_check = (dt,u,p,t)->false,
@@ -298,7 +302,7 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
     sol, solus = 
     if ensemblealg isa EnsembleGPUAutonomous
         ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
-        if typeof(alg) <: OrdinaryDiffEq.Tsit5
+        if typeof(alg) <: GPUTsit5
             #Adaptive version only works with saveat
             if haskey(kwargs, :saveat)
                 saveat = kwargs[:saveat]
@@ -307,7 +311,7 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
                 solus = vectorized_solve(ensembleprob.prob, ps, GPUSimpleTsit5())
             end
             _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
-            sol = solve(ensembleprob.prob, alg; kwargs..., callback=_callback, merge_callbacks=false,
+            sol = solve(ensembleprob.prob, Tsit5(); kwargs..., callback=_callback, merge_callbacks=false,
                 internalnorm=diffeqgpunorm)
             sol, solus
         else
@@ -829,5 +833,7 @@ end
 include("./gpu_tsit5.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUAutonomous, LinSolveGPUSplitFactorize
+
+export GPUTsit5
 
 end # module
