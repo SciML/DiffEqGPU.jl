@@ -71,7 +71,7 @@ function main(; N=1000, benchmark=false, kwargs...)
     dt = 1.0f-1
     tspan = (0.0f0, 10.0f0)
 
-    prob = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0), SA_F32[10, 28, 8/3])
+    prob = ODEProblem{false}(loop, su0, tspan, SA_F32[10, 28, 8/3])
     sol2 = solve(prob, GPUSimpleTsit5(), dt=dt)
     CUDA.allowscalar(false)
 
@@ -114,7 +114,7 @@ prob = ODEProblem{false}(loop, SVector{3}(u0), (0.0f0, 10.0f0), SA_F32[10, 28, 8
 
 @info "GPU Adaptive version"
 N = 10
-ps = CuArray([@SVector [10.0f0, 28.0f0, 8 / 3.0f0] for i in 1:10])
+ps = CuArray([@SVector [10.0f0, 28.0f0, 8 / 3.0f0] for i in 1:N])
 
 gpu_asol = vectorized_asolve(prob, ps, GPUSimpleATsit5(); dt, saveat=0.0:0.1:1.0, debug = true)
 
