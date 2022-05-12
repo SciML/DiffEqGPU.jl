@@ -304,11 +304,10 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I;kwar
         ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
         if typeof(alg) <: GPUTsit5
             #Adaptive version only works with saveat
-            if haskey(kwargs, :saveat)
-                saveat = kwargs[:saveat]
-                solus = vectorized_asolve(ensembleprob.prob, ps, GPUSimpleATsit5(); saveat)
+            if !haskey(kwargs, :adaptive) || kwargs[:adaptive]
+                solus = vectorized_asolve(ensembleprob.prob, ps, GPUSimpleATsit5(); kwargs...)
             else
-                solus = vectorized_solve(ensembleprob.prob, ps, GPUSimpleTsit5())
+                solus = vectorized_solve(ensembleprob.prob, ps, GPUSimpleTsit5(); kwargs...)
             end
             _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
             sol = solve(ensembleprob.prob, Tsit5(); kwargs..., callback=_callback, merge_callbacks=false,

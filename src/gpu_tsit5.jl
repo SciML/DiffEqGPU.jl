@@ -12,10 +12,9 @@ Adapt.adapt_structure(to, prob::ODEProblem{<:Any, <:Any, iip}) where {iip} =
 ## GPU solver
 
 function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
-                          dt = 0.1f0, saveat = nothing,
+                          dt, saveat = nothing,
                           save_everystep = true,
-                          # TODO: abstol = 1f-6, reltol = 1f-3,
-                          debug=false)
+                          debug = false, kwargs...)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
@@ -69,22 +68,20 @@ end
 
 function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
     dt=0.1f0, saveat=nothing,
-    save_everystep=true,
+    save_everystep=false,
     abstol=1.0f-6, reltol=1.0f-3,
-    debug=false)
+    debug=false, kwargs...)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
-        error("Don't use adaptive version with saveat == nothing")
-        # if save_everystep
-        #     len = length(prob.tspan[1]:dt:prob.tspan[2])
-        # else
-        #     len = 2
-        # end
-        # ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
-        # us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
+        if save_everystep
+            error("Don't use adaptive version with saveat == nothing and save_everystep = true")
+        else
+            len = 2
+        end
+        ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
     else
-        #error("Not fully implemented yet")  # see the TODO in the kernel
         ts = saveat
         us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
     end
@@ -169,7 +166,7 @@ function tsit5_kernel(_prob, ps, _us, _ts, dt,
     for i in 2:length(ts)
         uprev = u
         k1 = k7
-        t = tspan[1] + dt * i
+        t = tspan[1] + dt * (i - 1)
 
         tmp = uprev + dt * a21 * k1
         k2 = f(tmp, p, t + c1 * dt)
