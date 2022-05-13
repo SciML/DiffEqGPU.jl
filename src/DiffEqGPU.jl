@@ -829,7 +829,7 @@ function tmap(f,args...)
   reduce(vcat,batch_data)
 end
 
-include("./gpu_tsit5.jl")
+include("gpu_tsit5.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUAutonomous, LinSolveGPUSplitFactorize
 
