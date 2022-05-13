@@ -18,7 +18,6 @@ import Base.Threads
 using LinearSolve
 #For gpu_tsit5
 using Adapt, SimpleDiffEq, StaticArrays
-using OrdinaryDiffEq
 
 @kernel function gpu_kernel(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
@@ -299,27 +298,24 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I,adap
     u0 = reduce(hcat,Array(probs[i].u0) for i in 1:length(I))
     p  = reduce(hcat,probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)  for i in 1:length(I))
 
-    sol, solus = 
     if ensemblealg isa EnsembleGPUAutonomous
         ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
         if typeof(alg) <: GPUTsit5
             #Adaptive version only works with saveat
             if adaptive
-                solus = vectorized_asolve(ensembleprob.prob, ps, GPUSimpleATsit5(); kwargs...)
+                ts, us = vectorized_asolve(ensembleprob.prob, ps, GPUSimpleATsit5(); kwargs...)
             else
-                solus = vectorized_solve(ensembleprob.prob, ps, GPUSimpleTsit5(); kwargs...)
+                ts, us = vectorized_solve(ensembleprob.prob, ps, GPUSimpleTsit5(); kwargs...)
             end
-            _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
-            sol = solve(ensembleprob.prob, Tsit5(); kwargs..., callback=_callback, merge_callbacks=false,
-                internalnorm=diffeqgpunorm)
-            sol, solus
+            solus = Array(us)
+            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, ts[:,i], solus[:, i], k = nothing, destats = nothing, calculate_error = false), i)[1] for i in 1:length(probs)]
         else
             error("We don't have solvers implemented for this algorithm yet")
         end
     elseif ensemblealg isa EnsembleGPUArray
-        batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
+        sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
+        [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t, solus[i], destats=sol.destats, retcode=sol.retcode), i)[1] for i in 1:length(probs)]
     end
-    [ensembleprob.output_func(SciMLBase.build_solution(probs[i],alg,sol.t,solus[i],destats=sol.destats,retcode=sol.retcode),i)[1] for i in 1:length(probs)]
 end
 
 function batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)

@@ -49,21 +49,8 @@ function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
     # no useful operations, etc). That's unfortunate though, since this loop is
     # generally slower than the entire GPU execution, and necessitates synchronization
-    sols = ODESolution[]
-    for (i,p) in enumerate(Array(ps))
-        ts_view = if saveat === nothing
-             view(ts, :, i)
-        else
-            ts
-        end
-        us_view = view(us, :, i)
-
-        sol = DiffEqBase.build_solution(remake(prob; p),alg,ts_view,us_view,
-                                        k = nothing, destats = nothing,
-                                        calculate_error = false)
-        push!(sols, sol)
-    end
-    sols
+    #EDIT: Done when using with DiffEqGPU
+    ts,us
 end
 
 function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
@@ -104,21 +91,8 @@ function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
     # no useful operations, etc). That's unfortunate though, since this loop is
     # generally slower than the entire GPU execution, and necessitates synchronization
-    sols = ODESolution[]
-    for (i, p) in enumerate(Array(ps))
-        ts_view = if saveat === nothing
-            view(ts, :, i)
-        else
-            ts
-        end
-        us_view = view(us, :, i)
-
-        sol = DiffEqBase.build_solution(remake(prob; p), alg, ts_view, us_view,
-            k=nothing, destats=nothing,
-            calculate_error=false)
-        push!(sols, sol)
-    end
-    sols
+    #EDIT: Done when using with DiffEqGPU
+    ts, us
 end
 
 # saveat is just a bool here:
