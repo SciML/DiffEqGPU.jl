@@ -312,7 +312,7 @@ function batch_solve(ensembleprob,alg,ensemblealg::EnsembleArrayAlgorithm,I,adap
         else
             error("We don't have solvers implemented for this algorithm yet")
         end
-    elseif ensemblealg isa EnsembleGPUArray
+    else
         sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
         [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t, solus[i], destats=sol.destats, retcode=sol.retcode), i)[1] for i in 1:length(probs)]
     end
