@@ -192,7 +192,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
         return SciMLBase.__solve(ensembleprob,alg,EnsembleSerial();trajectories=1,kwargs...)
     end
 
-    cpu_trajectories = (ensemblealg isa EnsembleGPUArray && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) ? round(Int,trajectories * ensemblealg.cpu_offload) : 0
+    cpu_trajectories = ( (ensemblealg isa EnsembleGPUArray || ensemblealg isa EnsembleGPUAutonomous) && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) ? round(Int,trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
 
     num_batches = gpu_trajectories ÷ batch_size
@@ -201,8 +201,18 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
     if cpu_trajectories != 0 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
 
         cpu_II = (gpu_trajectories+1):trajectories
+        _alg = if typeof(alg) <: GPUTsit5
+            if adaptive == false
+                GPUSimpleTsit5()
+            else
+                GPUSimpleATsit5()
+            end
+        else
+            alg
+        end
+
         function f()
-            SciMLBase.solve_batch(ensembleprob,alg,EnsembleThreads(),cpu_II,nothing;kwargs...)
+            SciMLBase.solve_batch(ensembleprob,_alg,EnsembleThreads(),cpu_II,nothing;kwargs...)
         end
 
         cpu_sols = Channel{Core.Compiler.return_type(f,Tuple{})}(1)
