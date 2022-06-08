@@ -4,8 +4,8 @@ authors = ["Chris Rackauckas", "SciML"]
 version = "1.16.0"
 
 [deps]
-ArrayInterfaceGPUArrays = "6ba088a2-8465-4c0a-af30-387133b534db"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
+ArrayInterfaceGPUArrays = "6ba088a2-8465-4c0a-af30-387133b534db"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
@@ -30,7 +30,7 @@ ChainRulesCore = "1"
 DiffEqBase = "6.81"
 DocStringExtensions = "0.8, 0.9"
 ForwardDiff = "0.10"
-KernelAbstractions = "0.7"
+KernelAbstractions = "0.7, 0.8"
 LinearSolve = "1.15"
 RecursiveArrayTools = "2"
 SciMLBase = "1.26"
