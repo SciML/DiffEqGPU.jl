@@ -23,6 +23,7 @@ StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
+Adapt = "3"
 ArrayInterfaceGPUArrays = "0.1"
 CUDA = "3.1"
 CUDAKernels = "0.3"
