@@ -11,6 +11,7 @@ using CUDA: CUBLAS
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
+import ArrayInterfaceGPUArrays
 using RecursiveArrayTools
 import ZygoteRules
 import Base.Threads
