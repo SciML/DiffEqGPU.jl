@@ -11,9 +11,11 @@ using CUDA: CUBLAS
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
+import ArrayInterfaceGPUArrays
 using RecursiveArrayTools
 import ZygoteRules
 import Base.Threads
+using LinearSolve
 
 @kernel function gpu_kernel(f,du,@Const(u),@Const(p),@Const(t))
     i = @index(Global, Linear)
@@ -311,7 +313,7 @@ function batch_solve_up(ensembleprob,probs,alg,ensemblealg,I,u0,p;kwargs...)
     prob = generate_problem(probs[1],u0,p,jac_prototype,colorvec)
 
     if hasproperty(alg, :linsolve)
-        _alg = remake(alg,linsolve = LinSolveGPUSplitFactorize())
+        _alg = remake(alg,linsolve = LinSolveGPUSplitFactorize(len, -1))
     else
         _alg = alg
     end
@@ -376,7 +378,7 @@ function ChainRulesCore.rrule(::typeof(batch_solve_up),ensembleprob,probs,alg,en
     prob = generate_problem(probs[1],u0,pdual,jac_prototype,colorvec)
 
     if hasproperty(alg, :linsolve)
-        _alg = remake(alg,linsolve = LinSolveGPUSplitFactorize())
+        _alg = remake(alg,linsolve = LinSolveGPUSplitFactorize(len, -1))
     else
         _alg = alg
     end
@@ -641,12 +643,35 @@ end
 
 ### GPU Factorization
 
-struct LinSolveGPUSplitFactorize
+struct LinSolveGPUSplitFactorize <: LinearSolve.SciMLLinearSolveAlgorithm
     len::Int
     nfacts::Int
 end
 LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 
+LinearSolve.needs_concrete_A(::LinSolveGPUSplitFactorize) = true
+
+function LinearSolve.init_cacheval(linsol::LinSolveGPUSplitFactorize, A, b, u, Pl, Pr, maxiters, abstol, reltol, verbose)
+    LinSolveGPUSplitFactorize(linsol.len, length(u)÷linsol.len)
+end
+
+function SciMLBase.solve(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFactorize, args...; kwargs...)
+    p = cache.cacheval
+    A = cache.A
+    b = cache.b
+    x = cache.u
+    version = b isa CuArray ? CUDADevice() : CPU()
+    copyto!(x, b)
+    wgs = workgroupsize(version,p.nfacts)
+    # Note that the matrix is already factorized, only ldiv is needed.
+    wait(version, ldiv!_kernel(version)(A,x,p.len,p.nfacts;
+                                        ndrange=p.nfacts,
+                                        dependencies=Event(version),
+                                        workgroupsize=wgs))
+    SciMLBase.build_linear_solution(alg,x,nothing,cache)
+end
+
+# Old stuff
 function (p::LinSolveGPUSplitFactorize)(x,A,b,update_matrix=false;kwargs...)
     version = b isa CuArray ? CUDADevice() : CPU()
     copyto!(x, b)
