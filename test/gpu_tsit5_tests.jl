@@ -16,8 +16,8 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p=p)
 monteprob = EnsembleProblem(prob, prob_func=prob_func, safetycopy=false)
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUAutonomous(), trajectories=10, adaptive=true, dt=0.1f-1)
-asol = solve(monteprob, GPUTsit5(), EnsembleGPUAutonomous(), trajectories=10, adaptive=false, dt=0.1f-1)
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUAutonomous(), trajectories=10, adaptive=false, dt=0.1f0)
+asol = solve(monteprob, GPUTsit5(), EnsembleGPUAutonomous(), trajectories=10, adaptive=true, dt=0.1f-1)
 
 @test sol.converged == true
 @test asol.converged == true
