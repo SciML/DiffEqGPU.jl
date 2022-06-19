@@ -141,48 +141,6 @@ function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
     ts,us
 end
 
-function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
-    dt=0.1f0, saveat=nothing,
-    save_everystep=false,
-    abstol=1.0f-6, reltol=1.0f-3,
-    debug=false, kwargs...)
-    # if saveat is specified, we'll use a vector of timestamps.
-    # otherwise it's a matrix that may be different for each ODE.
-    if saveat === nothing
-        if save_everystep
-            error("Don't use adaptive version with saveat == nothing and save_everystep = true")
-        else
-            len = 2
-        end
-        ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
-        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
-    else
-        ts = saveat
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
-    end
-
-    kernel = @cuda launch = false atsit5_kernel(prob, ps, us, ts, dt, abstol, reltol,
-        Val(saveat !== nothing), Val(save_everystep))
-    if debug
-        @show CUDA.registers(kernel)
-        @show CUDA.memory(kernel)
-    end
-
-    config = launch_configuration(kernel.fun)
-    threads = min(length(ps), config.threads)
-    # XXX: this kernel performs much better with all blocks active
-    blocks = max(cld(length(ps), threads), config.blocks)
-    threads = cld(length(ps), blocks)
-    kernel(prob, ps, us, ts, dt, abstol, reltol; threads, blocks)
-
-    # we build the actual solution object on the CPU because the GPU would create one
-    # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
-    # no useful operations, etc). That's unfortunate though, since this loop is
-    # generally slower than the entire GPU execution, and necessitates synchronization
-    #EDIT: Done when using with DiffEqGPU
-    ts, us
-end
-
 @inline function step!(integ::GPUT5I{false, S, T}) where {T, S}
 
     c1, c2, c3, c4, c5, c6 = integ.cs;
@@ -268,7 +226,52 @@ function tsit5_kernel(_prob, ps, _us, _ts, dt,
     return nothing
 end
 
-    
+
+#############################Adaptive Version#####################################
+
+function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
+    dt=0.1f0, saveat=nothing,
+    save_everystep=false,
+    abstol=1.0f-6, reltol=1.0f-3,
+    debug=false, kwargs...)
+    # if saveat is specified, we'll use a vector of timestamps.
+    # otherwise it's a matrix that may be different for each ODE.
+    if saveat === nothing
+        if save_everystep
+            error("Don't use adaptive version with saveat == nothing and save_everystep = true")
+        else
+            len = 2
+        end
+        ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
+    else
+        ts = saveat
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
+    end
+
+    kernel = @cuda launch = false atsit5_kernel(prob, ps, us, ts, dt, abstol, reltol,
+        Val(saveat !== nothing), Val(save_everystep))
+    if debug
+        @show CUDA.registers(kernel)
+        @show CUDA.memory(kernel)
+    end
+
+    config = launch_configuration(kernel.fun)
+    threads = min(length(ps), config.threads)
+    # XXX: this kernel performs much better with all blocks active
+    blocks = max(cld(length(ps), threads), config.blocks)
+    threads = cld(length(ps), blocks)
+    kernel(prob, ps, us, ts, dt, abstol, reltol; threads, blocks)
+
+    # we build the actual solution object on the CPU because the GPU would create one
+    # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
+    # no useful operations, etc). That's unfortunate though, since this loop is
+    # generally slower than the entire GPU execution, and necessitates synchronization
+    #EDIT: Done when using with DiffEqGPU
+    ts, us
+end
+
+   
 function build_adaptive_tsit5_controller_cache(::Type{T}) where {T}
 
     beta1 = T(7 / 50)
@@ -281,7 +284,6 @@ function build_adaptive_tsit5_controller_cache(::Type{T}) where {T}
 
     return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
 end
-
 
 @inline function step!(integ::GPUAT5I{false, S, T}) where {S, T}
     
@@ -404,18 +406,7 @@ function atsit5_kernel(_prob, ps, _us, _ts, dt, abstol, reltol,
         @inbounds us[1] = u0
     end
 
-    u = u0
-    k7 = f(u, p, t)
-
     integ = gpuatsit5_init(prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt, prob.p, abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM)
-    step!(integ)
-    cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(eltype(u0))
-    c1, c2, c3, c4, c5, c6 = cs
-    a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
-    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = as
-    btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = btildes
-
-    beta1, beta2, qmax, qmin, gamma, qoldinit, qold = build_adaptive_tsit5_controller_cache(eltype(u0))
 
     while integ.t < tspan[2]
         step!(integ)
