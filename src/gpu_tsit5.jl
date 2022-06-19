@@ -9,6 +9,46 @@ Adapt.adapt_structure(to, prob::ODEProblem{<:Any, <:Any, iip}) where {iip} =
     )
 
 
+
+mutable struct GPUTsit5Integrator{IIP, S, T, P, F} <: DiffEqBase.AbstractODEIntegrator{GPUTsit5, IIP, S, T}
+    f::F                  # eom
+    uprev::S              # previous state
+    u::S                  # current state
+    tmp::S                # dummy, same as state
+    tprev::T              # previous time
+    t::T                  # current time
+    t0::T                 # initial time, only for reinit
+    dt::T                 # step size
+    tdir::T
+    p::P                  # parameter container
+    u_modified::Bool
+    k1::S                 #intepolants
+    k2::S
+    k3::S
+    k4::S
+    k5::S
+    k6::S
+    k7::S
+    cs::SVector{6, T}     # ci factors cache: time coefficients
+    as::SVector{21, T}    # aij factors cache: solution coefficients
+    rs::SVector{22, T}    # rij factors cache: interpolation coefficients
+end
+const GPUT5I = GPUTsit5Integrator
+
+DiffEqBase.isinplace(::GPUT5I{IIP}) where {IIP} = IIP
+
+#######################################################################################
+# Initialization
+#######################################################################################
+@inline function gputsit5_init(f::F, IIP::Bool, u0::S, t0::T, dt::T, p::P) where {F, P, T, S<:AbstractArray{T}}
+
+    cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
+
+    !IIP && @assert S <: SArray
+
+    integ = GPUT5I{IIP, S, T, P, F}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt, sign(dt), p, true,
+                                    copy(u0), copy(u0), copy(u0), copy(u0), copy(u0), copy(u0), copy(u0), cs, as, rs)
+end
 ## GPU solver
 
 function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
@@ -31,6 +71,7 @@ function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
         us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
     end
 
+    
     kernel = @cuda launch=false tsit5_kernel(prob, ps, us, ts, dt,
                                              Val(saveat !== nothing), Val(save_everystep))
     if debug
@@ -95,6 +136,49 @@ function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
     ts, us
 end
 
+@inline function step!(integ::GPUT5I{false, S, T}) where {T, S}
+
+    c1, c2, c3, c4, c5, c6 = integ.cs;
+    dt = integ.dt; t = integ.t; p = integ.p
+    a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
+
+    tmp = integ.tmp; f = integ.f
+    integ.uprev = integ.u; uprev = integ.u
+
+    if integ.u_modified
+      k1 = f(uprev, p, t)
+      integ.u_modified=false
+    else
+      @inbounds k1 = integ.k7;
+    end
+
+    tmp = uprev+dt*a21*k1
+    k2 = f(tmp, p, t+c1*dt)
+    tmp = uprev+dt*(a31*k1+a32*k2)
+    k3 = f(tmp, p, t+c2*dt)
+    tmp = uprev+dt*(a41*k1+a42*k2+a43*k3)
+    k4 = f(tmp, p, t+c3*dt)
+    tmp = uprev+dt*(a51*k1+a52*k2+a53*k3+a54*k4)
+    k5 = f(tmp, p, t+c4*dt)
+    tmp = uprev+dt*(a61*k1+a62*k2+a63*k3+a64*k4+a65*k5)
+    k6 = f(tmp, p, t+dt)
+
+    integ.u = uprev+dt*((a71*k1+a72*k2+a73*k3+a74*k4)+a75*k5+a76*k6)
+    k7 = f(integ.u, p, t+dt)
+
+    @inbounds begin # Necessary for interpolation
+        integ.k1 = k7; integ.k2 = k2; integ.k3 = k3
+        integ.k4 = k4; integ.k5 = k5; integ.k6 = k6
+        integ.k7 = k7
+    end
+
+    integ.tprev = t
+    integ.t += dt
+
+    return  nothing
+end
+
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
@@ -114,58 +198,24 @@ function tsit5_kernel(_prob, ps, _us, _ts, dt,
         @inbounds view(_ts, :, i)
     end
     us = @inbounds view(_us, :, i)
+    
+    integ = gputsit5_init(prob.f,false,prob.u0, prob.tspan[1], dt, prob.p)
     # TODO: optimize contiguous view to return a CuDeviceArray
-
-    u0 = prob.u0
-    tspan = prob.tspan
-    f = prob.f
-    p = prob.p
-
-    t = tspan[1]
-    tf = prob.tspan[2]
-
-    @inbounds ts[1] = tspan[1]
-    @inbounds us[1] = u0
-
-    u = u0
-    k7 = f(u, p, t)
-
-    cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(eltype(u0))
-    c1, c2, c3, c4, c5, c6 = cs
-    a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
-    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = as
-    btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = btildes
 
     # FSAL
     for i in 2:length(ts)
-        uprev = u
-        k1 = k7
-        t = tspan[1] + dt * (i - 1)
-
-        tmp = uprev + dt * a21 * k1
-        k2 = f(tmp, p, t + c1 * dt)
-        tmp = uprev + dt * (a31 * k1 + a32 * k2)
-        k3 = f(tmp, p, t + c2 * dt)
-        tmp = uprev + dt * (a41 * k1 + a42 * k2 + a43 * k3)
-        k4 = f(tmp, p, t + c3 * dt)
-        tmp = uprev + dt * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4)
-        k5 = f(tmp, p, t + c4 * dt)
-        tmp = uprev + dt * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5)
-        k6 = f(tmp, p, t + dt)
-        u = uprev + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
-        k7 = f(u, p, t + dt)
-
+        step!(integ)
         if saveat
             # TODO
         elseif save_everystep
-            @inbounds us[i] = u
-            @inbounds ts[i] = t
+            @inbounds us[i] = integ.u
+            @inbounds ts[i] = integ.t
         end
     end
 
     if !saveat && !save_everystep
-        @inbounds us[2] = u
-        @inbounds ts[2] = t
+        @inbounds us[2] = integ.u
+        @inbounds ts[2] = integ.t
     end
 
     return nothing
