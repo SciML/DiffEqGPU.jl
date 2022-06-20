@@ -505,7 +505,7 @@ function generate_problem(prob::ODEProblem,u0,p,jac_prototype,colorvec)
         _tgrad = nothing
     end
 
-    f_func = ODEFunction(_f,Wfact = _Wfact!,
+    f_func = ODEFunction{true}(_f,Wfact = _Wfact!,
                         Wfact_t = _Wfact!_t,
                         #colorvec=colorvec,
                         jac_prototype = jac_prototype,
@@ -582,7 +582,7 @@ function generate_problem(prob::SDEProblem,u0,p,jac_prototype,colorvec)
         _tgrad = nothing
     end
 
-    f_func = SDEFunction(_f,_g,Wfact = _Wfact!,
+    f_func = SDEFunction{true}(_f,_g,Wfact = _Wfact!,
                         Wfact_t = _Wfact!_t,
                         #colorvec=colorvec,
                         jac_prototype = jac_prototype,
