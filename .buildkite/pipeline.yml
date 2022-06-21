@@ -9,6 +9,7 @@ steps:
       queue: "juliagpu"
       cuda: "*"
     timeout_in_minutes: 120
+    persist_depot_dirs: ""
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
