@@ -3,13 +3,13 @@ steps:
     plugins:
       - JuliaCI/julia#v1:
           version: "1"
+          persist_depot_dirs: ""
       - JuliaCI/julia-test#v1:
            coverage: false # 1000x slowdown
     agents:
       queue: "juliagpu"
       cuda: "*"
     timeout_in_minutes: 120
-    persist_depot_dirs: ""
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
