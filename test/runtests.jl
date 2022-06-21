@@ -16,10 +16,10 @@ end
 using SafeTestsets, Test
 
 @time @testset "GPU Tsit5" begin include("gpu_tsit5_tests.jl") end
-@time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
-@time @safetestset "EnsembleGPUArray OOP" begin include("ensemblegpuarray_oop.jl") end
-@time @safetestset "EnsembleGPUArray SDE" begin include("ensemblegpuarray_sde.jl") end
-@time @safetestset "EnsembleGPUArray Input Types" begin include("ensemblegpuarray_inputtypes.jl") end
+#@time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
+#@time @safetestset "EnsembleGPUArray OOP" begin include("ensemblegpuarray_oop.jl") end
+#@time @safetestset "EnsembleGPUArray SDE" begin include("ensemblegpuarray_sde.jl") end
+#@time @safetestset "EnsembleGPUArray Input Types" begin include("ensemblegpuarray_inputtypes.jl") end
 
 # Fails, but not locally?
 #@time @safetestset "Reduction" begin include("reduction.jl") end
