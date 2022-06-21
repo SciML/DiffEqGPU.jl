@@ -21,7 +21,7 @@ using SafeTestsets, Test
 @time @safetestset "EnsembleGPUArray Input Types" begin include("ensemblegpuarray_inputtypes.jl") end
 
 # Fails, but not locally?
-#@time @safetestset "Reduction" begin include("reduction.jl") end
+@time @safetestset "Reduction" begin include("reduction.jl") end
 
 @time @safetestset "Reverse Mode AD" begin include("reverse_ad_tests.jl") end
 # Not safe because distributed doesn't play nicely with modules.

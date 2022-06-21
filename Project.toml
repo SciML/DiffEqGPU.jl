@@ -51,7 +51,6 @@ SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-Unitful = "1986cc42-f94f-5a68-af5c-568840ba703d"
 
 [targets]
-test = ["BenchmarkTools", "DiffEqSensitivity", "ForwardDiff", "Flux", "OrdinaryDiffEq", "SafeTestsets", "StaticArrays", "StochasticDiffEq", "Test", "Unitful", "Random"]
+test = ["BenchmarkTools", "DiffEqSensitivity", "ForwardDiff", "Flux", "OrdinaryDiffEq", "SafeTestsets", "StaticArrays", "StochasticDiffEq", "Test", "Random"]
