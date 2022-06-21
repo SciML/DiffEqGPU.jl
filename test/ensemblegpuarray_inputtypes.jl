@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test, Unitful
+using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test
 
 function lorenz(du,u,p,t)
     du[1] = p[1]*(u[2]-u[1])
