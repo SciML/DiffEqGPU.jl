@@ -24,7 +24,7 @@ ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
 Adapt = "3"
-ArrayInterfaceGPUArrays = "0.1"
+ArrayInterfaceGPUArrays = "0.1, 0.2"
 CUDA = "3.1"
 CUDAKernels = "0.4"
 ChainRulesCore = "1"
