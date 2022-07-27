@@ -312,11 +312,6 @@ function batch_solve(ensembleprob, alg, ensemblealg::EnsembleArrayAlgorithm, I, 
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
-    u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
-    p = reduce(hcat,
-               probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)
-               for i in 1:length(I))
-
     if ensemblealg isa EnsembleGPUAutonomous
         ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
         if typeof(alg) <: GPUTsit5
@@ -338,6 +333,11 @@ function batch_solve(ensembleprob, alg, ensemblealg::EnsembleArrayAlgorithm, I, 
             error("We don't have solvers implemented for this algorithm yet")
         end
     else
+        u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
+        p = reduce(hcat,
+                   probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)
+                   for i in 1:length(I))
+
         sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
                                     kwargs...)
         [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t, solus[i],
