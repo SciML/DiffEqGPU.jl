@@ -308,27 +308,35 @@ function batch_solve(ensembleprob, alg, ensemblealg::EnsembleArrayAlgorithm, I, 
             ensembleprob.prob_func(ensembleprob.prob, i, 1)
         end
     end
-    @assert all(p -> p.tspan == probs[1].tspan, probs)
+    @assert all(Base.Fix2((prob1,prob2) -> isequal(prob1.tspan,prob2.tspan), probs[1]), probs)
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
     if ensemblealg isa EnsembleGPUAutonomous
-        ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
+        # @time ps = CuArray(map(I) do i
+        #         probs[i].p
+        # end)
+        # ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
         if typeof(alg) <: GPUTsit5
             #Adaptive version only works with saveat
             if adaptive
                 ts, us = vectorized_asolve(ensembleprob.prob, ps, GPUSimpleATsit5();
                                            kwargs...)
             else
-                ts, us = vectorized_solve(ensembleprob.prob, ps, GPUSimpleTsit5();
+                ts, us = vectorized_solve(cu(probs),ensembleprob.prob, GPUSimpleTsit5();
                                           kwargs...)
             end
             solus = Array(us)
-            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, ts[:, i],
-                                                               solus[:, i], k = nothing,
-                                                               destats = nothing,
-                                                               calculate_error = false), i)[1]
-             for i in 1:length(probs)]
+            solts = Array(ts)
+            [@views ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
+                                                                      solts[:, i],
+                                                                      solus[:, i],
+                                                                      k = nothing,
+                                                                      destats = nothing,
+                                                                      calculate_error = false),
+                                             i)[1]
+             for i in eachindex(probs)]
+
         else
             error("We don't have solvers implemented for this algorithm yet")
         end
