@@ -327,17 +327,16 @@ function batch_solve(ensembleprob, alg,
                 ts, us = vectorized_solve(cu(probs), ensembleprob.prob, GPUSimpleTsit5();
                                           kwargs...)
             end
-            []
-            # solus = Array(us)
-            # solts = Array(ts)
-            # [@views ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
-            #                                                           solts[:, i],
-            #                                                           solus[:, i],
-            #                                                           k = nothing,
-            #                                                           destats = nothing,
-            #                                                           calculate_error = false),
-            #                                  i)[1]
-            #  for i in eachindex(probs)]
+            solus = Array(us)
+            solts = Array(ts)
+            [@views ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
+                                                                      solts[:, i],
+                                                                      solus[:, i],
+                                                                      k = nothing,
+                                                                      destats = nothing,
+                                                                      calculate_error = false),
+                                             i)[1]
+             for i in eachindex(probs)]
 
         else
             error("We don't have solvers implemented for this algorithm yet")

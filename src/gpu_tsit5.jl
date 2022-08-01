@@ -209,9 +209,7 @@ function tsit5_kernel(probs, _us, _ts, dt,
     i >= length(probs) && return
 
     # get the actual problem for this thread
-    # p = @inbounds ps[i]
     prob = @inbounds probs[i]
-    #prob = remake(_prob; p)
 
     # get the input/output arrays for this thread
     ts = if saveat
@@ -396,7 +394,6 @@ function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
     i >= length(probs) && return
 
     # get the actual problem for this thread
-    # p = @inbounds ps[i]
     prob = @inbounds probs[i]
     # get the input/output arrays for this thread
     ts = if saveat
