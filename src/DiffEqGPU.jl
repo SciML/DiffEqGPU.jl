@@ -151,17 +151,18 @@ struct FakeIntegrator{uType, tType, P}
 end
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
+abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
 struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
 struct EnsembleGPUArray <: EnsembleArrayAlgorithm
     cpu_offload::Float64
 end
 
-##Solvers for EnsembleGPUAutonomous
+##Solvers for EnsembleGPUKernel
 abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
 struct GPUTsit5 <: GPUODEAlgorithm end
 
 ##Each solve on param is done separately with and then all of them get merged
-struct EnsembleGPUAutonomous <: EnsembleArrayAlgorithm
+struct EnsembleGPUKernel <: EnsembleKernelAlgorithm
     cpu_offload::Float64
 end
 # Work around the fact that Zygote cannot handle the task system
@@ -170,8 +171,8 @@ function EnsembleGPUArray()
     EnsembleGPUArray(0.2)
 end
 
-function EnsembleGPUAutonomous()
-    EnsembleGPUAutonomous(0.0)
+function EnsembleGPUKernel()
+    EnsembleGPUKernel(0.0)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
@@ -185,7 +186,7 @@ end
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
                            alg::Union{SciMLBase.DEAlgorithm, Nothing,
                                       DiffEqGPU.GPUODEAlgorithm},
-                           ensemblealg::EnsembleArrayAlgorithm;
+                           ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm};
                            trajectories, batch_size = trajectories,
                            unstable_check = (dt, u, p, t) -> false, adaptive = false,
                            kwargs...)
@@ -195,7 +196,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
     end
 
     cpu_trajectories = ((ensemblealg isa EnsembleGPUArray ||
-                         ensemblealg isa EnsembleGPUAutonomous) &&
+                         ensemblealg isa EnsembleGPUKernel) &&
                         ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) ?
                        round(Int, trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
@@ -297,7 +298,7 @@ function diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual}, t)
 end
 diffeqgpunorm(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
 
-function batch_solve(ensembleprob, alg, ensemblealg::EnsembleArrayAlgorithm, I, adaptive;
+function batch_solve(ensembleprob, alg, ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I, adaptive;
                      kwargs...)
     if ensembleprob.safetycopy
         probs = map(I) do i
@@ -313,7 +314,7 @@ function batch_solve(ensembleprob, alg, ensemblealg::EnsembleArrayAlgorithm, I, 
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
-    if ensemblealg isa EnsembleGPUAutonomous
+    if ensemblealg isa EnsembleGPUKernel
         # @time ps = CuArray(map(I) do i
         #         probs[i].p
         # end)
@@ -919,7 +920,7 @@ end
 
 include("gpu_tsit5.jl")
 
-export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUAutonomous, LinSolveGPUSplitFactorize
+export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5
 
