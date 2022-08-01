@@ -171,7 +171,7 @@ function EnsembleGPUArray()
 end
 
 function EnsembleGPUAutonomous()
-    EnsembleGPUAutonomous(0.2)
+    EnsembleGPUAutonomous(0.0)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
@@ -320,10 +320,10 @@ function batch_solve(ensembleprob, alg, ensemblealg::EnsembleArrayAlgorithm, I, 
         if typeof(alg) <: GPUTsit5
             #Adaptive version only works with saveat
             if adaptive
-                ts, us = vectorized_asolve(ensembleprob.prob, ps, GPUSimpleATsit5();
+                ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, GPUSimpleATsit5();
                                            kwargs...)
             else
-                ts, us = vectorized_solve(cu(probs),ensembleprob.prob, GPUSimpleTsit5();
+                ts, us = vectorized_solve(cu(probs), ensembleprob.prob, GPUSimpleTsit5();
                                           kwargs...)
             end
             solus = Array(us)
