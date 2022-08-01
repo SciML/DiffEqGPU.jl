@@ -186,7 +186,8 @@ end
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
                            alg::Union{SciMLBase.DEAlgorithm, Nothing,
                                       DiffEqGPU.GPUODEAlgorithm},
-                           ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm};
+                           ensemblealg::Union{EnsembleArrayAlgorithm,
+                                              EnsembleKernelAlgorithm};
                            trajectories, batch_size = trajectories,
                            unstable_check = (dt, u, p, t) -> false, adaptive = false,
                            kwargs...)
@@ -298,7 +299,9 @@ function diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual}, t)
 end
 diffeqgpunorm(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
 
-function batch_solve(ensembleprob, alg, ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I, adaptive;
+function batch_solve(ensembleprob, alg,
+                     ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
+                     adaptive;
                      kwargs...)
     if ensembleprob.safetycopy
         probs = map(I) do i
@@ -315,10 +318,6 @@ function batch_solve(ensembleprob, alg, ensemblealg::Union{EnsembleArrayAlgorith
     #@assert all(p->p.f === probs[1].f,probs)
 
     if ensemblealg isa EnsembleGPUKernel
-        # @time ps = CuArray(map(I) do i
-        #         probs[i].p
-        # end)
-        # ps = CuArray([SVector{length(probs[i].p)}(probs[i].p) for i in 1:length(I)])
         if typeof(alg) <: GPUTsit5
             #Adaptive version only works with saveat
             if adaptive
