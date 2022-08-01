@@ -308,7 +308,8 @@ function batch_solve(ensembleprob, alg, ensemblealg::EnsembleArrayAlgorithm, I, 
             ensembleprob.prob_func(ensembleprob.prob, i, 1)
         end
     end
-    @assert all(Base.Fix2((prob1,prob2) -> isequal(prob1.tspan,prob2.tspan), probs[1]), probs)
+    @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan), probs[1]),
+                probs)
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
