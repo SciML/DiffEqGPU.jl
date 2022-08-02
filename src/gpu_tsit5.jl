@@ -107,7 +107,7 @@ end
 end
 ## GPU solver
 
-function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
+function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
                           dt, saveat = nothing,
                           save_everystep = true,
                           debug = false, kwargs...)
@@ -119,15 +119,15 @@ function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
         else
             len = 2
         end
-        ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
-        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
+        ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
         error("Not fully implemented yet")  # see the TODO in the kernel
         ts = saveat
         us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
     end
 
-    kernel = @cuda launch=false tsit5_kernel(prob, ps, us, ts, dt,
+    kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt,
                                              Val(saveat !== nothing), Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
@@ -135,11 +135,11 @@ function vectorized_solve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleTsit5;
     end
 
     config = launch_configuration(kernel.fun)
-    threads = min(length(ps), config.threads)
+    threads = min(length(probs), config.threads)
     # XXX: this kernel performs much better with all blocks active
-    blocks = max(cld(length(ps), threads), config.blocks)
-    threads = cld(length(ps), blocks)
-    kernel(prob, ps, us, ts, dt; threads, blocks)
+    blocks = max(cld(length(probs), threads), config.blocks)
+    threads = cld(length(probs), blocks)
+    kernel(probs, us, ts, dt; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -203,14 +203,13 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-function tsit5_kernel(_prob, ps, _us, _ts, dt,
+function tsit5_kernel(probs, _us, _ts, dt,
                       ::Val{saveat}, ::Val{save_everystep}) where {saveat, save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i >= length(ps) && return
+    i >= length(probs) && return
 
     # get the actual problem for this thread
-    p = @inbounds ps[i]
-    prob = remake(_prob; p)
+    prob = @inbounds probs[i]
 
     # get the input/output arrays for this thread
     ts = if saveat
@@ -244,7 +243,7 @@ end
 
 #############################Adaptive Version#####################################
 
-function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
+function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
                            dt = 0.1f0, saveat = nothing,
                            save_everystep = false,
                            abstol = 1.0f-6, reltol = 1.0f-3,
@@ -257,14 +256,14 @@ function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
         else
             len = 2
         end
-        ts = CuMatrix{typeof(dt)}(undef, (len, length(ps)))
-        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(ps)))
+        ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
         ts = saveat
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(probs)))
     end
 
-    kernel = @cuda launch=false atsit5_kernel(prob, ps, us, ts, dt, abstol, reltol,
+    kernel = @cuda launch=false atsit5_kernel(probs, us, ts, dt, abstol, reltol,
                                               Val(saveat !== nothing), Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
@@ -272,11 +271,11 @@ function vectorized_asolve(prob::ODEProblem, ps::CuVector, alg::GPUSimpleATsit5;
     end
 
     config = launch_configuration(kernel.fun)
-    threads = min(length(ps), config.threads)
+    threads = min(length(probs), config.threads)
     # XXX: this kernel performs much better with all blocks active
-    blocks = max(cld(length(ps), threads), config.blocks)
-    threads = cld(length(ps), blocks)
-    kernel(prob, ps, us, ts, dt, abstol, reltol; threads, blocks)
+    blocks = max(cld(length(probs), threads), config.blocks)
+    threads = cld(length(probs), blocks)
+    kernel(probs, us, ts, dt, abstol, reltol; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -389,15 +388,13 @@ end
     return nothing
 end
 
-function atsit5_kernel(_prob, ps, _us, _ts, dt, abstol, reltol,
+function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
                        ::Val{saveat}, ::Val{save_everystep}) where {saveat, save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i >= length(ps) && return
+    i >= length(probs) && return
 
     # get the actual problem for this thread
-    p = @inbounds ps[i]
-    prob = remake(_prob; p)
-
+    prob = @inbounds probs[i]
     # get the input/output arrays for this thread
     ts = if saveat
         _ts
