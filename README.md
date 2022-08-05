@@ -30,10 +30,11 @@ within-method parallelism, but the solution of the same structure (same `f`) is 
 different choices of `u0` or `p`. For these cases, DiffEqGPU exports the following ensemble algorithms:
 
 - `EnsembleGPUArray`: Utilizes the CuArray setup to parallelize ODE solves across the GPU.
+- `EnsembleGPUKernel`: Utilizes the GPU kernels to parallelize each ODE solve with their separate ODE integrator on each kernel. 
 - `EnsembleCPUArray`: A test version for analyzing the overhead of the array-based parallelism setup.
 
 For more information on using the ensemble interface, see
-[the DiffEqDocs page on ensembles](http://docs.juliadiffeq.org/dev/features/ensemble)
+[the DiffEqDocs page on ensembles](https://docs.sciml.ai/dev/modules/DiffEqDocs/features/ensemble/)
 
 For example, the following solves the Lorenz equation with 10,000 separate random parameters on the GPU:
 
@@ -54,6 +55,41 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
 @time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
 ```
 
+### EnsembleGPUKernel
+
+The `EnsembleGPUKernel` requires a specialized ODE algorithm which is written on the GPU kernel. These implementations are part of DiffEqGPU. These implementations do not allow mutation of arrays, hence use out-of-place (OOP) `ODEProblem`.
+
+#### Support
+
+- `Tsit5`: The kernelized version can be called using `GPUTsit5()` with the `EnsembleProblem`. 
+
+Taking the example above, we simulate the lorenz equation:
+
+```julia
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays
+
+function lorenz(u, p, t)
+    σ = p[1]
+    ρ = p[2]
+    β = p[3]
+    du1 = σ * (u[2] - u[1])
+    du2 = u[1] * (ρ - u[3]) - u[2]
+    du3 = u[1] * u[2] - β * u[3]
+    return SVector{3}(du1, du2, du3)
+end
+
+u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
+tspan = (0.0f0, 10.0f0)
+p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
+prob = ODEProblem{false}(lorenz, u0, tspan, p)
+prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
+
+@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0)
+
+@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = true, dt = 0.1f0, save_everystep = false)
+```
+
 #### Current Support
 
 Automated GPU parameter parallelism support is continuing to be improved, so there are currently a few limitations.
@@ -64,6 +100,8 @@ Not everything is supported yet, but most of the standard features have support,
 - Rosenbrock methods
 - DiscreteCallbacks and ContinuousCallbacks
 - Multiple GPUs over clusters
+
+The EnsembleGPUKernel 
 
 #### Current Limitations
 
