@@ -101,8 +101,6 @@ Not everything is supported yet, but most of the standard features have support,
 - DiscreteCallbacks and ContinuousCallbacks
 - Multiple GPUs over clusters
 
-The EnsembleGPUKernel 
-
 #### Current Limitations
 
 Stiff ODEs require the analytical solution of every derivative function it requires. For example,
