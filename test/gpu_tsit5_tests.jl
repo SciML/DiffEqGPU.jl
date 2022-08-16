@@ -1,4 +1,4 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA
 function lorenz(u, p, t)
     σ = p[1]
     ρ = p[2]
@@ -42,3 +42,27 @@ sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10,
             adaptive = false, dt = 0.1f0)
 asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10,
              adaptive = true, dt = 0.1f-1, abstol = 1.0f-8, reltol = 1.0f-5)
+
+println("Callbacks")
+
+function f(u, p, t)
+    du1 = -u[1]
+    return SVector{1}(du1)
+end
+
+u0 = @SVector [10.0f0]
+prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
+prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
+monteprob = EnsembleProblem(prob, safetycopy = false)
+const V = 1
+
+condition(u, t, integrator) = t == 4.0f0
+
+affect!(integrator) = integrator.u += @SVector[10.0f0]
+
+cb = GPUDiscreteCallback(condition, affect!)
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
+            trajectories = 2,
+            adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true,
+            tstops = CuArray([4.0f0]))

@@ -375,7 +375,7 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
                                    kwargs...)
     else
         ts, us = vectorized_solve(cu(probs), ensembleprob.prob, GPUSimpleTsit5();
-                                  kwargs..., callback = _callback)
+                                  callback= _callback, kwargs...)
     end
     solus = Array(us)
     solts = Array(ts)
