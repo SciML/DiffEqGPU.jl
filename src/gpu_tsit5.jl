@@ -122,13 +122,13 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        _saveat = CuArray{typeof(dt)}(saveat)
+        saveat = CuArray{typeof(dt)}(saveat)
         ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
         us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
     kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt,
-                                             _saveat, Val(save_everystep))
+                                             saveat, Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
         @show CUDA.memory(kernel)
@@ -139,7 +139,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     # XXX: this kernel performs much better with all blocks active
     blocks = max(cld(length(probs), threads), config.blocks)
     threads = cld(length(probs), blocks)
-    kernel(probs, us, ts, dt, _saveat; threads, blocks)
+    kernel(probs, us, ts, dt, saveat; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -280,12 +280,13 @@ function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        ts = saveat
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(probs)))
+        saveat = CuArray{typeof(dt)}(saveat)
+        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
     kernel = @cuda launch=false atsit5_kernel(probs, us, ts, dt, abstol, reltol,
-                                              Val(saveat !== nothing), Val(save_everystep))
+                                              saveat, Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
         @show CUDA.memory(kernel)
@@ -296,7 +297,7 @@ function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
     # XXX: this kernel performs much better with all blocks active
     blocks = max(cld(length(probs), threads), config.blocks)
     threads = cld(length(probs), blocks)
-    kernel(probs, us, ts, dt, abstol, reltol; threads, blocks)
+    kernel(probs, us, ts, dt, abstol, reltol, saveat; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -410,18 +411,14 @@ end
 end
 
 function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
-                       ::Val{saveat}, ::Val{save_everystep}) where {saveat, save_everystep}
+                       saveat, ::Val{save_everystep}) where save_everystep
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i >= length(probs) && return
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
     # get the input/output arrays for this thread
-    ts = if saveat
-        _ts
-    else
-        @inbounds view(_ts, :, i)
-    end
+    ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
     # TODO: optimize contiguous view to return a CuDeviceArray
 
@@ -452,8 +449,7 @@ function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
         step!(integ)
         if saveat === nothing && save_everystep
             error("Do not use saveat == nothing & save_everystep = true in adaptive version")
-        else
-            saveat !== nothing
+        elseif saveat !== nothing
             while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
                 savet = saveat[cur_t]
                 θ = (savet - integ.tprev) / integ.dt
@@ -468,7 +464,7 @@ function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
         end
     end
 
-    if !saveat && !save_everystep
+    if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
