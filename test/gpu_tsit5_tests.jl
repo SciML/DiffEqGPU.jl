@@ -17,7 +17,7 @@ prob_func = (prob, i, repeat) -> remake(prob, p = p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10,
-            adaptive = false, dt = 0.1f0)
+            adaptive = false, dt = 0.01f0)
 asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10,
              adaptive = true, dt = 0.1f-1, abstol = 1.0f-8, reltol = 1.0f-5)
 
@@ -26,21 +26,42 @@ asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10,
 
 ## Regression test
 
-bench_sol = solve(prob, Tsit5(), adaptive = false, dt = 0.1f0)
+bench_sol = solve(prob, Tsit5(), adaptive = false, dt = 0.01f0)
 bench_asol = solve(prob, Tsit5(), dt = 0.1f-1, save_everystep = false, abstol = 1e-8,
                    reltol = 1e-5)
 
-@show norm(bench_sol.u[end] - sol[1].u[end]) < 2e-2
-@show norm(bench_asol.u[end] - asol[1].u[end]) < 1e-4
+@test norm(bench_sol.u[end] - sol[1].u[end]) < 5e-3
+@test norm(bench_asol.u - asol[1].u) < 1e-4
 
 ### solve parameters
 
+saveat = [0.0f0, 4.0f0]
+
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 2,
-            adaptive = false, dt = 0.1f0, saveat = [0.0f0, 4.0f0])
+            adaptive = false, dt = 0.01f0, saveat = saveat)
 
 asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 2,
              adaptive = true, dt = 0.1f-1, abstol = 1.0f-8, reltol = 1.0f-5,
-             saveat = [0.0f0, 4.0f0])
+             saveat = saveat)
+
+bench_sol = solve(prob, Tsit5(), adaptive = false, dt = 0.01f0, saveat = saveat)
+bench_asol = solve(prob, Tsit5(), dt = 0.1f-1, save_everystep = false, abstol = 1e-8,
+                   reltol = 1e-5, saveat = saveat)
+
+@test norm(bench_sol.u - sol[1].u) < 1e-4
+@test norm(bench_asol.u - asol[1].u) < 1e-4
+
+@test length(sol[1].u) == length(saveat)
+@test length(asol[1].u) == length(saveat)
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 2,
+            adaptive = false, dt = 0.01f0, save_everystep = false)
+
+bench_sol = solve(prob, Tsit5(), adaptive = false, dt = 0.01f0, save_everystep = false)
+
+@test norm(bench_sol.u - sol[1].u) < 5e-3
+
+@test length(sol[1].u) == length(asol[1].u)
 
 ## With random parameters
 
