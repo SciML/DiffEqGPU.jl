@@ -411,7 +411,7 @@ end
 end
 
 function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
-                       saveat, ::Val{save_everystep}) where save_everystep
+                       saveat, ::Val{save_everystep}) where {save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i >= length(probs) && return
 
@@ -455,9 +455,10 @@ function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
                 θ = (savet - integ.tprev) / integ.dt
                 b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integ.rs, θ)
                 @inbounds us[cur_t] = integ.uprev +
-                            integ.dt * (b1θ * integ.k1 + b2θ * integ.k2 + b3θ * integ.k3 +
-                             b4θ * integ.k4 + b5θ * integ.k5 + b6θ * integ.k6 +
-                             b7θ * integ.k7)
+                                      integ.dt *
+                                      (b1θ * integ.k1 + b2θ * integ.k2 + b3θ * integ.k3 +
+                                       b4θ * integ.k4 + b5θ * integ.k5 + b6θ * integ.k6 +
+                                       b7θ * integ.k7)
                 @inbounds ts[cur_t] = savet
                 cur_t += 1
             end

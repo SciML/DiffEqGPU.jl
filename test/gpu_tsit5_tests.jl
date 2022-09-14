@@ -33,14 +33,14 @@ bench_asol = solve(prob, Tsit5(), dt = 0.1f-1, save_everystep = false, abstol = 
 @show norm(bench_sol.u[end] - sol[1].u[end]) < 2e-2
 @show norm(bench_asol.u[end] - asol[1].u[end]) < 1e-4
 
-
 ### solve parameters
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 2,
-            adaptive = false, dt = 0.1f0, saveat = [0.0f0,4.0f0])
+            adaptive = false, dt = 0.1f0, saveat = [0.0f0, 4.0f0])
 
 asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 2,
-             adaptive = true, dt = 0.1f-1, abstol = 1.0f-8, reltol = 1.0f-5,saveat = [0.0f0,4.0f0])
+             adaptive = true, dt = 0.1f-1, abstol = 1.0f-8, reltol = 1.0f-5,
+             saveat = [0.0f0, 4.0f0])
 
 ## With random parameters
 
