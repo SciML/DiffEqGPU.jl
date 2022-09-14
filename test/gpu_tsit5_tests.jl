@@ -43,7 +43,8 @@ sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10,
 asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10,
              adaptive = true, dt = 0.1f-1, abstol = 1.0f-8, reltol = 1.0f-5)
 
-println("Callbacks")
+## Callbacks
+@info "Callbacks"
 
 function f(u, p, t)
     du1 = -u[1]
@@ -54,15 +55,22 @@ u0 = @SVector [10.0f0]
 prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
 prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
-const V = 1
 
 condition(u, t, integrator) = t == 4.0f0
 
 affect!(integrator) = integrator.u += @SVector[10.0f0]
 
-cb = GPUDiscreteCallback(condition, affect!)
+gpu_cb = GPUDiscreteCallback(condition, affect!)
+cb = DiscreteCallback(condition, affect!)
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true,
+            adaptive = false, dt = 0.01f0, callback = gpu_cb, merge_callbacks = true,
             tstops = CuArray([4.0f0]))
+
+bench_sol = solve(prob, Tsit5(),
+                  adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
+                  tstops = [4.0f0])
+
+@test norm(bench_sol(4.01f0) - sol[1](4.01f0)) < 2e-2
+@test norm(bench_sol.u - sol[1].u) < 2e-2
