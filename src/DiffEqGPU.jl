@@ -150,22 +150,24 @@ struct FakeIntegrator{uType, tType, P}
     p::P
 end
 
-struct GPUDiscreteCallback{F1, F2, F3, F4} <: SciMLBase.AbstractDiscreteCallback
+struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCallback
     condition::F1
     affect!::F2
     initialize::F3
     finalize::F4
-    #save_positions::BitArray{1}
+    save_positions::F5
     function GPUDiscreteCallback(condition::F1, affect!::F2,
-                                 initialize::F3, finalize::F4) where {F1, F2, F3, F4}
-        new{F1, F2, F3, F4}(condition,
-                            affect!, initialize, finalize)
+                                 initialize::F3, finalize::F4,
+                                 save_positions::F5) where {F1, F2, F3, F4, F5}
+        new{F1, F2, F3, F4, F5}(condition,
+                                affect!, initialize, finalize, save_positions)
     end
 end
 function GPUDiscreteCallback(condition, affect!;
                              initialize = SciMLBase.INITIALIZE_DEFAULT,
-                             finalize = SciMLBase.FINALIZE_DEFAULT)
-    GPUDiscreteCallback(condition, affect!, initialize, finalize)
+                             finalize = SciMLBase.FINALIZE_DEFAULT,
+                             save_positions = (true, true))
+    GPUDiscreteCallback(condition, affect!, initialize, finalize, save_positions)
 end
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
