@@ -52,7 +52,7 @@ function f(u, p, t)
 end
 
 u0 = @SVector [10.0f0]
-prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
+prob = ODEProblem{false}(f, u0, (0.0f0, 100.0f0))
 prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
 
@@ -65,12 +65,14 @@ cb = DiscreteCallback(condition, affect!)
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = false, dt = 0.01f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
             tstops = CuArray([4.0f0]))
 
 bench_sol = solve(prob, Tsit5(),
-                  adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
+                  adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                   tstops = [4.0f0])
 
-@test norm(bench_sol(4.01f0) - sol[1](4.01f0)) < 2e-2
-@test norm(bench_sol.u - sol[1].u) < 2e-2
+@test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 1e-6
+@test norm(bench_sol.u - sol[1].u) < 1e-6
+
+## Float64 Tests
