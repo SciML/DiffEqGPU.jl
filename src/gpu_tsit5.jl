@@ -25,6 +25,7 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
     tstops_idx::Int
     cb::CB
     save_everystep::Bool
+    step_idx::Int
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -97,7 +98,7 @@ const GPUAT5I = GPUATsit5Integrator
 
     integ = GPUT5I{IIP, S, T, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt,
                                             sign(dt), p, true, tstops, 1, callback,
-                                            save_everystep,
+                                            save_everystep, 1,
                                             copy(u0), copy(u0), copy(u0), copy(u0),
                                             copy(u0),
                                             copy(u0), copy(u0), cs, as, rs)
@@ -166,41 +167,42 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     ts, us
 end
 
-function savevalues!(integrator::GPUTsit5Integrator, ts, us, i, force = false)
+function savevalues!(integrator::GPUTsit5Integrator, ts, us, force = false)
     saved, savedexactly = false, false
 
     if integrator.save_everystep || force
         saved = true
         savedexactly = true
-        @inbounds us[i] = integrator.u
-        @inbounds ts[i] = integrator.t
+        @inbounds us[integrator.step_idx] = integrator.u
+        @inbounds ts[integrator.step_idx] = integrator.t
+        integrator.step_idx += 1
     end
 
     saved, savedexactly
 end
 
-@inline function apply_discrete_callback!(integrator, ts, us, idx,
+@inline function apply_discrete_callback!(integrator, ts, us,
                                           callback::GPUDiscreteCallback)
     saved_in_cb = false
     if callback.condition(integrator.u, integrator.t, integrator)
         # handle saveat
-        _, savedexactly = savevalues!(integrator, ts, us, idx)
+        _, savedexactly = savevalues!(integrator, ts, us)
         saved_in_cb = true
-        if callback.save_positions[1]
+        @inbounds if callback.save_positions[1]
             # if already saved then skip saving
-            savedexactly || savevalues!(integrator, ts, us, idx, true)
+            savedexactly || savevalues!(integrator, ts, us, true)
         end
         integrator.u_modified = true
         callback.affect!(integrator)
-        if callback.save_positions[2]
-            savevalues!(integrator, ts, us, idx, true)
+        @inbounds if callback.save_positions[2]
+            savevalues!(integrator, ts, us, true)
             saved_in_cb = true
         end
     end
     integrator.u_modified, saved_in_cb
 end
 
-@inline function step!(integ::GPUT5I{false, S, T}, ts, us, idx) where {T, S}
+@inline function step!(integ::GPUT5I{false, S, T}, ts, us) where {T, S}
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dt
     t = integ.t
@@ -214,10 +216,12 @@ end
     uprev = integ.u
 
     integ.tprev = t
-
+    saved_in_cb = false
+    adv_integ = true
     ## Check if tstops are within the range of time-series
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
        integ.tstops[integ.tstops_idx] < integ.t + integ.dt
+        @cuprintln integ.u[1]
         integ.t = integ.tstops[integ.tstops_idx]
         integ.tstops_idx += 1
     else
@@ -258,7 +262,7 @@ end
     end
 
     if integ.cb !== nothing
-        discrete_modified, saved_in_cb = apply_discrete_callback!(integ, ts, us, idx,
+        discrete_modified, saved_in_cb = apply_discrete_callback!(integ, ts, us,
                                                                   integ.cb)
     else
         saved_in_cb = false
@@ -286,21 +290,24 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
     end
     us = @inbounds view(_us, :, i)
 
-    @inbounds ts[1] = prob.tspan[1]
-    @inbounds us[1] = prob.u0
-
     integ = gputsit5_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
-                          callback, save_everystep)
-    # TODO: optimize contiguous view to return a CuDeviceArray
+    callback, save_everystep)
+
+    @inbounds ts[integ.step_idx] = prob.tspan[1]
+    @inbounds us[integ.step_idx] = prob.u0
+    integ.step_idx += 1
 
     # FSAL
-    for i in 2:length(ts)
-        saved_in_cb = step!(integ, ts, us, i)
+    while integ.step_idx <= length(ts)
+        saved_in_cb = step!(integ, ts, us)
         if saveat
             # TODO
         elseif save_everystep & !saved_in_cb
-            @inbounds us[i] = integ.u
-            @inbounds ts[i] = integ.t
+            @inbounds us[integ.step_idx] = integ.u
+            @inbounds ts[integ.step_idx] = integ.t
+        end
+        if !saved_in_cb
+            integ.step_idx += 1
         end
     end
 
