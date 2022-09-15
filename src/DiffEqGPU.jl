@@ -757,7 +757,7 @@ LinearSolve.needs_concrete_A(::LinSolveGPUSplitFactorize) = true
 
 function LinearSolve.init_cacheval(linsol::LinSolveGPUSplitFactorize, A, b, u, Pl, Pr,
                                    maxiters::Int, abstol, reltol, verbose::Bool, 
-                                   assumptions::OperatorAssumptions)
+                                   assumptions::LinearSolve.OperatorAssumptions)
     LinSolveGPUSplitFactorize(linsol.len, length(u) ÷ linsol.len)
 end
 
