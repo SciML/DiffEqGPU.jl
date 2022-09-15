@@ -148,6 +148,10 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     # Handle tstops
     tstops = cu(tstops)
 
+    if callback !== nothing && !(typeof(callback) <: Tuple{})
+        callback = CallbackSet(callback)
+    end
+
     kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
                                              Val(saveat !== nothing), Val(save_everystep))
     if debug
@@ -205,23 +209,28 @@ end
     integrator.u_modified, saved_in_cb
 end
 
-
-@inline function apply_discrete_callback!(integrator,ts, us, callback::GPUDiscreteCallback, args...)
-    apply_discrete_callback!(integrator, ts, us, apply_discrete_callback!(integrator, ts, us, callback)...,
+@inline function apply_discrete_callback!(integrator, ts, us, callback::GPUDiscreteCallback,
+                                          args...)
+    apply_discrete_callback!(integrator, ts, us,
+                             apply_discrete_callback!(integrator, ts, us, callback)...,
                              args...)
 end
 
-@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool, saved_in_cb::Bool, callback::GPUDiscreteCallback, args...)
-    bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us, apply_discrete_callback!(integrator, ts, us, callback)...,args...)
+@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool,
+                                          saved_in_cb::Bool, callback::GPUDiscreteCallback,
+                                          args...)
+    bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us,
+                                                  apply_discrete_callback!(integrator, ts,
+                                                                           us, callback)...,
+                                                  args...)
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-
-@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool, saved_in_cb::Bool, callback::GPUDiscreteCallback)
+@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool,
+                                          saved_in_cb::Bool, callback::GPUDiscreteCallback)
     bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us, callback)
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
-
 
 @inline function step!(integ::GPUT5I{false, S, T}, ts, us) where {T, S}
     c1, c2, c3, c4, c5, c6 = integ.cs
@@ -283,7 +292,7 @@ end
 
     if integ.cb !== nothing
         _, saved_in_cb = apply_discrete_callback!(integ, ts, us,
-                                                                  integ.cb.discrete_callbacks...)
+                                                  integ.cb.discrete_callbacks...)
     else
         saved_in_cb = false
     end

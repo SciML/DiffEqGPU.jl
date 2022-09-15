@@ -73,7 +73,7 @@ bench_sol = solve(prob, Tsit5(),
                   tstops = [4.0f0])
 
 @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 1e-6
-@test norm(bench_sol.u - sol[1].u) < 1e-6
+@test norm(bench_sol.u - sol[1].u) < 3e-5
 
 @info "Callback: CallbackSets"
 
@@ -96,14 +96,14 @@ cb = CallbackSet(cb_1, cb_2)
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
             adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
-            tstops = CuArray([24.0f0, 40.0f0]))
+            tstops = [24.0f0, 40.0f0])
 
 bench_sol = solve(prob, Tsit5(),
                   adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                  tstops = [[24.0f0, 40.0f0]])
+                  tstops = [24.0f0, 40.0f0])
 
 @test norm(bench_sol(24.0f0) - sol[1](24.0f0)) < 1e-6
 @test norm(bench_sol(40.0f0) - sol[1](40.0f0)) < 1e-6
-@test norm(bench_sol.u - sol[1].u) < 1e-6
+@test norm(bench_sol.u - sol[1].u) < 2e-5
 
-## Float64 Tests
+# Float64 Tests
