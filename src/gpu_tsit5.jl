@@ -221,7 +221,6 @@ end
     ## Check if tstops are within the range of time-series
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
        integ.tstops[integ.tstops_idx] < integ.t + integ.dt
-        @cuprintln integ.u[1]
         integ.t = integ.tstops[integ.tstops_idx]
         integ.tstops_idx += 1
     else
@@ -291,7 +290,7 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
     us = @inbounds view(_us, :, i)
 
     integ = gputsit5_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
-    callback, save_everystep)
+                          callback, save_everystep)
 
     @inbounds ts[integ.step_idx] = prob.tspan[1]
     @inbounds us[integ.step_idx] = prob.u0
