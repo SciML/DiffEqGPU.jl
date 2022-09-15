@@ -31,7 +31,7 @@ bench_asol = solve(prob, Tsit5(), dt = 0.1f-1, save_everystep = false, abstol = 
                    reltol = 1e-5)
 
 @test norm(bench_sol.u[end] - sol[1].u[end]) < 5e-3
-@test norm(bench_asol.u - asol[1].u) < 1e-4
+@test norm(bench_asol.u - asol[1].u) < 4e-4
 
 ### solve parameters
 
