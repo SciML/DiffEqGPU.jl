@@ -75,4 +75,35 @@ bench_sol = solve(prob, Tsit5(),
 @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 1e-6
 @test norm(bench_sol.u - sol[1].u) < 1e-6
 
+@info "Callback: CallbackSets"
+
+condition_1(u, t, integrator) = t == 24.0f0
+
+condition_2(u, t, integrator) = t == 40.0f0
+
+affect!(integrator) = integrator.u += @SVector[10.0f0]
+
+gpu_cb_1 = GPUDiscreteCallback(condition_1, affect!)
+gpu_cb_2 = GPUDiscreteCallback(condition_2, affect!)
+
+gpu_cb = CallbackSet(gpu_cb_1, gpu_cb_2)
+
+cb_1 = DiscreteCallback(condition_1, affect!)
+cb_2 = DiscreteCallback(condition_2, affect!)
+
+cb = CallbackSet(cb_1, cb_2)
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
+            trajectories = 2,
+            adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            tstops = CuArray([24.0f0, 40.0f0]))
+
+bench_sol = solve(prob, Tsit5(),
+                  adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                  tstops = [[24.0f0, 40.0f0]])
+
+@test norm(bench_sol(24.0f0) - sol[1](24.0f0)) < 1e-6
+@test norm(bench_sol(40.0f0) - sol[1](40.0f0)) < 1e-6
+@test norm(bench_sol.u - sol[1].u) < 1e-6
+
 ## Float64 Tests
