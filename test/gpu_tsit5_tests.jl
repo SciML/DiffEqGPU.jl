@@ -111,8 +111,6 @@ condition_1(u, t, integrator) = t == 24.0f0
 
 condition_2(u, t, integrator) = t == 40.0f0
 
-affect!(integrator) = integrator.u += @SVector[10.0f0]
-
 gpu_cb_1 = GPUDiscreteCallback(condition_1, affect!)
 gpu_cb_2 = GPUDiscreteCallback(condition_2, affect!)
 

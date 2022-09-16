@@ -282,7 +282,7 @@ end
     k7 = f(integ.u, p, t + dt)
 
     @inbounds begin # Necessary for interpolation
-        integ.k1 = k7
+        integ.k1 = k1
         integ.k2 = k2
         integ.k3 = k3
         integ.k4 = k4
@@ -305,8 +305,7 @@ end
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
 function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
-                      saveat, ::Val{save_everystep}) where save_everystep
-
+                      saveat, ::Val{save_everystep}) where {save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(probs) && return
 
