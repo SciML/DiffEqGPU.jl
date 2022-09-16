@@ -8,7 +8,7 @@ function Adapt.adapt_structure(to, prob::ODEProblem{<:Any, <:Any, iip}) where {i
 end
 
 ## Fixed TimeStep Integrator
-mutable struct GPUTsit5Integrator{IIP, S, T, P, F} <:
+mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
                DiffEqBase.AbstractODEIntegrator{GPUTsit5, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -21,6 +21,11 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F} <:
     tdir::T
     p::P                  # parameter container
     u_modified::Bool
+    tstops::TS
+    tstops_idx::Int
+    cb::CB
+    save_everystep::Bool
+    step_idx::Int
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -33,6 +38,13 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F} <:
     rs::SVector{22, T}    # rij factors cache: interpolation coefficients
 end
 const GPUT5I = GPUTsit5Integrator
+
+(integrator::GPUTsit5Integrator)(t) = copy(integrator.u)
+(integrator::GPUTsit5Integrator)(out, t) = (out .= integrator.u)
+
+function DiffEqBase.u_modified!(integrator::GPUTsit5Integrator, bool::Bool)
+    integrator.u_modified = bool
+end
 
 DiffEqBase.isinplace(::GPUT5I{IIP}) where {IIP} = IIP
 
@@ -76,15 +88,20 @@ const GPUAT5I = GPUATsit5Integrator
 # Initialization of Integrators
 #######################################################################################
 @inline function gputsit5_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                               p::P) where {F, P, T, S <: AbstractArray{T}}
+                               p::P, tstops::TS,
+                               callback::CB,
+                               save_everystep::Bool) where {F, P, T, S <: AbstractArray{T},
+                                                            TS, CB}
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
 
-    integ = GPUT5I{IIP, S, T, P, F}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt,
-                                    sign(dt), p, true,
-                                    copy(u0), copy(u0), copy(u0), copy(u0), copy(u0),
-                                    copy(u0), copy(u0), cs, as, rs)
+    integ = GPUT5I{IIP, S, T, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt,
+                                            sign(dt), p, true, tstops, 1, callback,
+                                            save_everystep, 1,
+                                            copy(u0), copy(u0), copy(u0), copy(u0),
+                                            copy(u0),
+                                            copy(u0), copy(u0), cs, as, rs)
 end
 
 @inline function gpuatsit5_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
@@ -110,12 +127,13 @@ end
 function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
                           dt, saveat = nothing,
                           save_everystep = true,
-                          debug = false, kwargs...)
+                          debug = false, callback = nothing, tstops = nothing, kwargs...)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
         if save_everystep
-            len = length(prob.tspan[1]:dt:prob.tspan[2])
+            len_tstops = tstops === nothing ? 0 : length(tstops)
+            len = length(prob.tspan[1]:dt:prob.tspan[2]) + len_tstops
         else
             len = 2
         end
@@ -127,7 +145,14 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
         us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
-    kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt,
+    # Handle tstops
+    tstops = cu(tstops)
+
+    if callback !== nothing && !(typeof(callback) <: Tuple{})
+        callback = CallbackSet(callback)
+    end
+
+    kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
                                              saveat, Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
@@ -139,7 +164,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     # XXX: this kernel performs much better with all blocks active
     blocks = max(cld(length(probs), threads), config.blocks)
     threads = cld(length(probs), blocks)
-    kernel(probs, us, ts, dt, saveat; threads, blocks)
+
+    kernel(probs, us, ts, dt, callback, tstops, saveat; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -149,7 +175,65 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     ts, us
 end
 
-@inline function step!(integ::GPUT5I{false, S, T}) where {T, S}
+function savevalues!(integrator::GPUTsit5Integrator, ts, us, force = false)
+    saved, savedexactly = false, false
+
+    if integrator.save_everystep || force
+        saved = true
+        savedexactly = true
+        @inbounds us[integrator.step_idx] = integrator.u
+        @inbounds ts[integrator.step_idx] = integrator.t
+        integrator.step_idx += 1
+    end
+
+    saved, savedexactly
+end
+
+@inline function apply_discrete_callback!(integrator, ts, us,
+                                          callback::GPUDiscreteCallback)
+    saved_in_cb = false
+    if callback.condition(integrator.u, integrator.t, integrator)
+        # handle saveat
+        _, savedexactly = savevalues!(integrator, ts, us)
+        saved_in_cb = true
+        @inbounds if callback.save_positions[1]
+            # if already saved then skip saving
+            savedexactly || savevalues!(integrator, ts, us, true)
+        end
+        integrator.u_modified = true
+        callback.affect!(integrator)
+        @inbounds if callback.save_positions[2]
+            savevalues!(integrator, ts, us, true)
+            saved_in_cb = true
+        end
+    end
+    integrator.u_modified, saved_in_cb
+end
+
+@inline function apply_discrete_callback!(integrator, ts, us, callback::GPUDiscreteCallback,
+                                          args...)
+    apply_discrete_callback!(integrator, ts, us,
+                             apply_discrete_callback!(integrator, ts, us, callback)...,
+                             args...)
+end
+
+@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool,
+                                          saved_in_cb::Bool, callback::GPUDiscreteCallback,
+                                          args...)
+    bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us,
+                                                  apply_discrete_callback!(integrator, ts,
+                                                                           us, callback)...,
+                                                  args...)
+    discrete_modified || bool, saved_in_cb || saved_in_cb2
+end
+
+@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool,
+                                          saved_in_cb::Bool, callback::GPUDiscreteCallback)
+    bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us, callback)
+    discrete_modified || bool, saved_in_cb || saved_in_cb2
+end
+
+@inline function step!(integ::GPUT5I{false, S, T}, ts, us) where {T, S}
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dt
     t = integ.t
@@ -161,6 +245,19 @@ end
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
+
+    integ.tprev = t
+    saved_in_cb = false
+    adv_integ = true
+    ## Check if tstops are within the range of time-series
+    if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
+       integ.tstops[integ.tstops_idx] <= integ.t + integ.dt
+        integ.t = integ.tstops[integ.tstops_idx]
+        integ.tstops_idx += 1
+    else
+        ##Advance the integrator
+        integ.t += dt
+    end
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -185,7 +282,7 @@ end
     k7 = f(integ.u, p, t + dt)
 
     @inbounds begin # Necessary for interpolation
-        integ.k1 = k7
+        integ.k1 = k1
         integ.k2 = k2
         integ.k3 = k3
         integ.k4 = k4
@@ -194,19 +291,23 @@ end
         integ.k7 = k7
     end
 
-    integ.tprev = t
-    integ.t += dt
+    if integ.cb !== nothing
+        _, saved_in_cb = apply_discrete_callback!(integ, ts, us,
+                                                  integ.cb.discrete_callbacks...)
+    else
+        saved_in_cb = false
+    end
 
-    return nothing
+    return saved_in_cb
 end
 
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-function tsit5_kernel(probs, _us, _ts, dt,
+function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
                       saveat, ::Val{save_everystep}) where {save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i >= length(probs) && return
+    i > length(probs) && return
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -214,6 +315,9 @@ function tsit5_kernel(probs, _us, _ts, dt,
     # get the input/output arrays for this thread
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
+
+    integ = gputsit5_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
+                          callback, save_everystep)
 
     u0 = prob.u0
     tspan = prob.tspan
@@ -226,18 +330,20 @@ function tsit5_kernel(probs, _us, _ts, dt,
             @inbounds us[1] = u0
         end
     else
-        @inbounds ts[1] = tspan[1]
-        @inbounds us[1] = u0
+        @inbounds ts[integ.step_idx] = prob.tspan[1]
+        @inbounds us[integ.step_idx] = prob.u0
     end
-    integ = gputsit5_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p)
 
-    n_steps = length(prob.tspan[1]:dt:prob.tspan[2])
+    integ.step_idx += 1
+
+    len_tstops = tstops === nothing ? 0 : length(tstops)
+    n_steps = length(prob.tspan[1]:dt:prob.tspan[2]) + len_tstops
     # FSAL
-    for i in 2:n_steps
-        step!(integ)
-        if saveat === nothing && save_everystep
-            @inbounds us[i] = integ.u
-            @inbounds ts[i] = integ.t
+    while integ.step_idx <= n_steps
+        saved_in_cb = step!(integ, ts, us)
+        if saveat === nothing && save_everystep & !saved_in_cb
+            @inbounds us[integ.step_idx] = integ.u
+            @inbounds ts[integ.step_idx] = integ.t
         elseif saveat !== nothing
             while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
                 savet = saveat[cur_t]
@@ -251,6 +357,9 @@ function tsit5_kernel(probs, _us, _ts, dt,
                 @inbounds ts[cur_t] = savet
                 cur_t += 1
             end
+        end
+        if !saved_in_cb
+            integ.step_idx += 1
         end
     end
 
@@ -413,7 +522,7 @@ end
 function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
                        saveat, ::Val{save_everystep}) where {save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i >= length(probs) && return
+    i > length(probs) && return
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]

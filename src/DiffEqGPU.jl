@@ -150,6 +150,26 @@ struct FakeIntegrator{uType, tType, P}
     p::P
 end
 
+struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCallback
+    condition::F1
+    affect!::F2
+    initialize::F3
+    finalize::F4
+    save_positions::F5
+    function GPUDiscreteCallback(condition::F1, affect!::F2,
+                                 initialize::F3, finalize::F4,
+                                 save_positions::F5) where {F1, F2, F3, F4, F5}
+        new{F1, F2, F3, F4, F5}(condition,
+                                affect!, initialize, finalize, save_positions)
+    end
+end
+function GPUDiscreteCallback(condition, affect!;
+                             initialize = SciMLBase.INITIALIZE_DEFAULT,
+                             finalize = SciMLBase.FINALIZE_DEFAULT,
+                             save_positions = (true, true))
+    GPUDiscreteCallback(condition, affect!, initialize, finalize, save_positions)
+end
+
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
 struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
@@ -319,16 +339,8 @@ function batch_solve(ensembleprob, alg,
 
     if ensemblealg isa EnsembleGPUKernel
         if typeof(alg) <: GPUTsit5
-            #Adaptive version only works with saveat
-            if adaptive
-                ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, GPUSimpleATsit5();
-                                           kwargs...)
-            else
-                ts, us = vectorized_solve(cu(probs), ensembleprob.prob, GPUSimpleTsit5();
-                                          kwargs...)
-            end
-            solus = Array(us)
-            solts = Array(ts)
+            solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
+                                                 adaptive; kwargs...)
             [@views ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
                                                                       solts[:, i],
                                                                       solus[:, i],
@@ -354,6 +366,22 @@ function batch_solve(ensembleprob, alg,
                                                            retcode = sol.retcode), i)[1]
          for i in 1:length(probs)]
     end
+end
+
+function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptive;
+                               kwargs...)
+    _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
+    #Adaptive version only works with saveat
+    if adaptive
+        ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, GPUSimpleATsit5();
+                                   kwargs...)
+    else
+        ts, us = vectorized_solve(cu(probs), ensembleprob.prob, GPUSimpleTsit5();
+                                  callback = _callback, kwargs...)
+    end
+    solus = Array(us)
+    solts = Array(ts)
+    (solts, solus)
 end
 
 function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
@@ -644,7 +672,8 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
                       prob.kwargs...)
 end
 
-function generate_callback(callback::DiscreteCallback, I, ensemblealg)
+function generate_callback(callback::Union{DiscreteCallback, GPUDiscreteCallback}, I,
+                           ensemblealg)
     if ensemblealg isa EnsembleGPUArray
         cur = CuArray([false for i in 1:I])
     else
@@ -674,8 +703,9 @@ function generate_callback(callback::DiscreteCallback, I, ensemblealg)
                                               dependencies = Event(version),
                                               workgroupsize = wgs))
     end
-
-    return DiscreteCallback(condition, affect!, save_positions = callback.save_positions)
+    return typeof(callback) <: GPUDiscreteCallback ?
+           callback :
+           DiscreteCallback(condition, affect!, save_positions = callback.save_positions)
 end
 
 function generate_callback(callback::ContinuousCallback, I, ensemblealg)
@@ -922,6 +952,6 @@ include("gpu_tsit5.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
-export GPUTsit5
+export GPUTsit5, GPUDiscreteCallback
 
 end # module
