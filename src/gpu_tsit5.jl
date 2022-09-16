@@ -140,9 +140,9 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        error("Not fully implemented yet")  # see the TODO in the kernel
-        ts = saveat
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(ps)))
+        saveat = CuArray{typeof(dt)}(saveat)
+        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
     # Handle tstops
@@ -153,7 +153,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     end
 
     kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
-                                             Val(saveat !== nothing), Val(save_everystep))
+                                             saveat, Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
         @show CUDA.memory(kernel)
@@ -164,7 +164,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     # XXX: this kernel performs much better with all blocks active
     blocks = max(cld(length(probs), threads), config.blocks)
     threads = cld(length(probs), blocks)
-    kernel(probs, us, ts, dt, callback, tstops; threads, blocks)
+
+    kernel(probs, us, ts, dt, callback, tstops, saveat; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -304,7 +305,8 @@ end
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
 function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
-                      ::Val{saveat}, ::Val{save_everystep}) where {saveat, save_everystep}
+                      saveat, ::Val{save_everystep}) where save_everystep
+
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(probs) && return
 
@@ -312,35 +314,57 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
     prob = @inbounds probs[i]
 
     # get the input/output arrays for this thread
-    ts = if saveat
-        _ts
-    else
-        @inbounds view(_ts, :, i)
-    end
+    ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
 
     integ = gputsit5_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
                           callback, save_everystep)
 
-    @inbounds ts[integ.step_idx] = prob.tspan[1]
-    @inbounds us[integ.step_idx] = prob.u0
+    u0 = prob.u0
+    tspan = prob.tspan
+
+    cur_t = 0
+    if saveat !== nothing
+        cur_t = 1
+        if prob.tspan[1] == ts[1]
+            cur_t += 1
+            @inbounds us[1] = u0
+        end
+    else
+        @inbounds ts[integ.step_idx] = prob.tspan[1]
+        @inbounds us[integ.step_idx] = prob.u0
+    end
+
     integ.step_idx += 1
 
+    len_tstops = tstops === nothing ? 0 : length(tstops)
+    n_steps = length(prob.tspan[1]:dt:prob.tspan[2]) + len_tstops
     # FSAL
-    while integ.step_idx <= length(ts)
+    while integ.step_idx <= n_steps
         saved_in_cb = step!(integ, ts, us)
-        if saveat
-            # TODO
-        elseif save_everystep & !saved_in_cb
+        if saveat === nothing && save_everystep & !saved_in_cb
             @inbounds us[integ.step_idx] = integ.u
             @inbounds ts[integ.step_idx] = integ.t
+        elseif saveat !== nothing
+            while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
+                savet = saveat[cur_t]
+                θ = (savet - integ.tprev) / integ.dt
+                b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integ.rs, θ)
+                @inbounds us[cur_t] = integ.uprev +
+                                      integ.dt *
+                                      (b1θ * integ.k1 + b2θ * integ.k2 + b3θ * integ.k3 +
+                                       b4θ * integ.k4 + b5θ * integ.k5 + b6θ * integ.k6 +
+                                       b7θ * integ.k7)
+                @inbounds ts[cur_t] = savet
+                cur_t += 1
+            end
         end
         if !saved_in_cb
             integ.step_idx += 1
         end
     end
 
-    if !saveat && !save_everystep
+    if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
@@ -366,12 +390,13 @@ function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        ts = saveat
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(ts), length(probs)))
+        saveat = CuArray{typeof(dt)}(saveat)
+        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
     kernel = @cuda launch=false atsit5_kernel(probs, us, ts, dt, abstol, reltol,
-                                              Val(saveat !== nothing), Val(save_everystep))
+                                              saveat, Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
         @show CUDA.memory(kernel)
@@ -382,7 +407,7 @@ function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
     # XXX: this kernel performs much better with all blocks active
     blocks = max(cld(length(probs), threads), config.blocks)
     threads = cld(length(probs), blocks)
-    kernel(probs, us, ts, dt, abstol, reltol; threads, blocks)
+    kernel(probs, us, ts, dt, abstol, reltol, saveat; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -496,18 +521,14 @@ end
 end
 
 function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
-                       ::Val{saveat}, ::Val{save_everystep}) where {saveat, save_everystep}
+                       saveat, ::Val{save_everystep}) where {save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(probs) && return
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
     # get the input/output arrays for this thread
-    ts = if saveat
-        _ts
-    else
-        @inbounds view(_ts, :, i)
-    end
+    ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
     # TODO: optimize contiguous view to return a CuDeviceArray
 
@@ -538,22 +559,23 @@ function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
         step!(integ)
         if saveat === nothing && save_everystep
             error("Do not use saveat == nothing & save_everystep = true in adaptive version")
-        else
-            saveat !== nothing
-            while cur_t <= length(ts) && ts[cur_t] <= integ.t
-                savet = ts[cur_t]
+        elseif saveat !== nothing
+            while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
+                savet = saveat[cur_t]
                 θ = (savet - integ.tprev) / integ.dt
                 b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integ.rs, θ)
-                us[cur_t] = integ.uprev +
-                            integ.dt * (b1θ * integ.k1 + b2θ * integ.k2 + b3θ * integ.k3 +
-                             b4θ * integ.k4 + b5θ * integ.k5 + b6θ * integ.k6 +
-                             b7θ * integ.k7)
+                @inbounds us[cur_t] = integ.uprev +
+                                      integ.dt *
+                                      (b1θ * integ.k1 + b2θ * integ.k2 + b3θ * integ.k3 +
+                                       b4θ * integ.k4 + b5θ * integ.k5 + b6θ * integ.k6 +
+                                       b7θ * integ.k7)
+                @inbounds ts[cur_t] = savet
                 cur_t += 1
             end
         end
     end
 
-    if !saveat && !save_everystep
+    if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
