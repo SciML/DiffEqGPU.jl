@@ -159,8 +159,8 @@ struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCall
     function GPUDiscreteCallback(condition::F1, affect!::F2,
                                  initialize::F3, finalize::F4,
                                  save_positions::F5) where {F1, F2, F3, F4, F5}
-        if save_positions != (false,false)
-            error("Don't save positions with static arrays")
+        if save_positions != (false, false)
+            error("Don't save positions with GPU ODE solvers. The solution arrays are immutable.")
         end
         new{F1, F2, F3, F4, F5}(condition,
                                 affect!, initialize, finalize, save_positions)
@@ -951,7 +951,11 @@ function tmap(f, args...)
     reduce(vcat, batch_data)
 end
 
-include("gpu_tsit5.jl")
+include("integrators/types.jl")
+include("integrators/integrator_utils.jl")
+
+include("perform_step/gpu_tsit5_perform_step.jl")
+include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
