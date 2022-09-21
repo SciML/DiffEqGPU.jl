@@ -131,11 +131,14 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
+        timeseries = prob.tspan[1]:dt:prob.tspan[2]
         if save_everystep
-            len_tstops = tstops === nothing ? 0 : length(tstops)
-            len = length(prob.tspan[1]:dt:prob.tspan[2]) + len_tstops
+            len = length(prob.tspan[1]:dt:prob.tspan[2])
         else
             len = 2
+        end
+        if tstops !== nothing
+            len += length(tstops) - count(x-> x in tstops, timeseries)
         end
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
@@ -146,13 +149,18 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     end
 
     # Handle tstops
+    timeseries = prob.tspan[1]:dt:prob.tspan[2]
+    nsteps = length(timeseries)
+    if tstops !== nothing
+        nsteps += length(tstops) - count(x-> x in tstops, timeseries)
+    end
     tstops = cu(tstops)
 
     if callback !== nothing && !(typeof(callback) <: Tuple{})
         callback = CallbackSet(callback)
     end
 
-    kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
+    kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops, nsteps,
                                              saveat, Val(save_everystep))
     if debug
         @show CUDA.registers(kernel)
@@ -165,7 +173,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     blocks = max(cld(length(probs), threads), config.blocks)
     threads = cld(length(probs), blocks)
 
-    kernel(probs, us, ts, dt, callback, tstops, saveat; threads, blocks)
+    kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -304,7 +312,7 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
+function tsit5_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
                       saveat, ::Val{save_everystep}) where {save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(probs) && return
@@ -335,11 +343,8 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops,
     end
 
     integ.step_idx += 1
-
-    len_tstops = tstops === nothing ? 0 : length(tstops)
-    n_steps = length(prob.tspan[1]:dt:prob.tspan[2]) + len_tstops
     # FSAL
-    while integ.step_idx <= n_steps
+    while integ.step_idx <= nsteps
         saved_in_cb = step!(integ, ts, us)
         if saveat === nothing && save_everystep & !saved_in_cb
             @inbounds us[integ.step_idx] = integ.u

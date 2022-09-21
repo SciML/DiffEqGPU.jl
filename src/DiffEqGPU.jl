@@ -159,6 +159,9 @@ struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCall
     function GPUDiscreteCallback(condition::F1, affect!::F2,
                                  initialize::F3, finalize::F4,
                                  save_positions::F5) where {F1, F2, F3, F4, F5}
+        if save_positions != (false,false)
+            error("Don't save positions with static arrays")
+        end
         new{F1, F2, F3, F4, F5}(condition,
                                 affect!, initialize, finalize, save_positions)
     end
@@ -166,7 +169,7 @@ end
 function GPUDiscreteCallback(condition, affect!;
                              initialize = SciMLBase.INITIALIZE_DEFAULT,
                              finalize = SciMLBase.FINALIZE_DEFAULT,
-                             save_positions = (true, true))
+                             save_positions = (false, false))
     GPUDiscreteCallback(condition, affect!, initialize, finalize, save_positions)
 end
 
