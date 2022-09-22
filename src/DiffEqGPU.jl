@@ -159,6 +159,9 @@ struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCall
     function GPUDiscreteCallback(condition::F1, affect!::F2,
                                  initialize::F3, finalize::F4,
                                  save_positions::F5) where {F1, F2, F3, F4, F5}
+        if save_positions != (false, false)
+            error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
+        end
         new{F1, F2, F3, F4, F5}(condition,
                                 affect!, initialize, finalize, save_positions)
     end
@@ -166,7 +169,7 @@ end
 function GPUDiscreteCallback(condition, affect!;
                              initialize = SciMLBase.INITIALIZE_DEFAULT,
                              finalize = SciMLBase.FINALIZE_DEFAULT,
-                             save_positions = (true, true))
+                             save_positions = (false, false))
     GPUDiscreteCallback(condition, affect!, initialize, finalize, save_positions)
 end
 
@@ -948,7 +951,11 @@ function tmap(f, args...)
     reduce(vcat, batch_data)
 end
 
-include("gpu_tsit5.jl")
+include("integrators/types.jl")
+include("integrators/integrator_utils.jl")
+
+include("perform_step/gpu_tsit5_perform_step.jl")
+include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
