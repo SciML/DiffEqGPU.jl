@@ -160,7 +160,7 @@ struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCall
                                  initialize::F3, finalize::F4,
                                  save_positions::F5) where {F1, F2, F3, F4, F5}
         if save_positions != (false, false)
-            error("Don't save positions with GPU ODE solvers. The solution arrays are immutable.")
+            error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
         end
         new{F1, F2, F3, F4, F5}(condition,
                                 affect!, initialize, finalize, save_positions)
