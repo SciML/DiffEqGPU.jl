@@ -67,7 +67,7 @@ end
     if callback.condition(integrator.u, integrator.t, integrator)
         # handle saveat
         _, savedexactly = savevalues!(integrator, ts, us)
-        saved_in_cb = true
+        saved_in_cb = savedexactly
         @inbounds if callback.save_positions[1]
             # if already saved then skip saving
             savedexactly || savevalues!(integrator, ts, us, true)

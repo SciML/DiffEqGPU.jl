@@ -4,15 +4,17 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
                           debug = false, callback = nothing, tstops = nothing, kwargs...)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
+    timeseries = prob.tspan[1]:dt:prob.tspan[2]
+    nsteps = length(timeseries)
     if saveat === nothing
-        timeseries = prob.tspan[1]:dt:prob.tspan[2]
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
+            if tstops !== nothing
+                len += length(tstops) - count(x -> x in tstops, timeseries)
+                nsteps += length(tstops) - count(x -> x in tstops, timeseries)
+            end
         else
             len = 2
-        end
-        if tstops !== nothing
-            len += length(tstops) - count(x -> x in tstops, timeseries)
         end
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
@@ -23,11 +25,6 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     end
 
     # Handle tstops
-    timeseries = prob.tspan[1]:dt:prob.tspan[2]
-    nsteps = length(timeseries)
-    if tstops !== nothing
-        nsteps += length(tstops) - count(x -> x in tstops, timeseries)
-    end
     tstops = cu(tstops)
 
     if callback !== nothing && !(typeof(callback) <: Tuple{})
