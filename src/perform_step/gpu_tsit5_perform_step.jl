@@ -101,11 +101,12 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
 
     integ.step_idx += 1
     # FSAL
-    while integ.step_idx <= nsteps
+    while integ.t < tspan[2]
         saved_in_cb = step!(integ, ts, us)
-        if saveat === nothing && save_everystep & !saved_in_cb
+        if saveat === nothing && save_everystep && !saved_in_cb
             @inbounds us[integ.step_idx] = integ.u
             @inbounds ts[integ.step_idx] = integ.t
+            integ.step_idx += 1
         elseif saveat !== nothing
             while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
                 savet = saveat[cur_t]
@@ -120,9 +121,6 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
                 cur_t += 1
             end
         end
-        if !saved_in_cb
-            integ.step_idx += 1
-        end
     end
 
     if saveat === nothing && !save_everystep
@@ -135,7 +133,7 @@ end
 
 #############################Adaptive Version#####################################
 
-@inline function step!(integ::GPUAT5I{false, S, T}) where {S, T}
+@inline function step!(integ::GPUAT5I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_tsit5_controller_cache(eltype(integ.u))
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dtnew
@@ -219,14 +217,27 @@ end
             if (tf - t - dt) < 1e-14
                 integ.t = tf
             else
-                integ.t += dt
+                if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
+                   integ.tstops[integ.tstops_idx] <= integ.t + dt
+                    integ.t = integ.tstops[integ.tstops_idx]
+                    integ.tstops_idx += 1
+                else
+                    ##Advance the integrator
+                    integ.t += dt
+                end
             end
         end
+    end
+    if integ.cb !== nothing
+        _, saved_in_cb = DiffEqBase.apply_discrete_callback!(integ,
+                                                             integ.cb.discrete_callbacks...)
+    else
+        saved_in_cb = false
     end
     return nothing
 end
 
-function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
+function atsit5_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
                        saveat, ::Val{save_everystep}) where {save_everystep}
     i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
     i > length(probs) && return
@@ -259,10 +270,10 @@ function atsit5_kernel(probs, _us, _ts, dt, abstol, reltol,
     end
 
     integ = gpuatsit5_init(prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt, prob.p,
-                           abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM)
+                           abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback)
 
     while integ.t < tspan[2]
-        step!(integ)
+        step!(integ, ts, us)
         if saveat === nothing && save_everystep
             error("Do not use saveat == nothing & save_everystep = true in adaptive version")
         elseif saveat !== nothing

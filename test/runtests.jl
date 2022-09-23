@@ -26,4 +26,5 @@ using SafeTestsets, Test
 @time @safetestset "Reverse Mode AD" begin include("reverse_ad_tests.jl") end
 # Not safe because distributed doesn't play nicely with modules.
 @time @testset "Distributed Multi-GPU" begin include("distributed_multi_gpu.jl") end
-@time @testset "GPU Tsit5" begin include("gpu_tsit5_tests.jl") end
+@time @testset "GPU Tsit5 Regression" begin include("gpu_tsit5/gpu_tsit5_regression.jl") end
+@time @testset "GPU Tsit5 Callbacks" begin include("gpu_tsit5/gpu_tsit5_callbacks.jl") end

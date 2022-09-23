@@ -50,7 +50,7 @@ DiffEqBase.isinplace(::GPUT5I{IIP}) where {IIP} = IIP
 
 ## Adaptive TimeStep Integrator
 
-mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q} <:
+mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
                DiffEqBase.AbstractODEIntegrator{GPUTsit5, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -65,6 +65,9 @@ mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q} <:
     tdir::T
     p::P                  # parameter container
     u_modified::Bool
+    tstops::TS
+    tstops_idx::Int
+    cb::CB
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -106,20 +109,29 @@ end
 
 @inline function gpuatsit5_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
                                 abstol::TOL, reltol::TOL,
-                                internalnorm::N) where {F, P, S, T, N, TOL}
+                                internalnorm::N, tstops::TS,
+                                callback::CB) where {F, P, S, T, N, TOL, TS, CB}
     cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(T)
 
     !IIP && @assert S <: SArray
 
     qoldinit = eltype(S)(1e-4)
 
-    integ = GPUAT5I{IIP, S, T, P, F, N, TOL, typeof(qoldinit)}(f, copy(u0), copy(u0),
-                                                               copy(u0), t0, t0, t0, tf, dt,
-                                                               dt, sign(tf - t0), p, true,
-                                                               copy(u0), copy(u0), copy(u0),
-                                                               copy(u0), copy(u0), copy(u0),
-                                                               copy(u0), cs, as, btildes,
-                                                               rs, qoldinit, abstol, reltol,
-                                                               internalnorm)
+    integ = GPUAT5I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB}(f, copy(u0),
+                                                                       copy(u0),
+                                                                       copy(u0), t0, t0, t0,
+                                                                       tf, dt,
+                                                                       dt, sign(tf - t0), p,
+                                                                       true, tstops, 1,
+                                                                       callback,
+                                                                       copy(u0), copy(u0),
+                                                                       copy(u0),
+                                                                       copy(u0), copy(u0),
+                                                                       copy(u0),
+                                                                       copy(u0), cs, as,
+                                                                       btildes,
+                                                                       rs, qoldinit, abstol,
+                                                                       reltol,
+                                                                       internalnorm)
 end
 ## GPU solver
