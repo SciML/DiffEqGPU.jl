@@ -24,7 +24,44 @@ function savevalues!(integrator::GPUTsit5Integrator, ts, us, force = false)
     saved, savedexactly
 end
 
-@inline function apply_discrete_callback!(integrator, ts, us,
+@inline function DiffEqBase.apply_discrete_callback!(integrator::GPUATsit5Integrator,
+                                                     callback::GPUDiscreteCallback)
+    saved_in_cb = false
+    if callback.condition(integrator.u, integrator.t, integrator)
+        integrator.u_modified = true
+        callback.affect!(integrator)
+    end
+    integrator.u_modified, saved_in_cb
+end
+
+#Starting: Get bool from first and do next
+@inline function DiffEqBase.apply_discrete_callback!(integrator,
+                                                     callback::GPUDiscreteCallback, args...)
+    DiffEqBase.apply_discrete_callback!(integrator,
+                                        DiffEqBase.apply_discrete_callback!(integrator,
+                                                                            callback)...,
+                                        args...)
+end
+
+@inline function DiffEqBase.apply_discrete_callback!(integrator, discrete_modified::Bool,
+                                                     saved_in_cb::Bool,
+                                                     callback::GPUDiscreteCallback,
+                                                     args...)
+    bool, saved_in_cb2 = DiffEqBase.apply_discrete_callback!(integrator,
+                                                             DiffEqBase.apply_discrete_callback!(integrator,
+                                                                                                 callback)...,
+                                                             args...)
+    discrete_modified || bool, saved_in_cb || saved_in_cb2
+end
+
+@inline function DiffEqBase.apply_discrete_callback!(integrator, discrete_modified::Bool,
+                                                     saved_in_cb::Bool,
+                                                     callback::GPUDiscreteCallback)
+    bool, saved_in_cb2 = DiffEqBase.apply_discrete_callback!(integrator, callback)
+    discrete_modified || bool, saved_in_cb || saved_in_cb2
+end
+
+@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
                                           callback::GPUDiscreteCallback)
     saved_in_cb = false
     if callback.condition(integrator.u, integrator.t, integrator)
@@ -45,14 +82,16 @@ end
     integrator.u_modified, saved_in_cb
 end
 
-@inline function apply_discrete_callback!(integrator, ts, us, callback::GPUDiscreteCallback,
+@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
+                                          callback::GPUDiscreteCallback,
                                           args...)
     apply_discrete_callback!(integrator, ts, us,
                              apply_discrete_callback!(integrator, ts, us, callback)...,
                              args...)
 end
 
-@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool,
+@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
+                                          discrete_modified::Bool,
                                           saved_in_cb::Bool, callback::GPUDiscreteCallback,
                                           args...)
     bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us,
@@ -62,7 +101,8 @@ end
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-@inline function apply_discrete_callback!(integrator, ts, us, discrete_modified::Bool,
+@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
+                                          discrete_modified::Bool,
                                           saved_in_cb::Bool, callback::GPUDiscreteCallback)
     bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us, callback)
     discrete_modified || bool, saved_in_cb || saved_in_cb2
