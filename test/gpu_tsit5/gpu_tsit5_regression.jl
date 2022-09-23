@@ -84,7 +84,7 @@ bench_sol = solve(prob, Tsit5(), adaptive = false, dt = 0.01f0, save_everystep =
 
 @test norm(bench_sol.u - sol[1].u) < 5e-3
 
-@test length(sol[1].u) == length(asol[1].u)
+@test length(sol[1].u) == length(bench_sol.u)
 
 ## With random parameters
 

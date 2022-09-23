@@ -101,11 +101,12 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
 
     integ.step_idx += 1
     # FSAL
-    while integ.step_idx <= nsteps
+    while integ.t < tspan[2]
         saved_in_cb = step!(integ, ts, us)
-        if saveat === nothing && save_everystep & !saved_in_cb
+        if saveat === nothing && save_everystep && !saved_in_cb
             @inbounds us[integ.step_idx] = integ.u
             @inbounds ts[integ.step_idx] = integ.t
+            integ.step_idx += 1
         elseif saveat !== nothing
             while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
                 savet = saveat[cur_t]
@@ -119,9 +120,6 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
                 @inbounds ts[cur_t] = savet
                 cur_t += 1
             end
-        end
-        if !saved_in_cb
-            integ.step_idx += 1
         end
     end
 
