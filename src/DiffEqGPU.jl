@@ -221,7 +221,9 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 
     cpu_trajectories = ((ensemblealg isa EnsembleGPUArray ||
                          ensemblealg isa EnsembleGPUKernel) &&
-                        ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) ?
+                        ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) &&
+                       (typeof(alg) <: GPUTsit5 &&
+                        (haskey(kwargs, :callback) ? kwargs[:callback] === nothing : true)) ?
                        round(Int, trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
 
@@ -959,6 +961,6 @@ include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
-export GPUTsit5, GPUDiscreteCallback
+export GPUTsit5, GPUDiscreteCallback, GPUContinuousCallback
 
 end # module
