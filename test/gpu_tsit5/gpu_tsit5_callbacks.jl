@@ -15,19 +15,30 @@ condition(u, t, integrator) = t == 4.0f0
 
 affect!(integrator) = integrator.u += @SVector[10.0f0]
 
-gpu_cb = GPUDiscreteCallback(condition, affect!)
-cb = DiscreteCallback(condition, affect!, SciMLBase.INITIALIZE_DEFAULT,
-                      SciMLBase.INITIALIZE_DEFAULT, (false, false))
+cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
 @info "Unadaptive version"
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [4.0f0])
 
 bench_sol = solve(prob, Tsit5(),
                   adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                  tstops = [4.0f0])
+
+@test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 1e-6
+@test norm(bench_sol.u - sol[1].u) < 3e-5
+
+#Test the truncation error due to floating point math, encountered when adjusting t for tstops
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
+            trajectories = 2,
+            adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
+            tstops = [4.0f0])
+
+bench_sol = solve(prob, Tsit5(),
+                  adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
                   tstops = [4.0f0])
 
 @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 1e-6
@@ -39,21 +50,14 @@ condition_1(u, t, integrator) = t == 24.0f0
 
 condition_2(u, t, integrator) = t == 40.0f0
 
-gpu_cb_1 = GPUDiscreteCallback(condition_1, affect!)
-gpu_cb_2 = GPUDiscreteCallback(condition_2, affect!)
-
-gpu_cb = CallbackSet(gpu_cb_1, gpu_cb_2)
-
-cb_1 = DiscreteCallback(condition_1, affect!, SciMLBase.INITIALIZE_DEFAULT,
-                        SciMLBase.INITIALIZE_DEFAULT, (false, false))
-cb_2 = DiscreteCallback(condition_2, affect!, SciMLBase.INITIALIZE_DEFAULT,
-                        SciMLBase.INITIALIZE_DEFAULT, (false, false))
+cb_1 = DiscreteCallback(condition_1, affect!; save_positions = (false, false))
+cb_2 = DiscreteCallback(condition_2, affect!; save_positions = (false, false))
 
 cb = CallbackSet(cb_1, cb_2)
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [24.0f0, 40.0f0])
 
 bench_sol = solve(prob, Tsit5(),
@@ -66,16 +70,9 @@ bench_sol = solve(prob, Tsit5(),
 
 @info "saveat and callbacks"
 
-cb_1 = DiscreteCallback(condition_1, affect!, SciMLBase.INITIALIZE_DEFAULT,
-                        SciMLBase.INITIALIZE_DEFAULT, (false, false))
-cb_2 = DiscreteCallback(condition_2, affect!, SciMLBase.INITIALIZE_DEFAULT,
-                        SciMLBase.INITIALIZE_DEFAULT, (false, false))
-
-cb = CallbackSet(cb_1, cb_2)
-
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 40.0f0])
 
 bench_sol = solve(prob, Tsit5(),
@@ -90,7 +87,7 @@ bench_sol = solve(prob, Tsit5(),
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [24.0f0, 40.0f0], save_everystep = false)
 
 bench_sol = solve(prob, Tsit5(),
@@ -103,13 +100,11 @@ bench_sol = solve(prob, Tsit5(),
 
 @info "Adaptive version"
 
-gpu_cb = GPUDiscreteCallback(condition, affect!)
-cb = DiscreteCallback(condition, affect!, SciMLBase.INITIALIZE_DEFAULT,
-                      SciMLBase.INITIALIZE_DEFAULT, (false, false))
+cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = true, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [4.0f0])
 
 bench_sol = solve(prob, Tsit5(),
@@ -124,7 +119,7 @@ bench_sol = solve(prob, Tsit5(),
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = true, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [24.0f0, 40.0f0])
 
 bench_sol = solve(prob, Tsit5(),
@@ -140,7 +135,7 @@ bench_sol = solve(prob, Tsit5(),
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = true, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 40.0f0])
 
 bench_sol = solve(prob, Tsit5(),
@@ -156,12 +151,12 @@ bench_sol = solve(prob, Tsit5(),
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
-            adaptive = false, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+            adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
             tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 40.0f0])
 
 asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
              trajectories = 2,
-             adaptive = true, dt = 1.0f0, callback = gpu_cb, merge_callbacks = true,
+             adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
              tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 40.0f0])
 
 @test norm(asol[1](24.0f0) - sol[1](24.0f0)) < 1e-6

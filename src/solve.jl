@@ -27,10 +27,6 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     # Handle tstops
     tstops = cu(tstops)
 
-    if callback !== nothing && !(typeof(callback) <: Tuple{})
-        callback = CallbackSet(callback)
-    end
-
     kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops, nsteps,
                                              saveat, Val(save_everystep))
     if debug
@@ -79,10 +75,6 @@ function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
     end
 
     tstops = cu(tstops)
-
-    if callback !== nothing && !(typeof(callback) <: Tuple{})
-        callback = CallbackSet(callback)
-    end
 
     kernel = @cuda launch=false atsit5_kernel(probs, us, ts, dt, callback, tstops, abstol,
                                               reltol,
