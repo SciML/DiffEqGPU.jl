@@ -382,11 +382,13 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
                                kwargs...)
     _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
 
-    if !isempty(_callback.continuous_callbacks)
-        error("Continuous callbacks are not supported yet in EnsembleGPUKernel.")
+    if _callback !== nothing
+        if !isempty(_callback.continuous_callbacks)
+            error("Continuous callbacks are not supported yet in EnsembleGPUKernel.")
+        end
+        _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
+                                         _callback.discrete_callbacks)...)
     end
-    _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
-                                     _callback.discrete_callbacks)...)
     #Adaptive version only works with saveat
     if adaptive
         ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, GPUSimpleATsit5();
