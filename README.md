@@ -93,7 +93,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 Using callbacks with EnsembleGPUKernel methods requires their own GPU-compatible callback implementations. MWE:
 
-```
+```julia
+using DiffEqGPU, StaticArrays, OrdinaryDiffEq
 function f(u, p, t)
     du1 = -u[1]
     return SVector{1}(du1)
@@ -107,7 +108,7 @@ monteprob = EnsembleProblem(prob, safetycopy = false)
 condition(u, t, integrator) = t == 4.0f0
 affect!(integrator) = integrator.u += @SVector[10.0f0]
 
-gpu_cb = GPUDiscreteCallback(condition, affect!)
+gpu_cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 10,
