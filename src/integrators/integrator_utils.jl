@@ -108,15 +108,18 @@ end
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-@inline function interpolate(integrator,t)
+@inline function interpolate(integrator, t)
     θ = (t - integrator.tprev) / integrator.dt
     b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integrator.rs, θ)
-    return integrator.uprev + integrator.dt * (b1θ * integrator.k1 + b2θ * integrator.k2 + b3θ * integrator.k3 +
-                           b4θ * integrator.k4 + b5θ * integrator.k5 + b6θ * integrator.k6 +
-                           b7θ * integrator.k7)
+    return integrator.uprev +
+           integrator.dt *
+           (b1θ * integrator.k1 + b2θ * integrator.k2 + b3θ * integrator.k3 +
+            b4θ * integrator.k4 + b5θ * integrator.k5 + b6θ * integrator.k6 +
+            b7θ * integrator.k7)
 end
 
-@inline function _change_t_via_interpolation!(integrator, t,  modify_save_endpoint::Type{Val{T}}) where {T}
+@inline function _change_t_via_interpolation!(integrator, t,
+                                              modify_save_endpoint::Type{Val{T}}) where {T}
     # Can get rid of an allocation here with a function
     # get_tmp_arr(integrator.cache) which gives a pointer to some
     # cache array which can be modified.
@@ -129,14 +132,17 @@ end
     end
 end
 @inline function DiffEqBase.change_t_via_interpolation!(integrator::GPUTsit5Integrator, t,
-                                                modify_save_endpoint::Type{Val{T}} = Val{false}) where {T}
+                                                        modify_save_endpoint::Type{Val{T}} = Val{
+                                                                                                 false
+                                                                                                 }) where {
+                                                                                                           T
+                                                                                                           }
     _change_t_via_interpolation!(integrator, t, modify_save_endpoint)
 end
 
 @inline function apply_callback!(integrator,
-                         callback::GPUContinuousCallback,
-                         cb_time, prev_sign, event_idx)
-
+                                 callback::GPUContinuousCallback,
+                                 cb_time, prev_sign, event_idx)
     DiffEqBase.change_t_via_interpolation!(integrator, integrator.tprev + cb_time)
 
     saved_in_cb = true
@@ -161,8 +167,8 @@ end
 end
 
 @inline function handle_callbacks!(integrator::GPUATsit5Integrator)
-    discrete_callbacks = integrator.callbacks.discrete_callbacks
-    continuous_callbacks = integrator.callbacks.continuous_callbacks
+    discrete_callbacks = integrator.callback.discrete_callbacks
+    continuous_callbacks = integrator.callback.continuous_callbacks
     atleast_one_callback = false
 
     continuous_modified = false
@@ -178,17 +184,17 @@ end
             integrator.event_last_time = idx
             integrator.vector_event_last_time = event_idx
             continuous_modified, saved_in_cb = apply_callback!(integrator,
-                                                                          continuous_callbacks[1],
-                                                                          time, upcrossing,
-                                                                          event_idx)
+                                                               continuous_callbacks[1],
+                                                               time, upcrossing,
+                                                               event_idx)
         else
             integrator.event_last_time = 0
             integrator.vector_event_last_time = 1
         end
     end
     if !(typeof(discrete_callbacks) <: Tuple{})
-        discrete_modified, saved_in_cb = apply_discrete_callback!(integrator,
-                                                                  discrete_callbacks...)
+        discrete_modified, saved_in_cb = DiffEqBase.apply_discrete_callback!(integrator,
+                                                                             discrete_callbacks...)
         return discrete_modified, saved_in_cb
     end
 
@@ -196,8 +202,8 @@ end
 end
 
 @inline function handle_callbacks!(integrator::GPUTsit5Integrator, ts, us)
-    discrete_callbacks = integrator.callbacks.discrete_callbacks
-    continuous_callbacks = integrator.callbacks.continuous_callbacks
+    discrete_callbacks = integrator.callback.discrete_callbacks
+    continuous_callbacks = integrator.callback.continuous_callbacks
     atleast_one_callback = false
 
     continuous_modified = false
@@ -213,9 +219,9 @@ end
             integrator.event_last_time = idx
             integrator.vector_event_last_time = event_idx
             continuous_modified, saved_in_cb = apply_callback!(integrator,
-                                                                          continuous_callbacks[1],
-                                                                          time, upcrossing,
-                                                                          event_idx)
+                                                               continuous_callbacks[1],
+                                                               time, upcrossing,
+                                                               event_idx)
         else
             integrator.event_last_time = 0
             integrator.vector_event_last_time = 1
@@ -230,8 +236,12 @@ end
     return false, saved_in_cb
 end
 
-@inline function DiffEqBase.find_callback_time(integrator, callback::DiffEqGPU.GPUContinuousCallback, counter)
-    event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(integrator, callback, counter)
+@inline function DiffEqBase.find_callback_time(integrator,
+                                               callback::DiffEqGPU.GPUContinuousCallback,
+                                               counter)
+    event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(integrator,
+                                                                                                               callback,
+                                                                                                               counter)
 
     if event_occurred
         if callback.condition === nothing
@@ -240,7 +250,9 @@ end
             top_t = integrator.t
             bottom_t = integrator.tprev
             if callback.rootfind != SciMLBase.NoRootFind
-                zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
+                function zero_func(abst, p = nothing)
+                    DiffEqBase.get_condition(integrator, callback, abst)
+                end
                 if zero_func(top_t) == 0
                     Θ = top_t
                 else
@@ -255,9 +267,12 @@ end
                         sign(zero_func(bottom_t)) * sign_top >= zero(sign_top) &&
                             error("Double callback crossing floating pointer reducer errored. Report this issue.")
                     end
-                    Θ = DiffEqBase.bisection(zero_func, (bottom_t, top_t), isone(integrator.tdir),
-                                  callback.rootfind, callback.abstol, callback.reltol)
-                    integrator.last_event_error = DiffEqBase.ODE_DEFAULT_NORM(zero_func(Θ), Θ)
+                    Θ = DiffEqBase.bisection(zero_func, (bottom_t, top_t),
+                                             isone(integrator.tdir),
+                                             callback.rootfind, callback.abstol,
+                                             callback.reltol)
+                    integrator.last_event_error = DiffEqBase.ODE_DEFAULT_NORM(zero_func(Θ),
+                                                                              Θ)
                 end
                 new_t = Θ - integrator.tprev
             else
@@ -287,16 +302,16 @@ end
     return callback.condition(tmp, abst, integrator)
 end
 
-
 # interp_points = 0 or equivalently nothing
-@inline function DiffEqBase.determine_event_occurance(integrator, callback::DiffEqGPU.GPUContinuousCallback,
-                                           counter)
+@inline function DiffEqBase.determine_event_occurance(integrator,
+                                                      callback::DiffEqGPU.GPUContinuousCallback,
+                                                      counter)
     event_occurred = false
     interp_index = 0
 
     # Check if the event occured
     previous_condition = callback.condition(integrator.uprev, integrator.tprev,
-                                                integrator)
+                                            integrator)
 
     prev_sign = 0.0
     next_sign = 0.0

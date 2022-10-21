@@ -246,8 +246,10 @@ function GPUContinuousCallback(condition, affect!;
 end
 
 function Base.convert(::Type{GPUContinuousCallback}, x::T) where {T <: ContinuousCallback}
-    GPUContinuousCallback(x.condition, x.affect!, x.affect_neg!, x.initialize, x.finalize,x.idxs,x.rootfind,x.interp_points,
-                        Tuple(x.save_positions),x.dtrelax,100*eps(Float32),x.reltol,x.repeat_nudge)
+    GPUContinuousCallback(x.condition, x.affect!, x.affect_neg!, x.initialize, x.finalize,
+                          x.idxs, x.rootfind, x.interp_points,
+                          Tuple(x.save_positions), x.dtrelax, 100 * eps(Float32), x.reltol,
+                          x.repeat_nudge)
 end
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
@@ -477,8 +479,9 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
     _callback = CallbackSet(generate_callback(probs[1], length(I), ensemblealg; kwargs...))
 
     _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
-                                        _callback.discrete_callbacks)...,convert.(DiffEqGPU.GPUContinuousCallback,
-                                        _callback.continuous_callbacks)...)
+                                     _callback.discrete_callbacks)...,
+                            convert.(DiffEqGPU.GPUContinuousCallback,
+                                     _callback.continuous_callbacks)...)
 
     #Adaptive version only works with saveat
     if adaptive

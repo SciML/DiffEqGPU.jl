@@ -108,7 +108,8 @@ const GPUAT5I = GPUATsit5Integrator
 
     integ = GPUT5I{IIP, S, T, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt,
                                             sign(dt), p, true, tstops, 1, callback,
-                                            save_everystep, 1, event_last_time, vector_event_last_time,
+                                            save_everystep, 1, event_last_time,
+                                            vector_event_last_time,
                                             last_event_error,
                                             copy(u0), copy(u0), copy(u0), copy(u0),
                                             copy(u0),
