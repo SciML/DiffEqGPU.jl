@@ -23,9 +23,12 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
     save_everystep::Bool
     step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -39,8 +42,9 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
 end
 const GPUT5I = GPUTsit5Integrator
 
-(integrator::GPUTsit5Integrator)(t) = copy(integrator.u)
-(integrator::GPUTsit5Integrator)(out, t) = (out .= integrator.u)
+function (integrator::GPUTsit5Integrator)(t)
+    interpolate(integrator, t)
+end
 
 function DiffEqBase.u_modified!(integrator::GPUTsit5Integrator, bool::Bool)
     integrator.u_modified = bool
@@ -67,7 +71,7 @@ mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -98,10 +102,14 @@ const GPUAT5I = GPUATsit5Integrator
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUT5I{IIP, S, T, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt,
                                             sign(dt), p, true, tstops, 1, callback,
-                                            save_everystep, 1,
+                                            save_everystep, 1, event_last_time, vector_event_last_time,
+                                            last_event_error,
                                             copy(u0), copy(u0), copy(u0), copy(u0),
                                             copy(u0),
                                             copy(u0), copy(u0), cs, as, rs)
