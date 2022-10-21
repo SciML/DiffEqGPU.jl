@@ -178,6 +178,78 @@ function Base.convert(::Type{GPUDiscreteCallback}, x::T) where {T <: DiscreteCal
                         Tuple(x.save_positions))
 end
 
+struct GPUContinuousCallback{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R} <:
+       SciMLBase.AbstractContinuousCallback
+    condition::F1
+    affect!::F2
+    affect_neg!::F3
+    initialize::F4
+    finalize::F5
+    idxs::I
+    rootfind::SciMLBase.RootfindOpt
+    interp_points::Int
+    save_positions::F6
+    dtrelax::R
+    abstol::T
+    reltol::T2
+    repeat_nudge::T3
+    function GPUContinuousCallback(condition::F1, affect!::F2, affect_neg!::F3,
+                                   initialize::F4, finalize::F5, idxs::I, rootfind,
+                                   interp_points, save_positions::F6, dtrelax::R, abstol::T,
+                                   reltol::T2,
+                                   repeat_nudge::T3) where {F1, F2, F3, F4, F5, F6, T, T2,
+                                                            T3, I, R
+                                                            }
+        if save_positions != (false, false)
+            error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
+        end
+        new{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R}(condition,
+                                                     affect!, affect_neg!,
+                                                     initialize, finalize, idxs, rootfind,
+                                                     interp_points,
+                                                     save_positions,
+                                                     dtrelax, abstol, reltol, repeat_nudge)
+    end
+end
+
+function GPUContinuousCallback(condition, affect!, affect_neg!;
+                               initialize = SciMLBase.INITIALIZE_DEFAULT,
+                               finalize = SciMLBase.FINALIZE_DEFAULT,
+                               idxs = nothing,
+                               rootfind = LeftRootFind,
+                               save_positions = (false, false),
+                               interp_points = 10,
+                               dtrelax = 1,
+                               abstol = 10eps(Float32), reltol = 0,
+                               repeat_nudge = 1 // 100)
+    GPUContinuousCallback(condition, affect!, affect_neg!, initialize, finalize,
+                          idxs,
+                          rootfind, interp_points,
+                          save_positions,
+                          dtrelax, abstol, reltol, repeat_nudge)
+end
+
+function GPUContinuousCallback(condition, affect!;
+                               initialize = SciMLBase.INITIALIZE_DEFAULT,
+                               finalize = SciMLBase.FINALIZE_DEFAULT,
+                               idxs = nothing,
+                               rootfind = LeftRootFind,
+                               save_positions = (false, false),
+                               affect_neg! = affect!,
+                               interp_points = 10,
+                               dtrelax = 1,
+                               abstol = 10eps(Float32), reltol = 0, repeat_nudge = 1 // 100)
+    GPUContinuousCallback(condition, affect!, affect_neg!, initialize, finalize, idxs,
+                          rootfind, interp_points,
+                          save_positions,
+                          dtrelax, abstol, reltol, repeat_nudge)
+end
+
+function Base.convert(::Type{GPUContinuousCallback}, x::T) where {T <: ContinuousCallback}
+    GPUContinuousCallback(x.condition, x.affect!, x.affect_neg!, x.initialize, x.finalize,x.idxs,x.rootfind,x.interp_points,
+                        Tuple(x.save_positions),x.dtrelax,100*eps(Float32),x.reltol,x.repeat_nudge)
+end
+
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
 """
@@ -392,7 +464,7 @@ function batch_solve(ensembleprob, alg,
                    for i in 1:length(I))
 
         sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
-                                    kwargs...)
+                                    adaptive = adaptive, kwargs...)
         [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t, solus[i],
                                                            destats = sol.destats,
                                                            retcode = sol.retcode), i)[1]
@@ -402,15 +474,12 @@ end
 
 function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptive;
                                kwargs...)
-    _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
+    _callback = CallbackSet(generate_callback(probs[1], length(I), ensemblealg; kwargs...))
 
-    if _callback !== nothing
-        if !isempty(_callback.continuous_callbacks)
-            error("Continuous callbacks are not supported yet in EnsembleGPUKernel.")
-        end
-        _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
-                                         _callback.discrete_callbacks)...)
-    end
+    _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
+                                        _callback.discrete_callbacks)...,convert.(DiffEqGPU.GPUContinuousCallback,
+                                        _callback.continuous_callbacks)...)
+
     #Adaptive version only works with saveat
     if adaptive
         ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, GPUSimpleATsit5();
