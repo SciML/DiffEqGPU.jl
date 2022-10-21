@@ -131,7 +131,7 @@ end
         #integrator.dt = integrator.t - integrator.tprev
     end
 end
-@inline function DiffEqBase.change_t_via_interpolation!(integrator::GPUTsit5Integrator, t,
+@inline function DiffEqBase.change_t_via_interpolation!(integrator::Union{GPUTsit5Integrator,GPUATsit5Integrator}, t,
                                                         modify_save_endpoint::Type{Val{T}} = Val{
                                                                                                  false
                                                                                                  }) where {
@@ -287,11 +287,11 @@ end
     new_t, prev_sign, event_occurred, event_idx
 end
 
-@inline function SciMLBase.get_tmp_cache(integrator::DiffEqGPU.GPUTsit5Integrator)
+@inline function SciMLBase.get_tmp_cache(integrator::Union{GPUTsit5Integrator,GPUATsit5Integrator})
     return nothing
 end
 
-@inline function DiffEqBase.get_condition(integrator::GPUTsit5Integrator, callback, abst)
+@inline function DiffEqBase.get_condition(integrator::Union{GPUTsit5Integrator,GPUATsit5Integrator}, callback, abst)
     if abst == integrator.t
         tmp = integrator.u
     elseif abst == integrator.tprev

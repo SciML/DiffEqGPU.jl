@@ -72,6 +72,9 @@ mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
     tstops::TS
     tstops_idx::Int
     callback::CB
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -90,6 +93,15 @@ mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
 end
 
 const GPUAT5I = GPUATsit5Integrator
+
+
+function (integrator::GPUATsit5Integrator)(t)
+    interpolate(integrator, t)
+end
+
+function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
+    integrator.u_modified = bool
+end
 
 #######################################################################################
 # Initialization of Integrators
@@ -125,6 +137,9 @@ end
     !IIP && @assert S <: SArray
 
     qoldinit = eltype(S)(1e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUAT5I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB}(f, copy(u0),
                                                                        copy(u0),
@@ -132,7 +147,7 @@ end
                                                                        tf, dt,
                                                                        dt, sign(tf - t0), p,
                                                                        true, tstops, 1,
-                                                                       callback,
+                                                                       callback, event_last_time, vector_event_last_time, last_event_error,
                                                                        copy(u0), copy(u0),
                                                                        copy(u0),
                                                                        copy(u0), copy(u0),
