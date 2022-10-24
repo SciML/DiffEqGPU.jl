@@ -94,7 +94,6 @@ end
 
 const GPUAT5I = GPUATsit5Integrator
 
-
 function (integrator::GPUATsit5Integrator)(t)
     interpolate(integrator, t)
 end
@@ -147,7 +146,10 @@ end
                                                                        tf, dt,
                                                                        dt, sign(tf - t0), p,
                                                                        true, tstops, 1,
-                                                                       callback, event_last_time, vector_event_last_time, last_event_error,
+                                                                       callback,
+                                                                       event_last_time,
+                                                                       vector_event_last_time,
+                                                                       last_event_error,
                                                                        copy(u0), copy(u0),
                                                                        copy(u0),
                                                                        copy(u0), copy(u0),

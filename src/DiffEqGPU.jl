@@ -313,7 +313,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
                            ensemblealg::Union{EnsembleArrayAlgorithm,
                                               EnsembleKernelAlgorithm};
                            trajectories, batch_size = trajectories,
-                           unstable_check = (dt, u, p, t) -> false, adaptive = false,
+                           unstable_check = (dt, u, p, t) -> false, adaptive = true,
                            kwargs...)
     if trajectories == 1
         return SciMLBase.__solve(ensembleprob, alg, EnsembleSerial(); trajectories = 1,
@@ -526,6 +526,8 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
     else
         _alg = alg
     end
+
+    @show
 
     sol = solve(prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
                 internalnorm = diffeqgpunorm)

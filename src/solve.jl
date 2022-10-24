@@ -1,7 +1,8 @@
 function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
                           dt, saveat = nothing,
                           save_everystep = true,
-                          debug = false, callback = nothing, tstops = nothing, kwargs...)
+                          debug = false, callback = CallbackSet(nothing), tstops = nothing,
+                          kwargs...)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
@@ -54,7 +55,8 @@ function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
                            dt = 0.1f0, saveat = nothing,
                            save_everystep = false,
                            abstol = 1.0f-6, reltol = 1.0f-3,
-                           debug = false, callback = nothing, tstops = nothing, kwargs...)
+                           debug = false, callback = CallbackSet(nothing), tstops = nothing,
+                           kwargs...)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
