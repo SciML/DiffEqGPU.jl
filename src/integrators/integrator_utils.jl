@@ -319,8 +319,8 @@ end
     previous_condition = callback.condition(integrator.uprev, integrator.tprev,
                                             integrator)
 
-    prev_sign = 0.0
-    next_sign = 0.0
+    prev_sign = zero(integrator.t)
+    next_sign = zero(integrator.t)
     # @show typeof(0)
     if integrator.event_last_time == counter &&
        minimum(DiffEqBase.ODE_DEFAULT_NORM(previous_condition, integrator.t)) <=
