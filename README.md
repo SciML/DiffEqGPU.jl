@@ -5,7 +5,6 @@
 [![Build status](https://badge.buildkite.com/409ab4d885030062681a444328868d2e8ad117cadc0a7e1424.svg)](https://buildkite.com/julialang/diffeqgpu-dot-jl)
 
 [![codecov](https://codecov.io/gh/SciML/DiffEqGPU.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/SciML/DiffEqGPU.jl)
-[![buildkite](https://badge.buildkite.com/ea7df061e20328f60d3e0816d97d2d856166f2ea7030748cef.svg)](https://buildkite.com/julialang/sparsedifftools-dot-jl)
 
 [![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 [![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
