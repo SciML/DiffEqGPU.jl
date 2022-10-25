@@ -180,7 +180,29 @@ end
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
+"""
+An `EnsembleArrayAlgorithm` for testing the overhead of the array-based parallelism setup.
+"""
 struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
+"""
+An `EnsembleArrayAlgorithm` which utilizes the GPU kernels to parallelize each ODE solve with their separate ODE integrator on each kernel.
+```julia
+using DiffEqGPU, OrdinaryDiffEq
+function lorenz(du,u,p,t)
+    du[1] = p[1]*(u[2]-u[1])
+    du[2] = u[1]*(p[2]-u[3]) - u[2]
+    du[3] = u[1]*u[2] - p[3]*u[3]
+end
+
+u0 = Float32[1.0;0.0;0.0]
+tspan = (0.0f0,100.0f0)
+p = [10.0f0,28.0f0,8/3f0]
+prob = ODEProblem(lorenz,u0,tspan,p)
+prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
+@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
+```
+"""
 struct EnsembleGPUArray <: EnsembleArrayAlgorithm
     cpu_offload::Float64
 end
@@ -797,7 +819,9 @@ function generate_callback(prob, I, ensemblealg; kwargs...)
 end
 
 ### GPU Factorization
-
+"""
+A parameter-parallel `SciMLLinearSolveAlgorithm`.
+"""
 struct LinSolveGPUSplitFactorize <: LinearSolve.SciMLLinearSolveAlgorithm
     len::Int
     nfacts::Int
