@@ -527,8 +527,6 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
         _alg = alg
     end
 
-    @show
-
     sol = solve(prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
                 internalnorm = diffeqgpunorm)
 
