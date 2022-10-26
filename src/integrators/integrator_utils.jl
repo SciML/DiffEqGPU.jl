@@ -10,7 +10,8 @@ function build_adaptive_tsit5_controller_cache(::Type{T}) where {T}
     return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
 end
 
-function savevalues!(integrator::GPUTsit5Integrator, ts, us, force = false)
+function savevalues!(integrator::Union{GPUTsit5Integrator, GPUATsit5Integrator}, ts, us,
+                     force = false)
     saved, savedexactly = false, false
 
     if integrator.save_everystep || force
@@ -24,65 +25,22 @@ function savevalues!(integrator::GPUTsit5Integrator, ts, us, force = false)
     saved, savedexactly
 end
 
-@inline function DiffEqBase.apply_discrete_callback!(integrator::GPUATsit5Integrator,
-                                                     callback::GPUDiscreteCallback)
-    saved_in_cb = false
-    if callback.condition(integrator.u, integrator.t, integrator)
-        integrator.u_modified = true
-        callback.affect!(integrator)
-    end
-    integrator.u_modified, saved_in_cb
-end
-
-#Starting: Get bool from first and do next
-@inline function DiffEqBase.apply_discrete_callback!(integrator,
-                                                     callback::GPUDiscreteCallback, args...)
-    DiffEqBase.apply_discrete_callback!(integrator,
-                                        DiffEqBase.apply_discrete_callback!(integrator,
-                                                                            callback)...,
-                                        args...)
-end
-
-@inline function DiffEqBase.apply_discrete_callback!(integrator, discrete_modified::Bool,
-                                                     saved_in_cb::Bool,
-                                                     callback::GPUDiscreteCallback,
-                                                     args...)
-    bool, saved_in_cb2 = DiffEqBase.apply_discrete_callback!(integrator,
-                                                             DiffEqBase.apply_discrete_callback!(integrator,
-                                                                                                 callback)...,
-                                                             args...)
-    discrete_modified || bool, saved_in_cb || saved_in_cb2
-end
-
-@inline function DiffEqBase.apply_discrete_callback!(integrator, discrete_modified::Bool,
-                                                     saved_in_cb::Bool,
-                                                     callback::GPUDiscreteCallback)
-    bool, saved_in_cb2 = DiffEqBase.apply_discrete_callback!(integrator, callback)
-    discrete_modified || bool, saved_in_cb || saved_in_cb2
-end
-
-@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
+@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
+                                                            GPUATsit5Integrator}, ts, us,
                                           callback::GPUDiscreteCallback)
     saved_in_cb = false
     if callback.condition(integrator.u, integrator.t, integrator)
         # handle saveat
         _, savedexactly = savevalues!(integrator, ts, us)
         saved_in_cb = true
-        @inbounds if callback.save_positions[1]
-            # if already saved then skip saving
-            savedexactly || savevalues!(integrator, ts, us, true)
-        end
         integrator.u_modified = true
         callback.affect!(integrator)
-        @inbounds if callback.save_positions[2]
-            savevalues!(integrator, ts, us, true)
-            saved_in_cb = true
-        end
     end
     integrator.u_modified, saved_in_cb
 end
 
-@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
+@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
+                                                            GPUATsit5Integrator}, ts, us,
                                           callback::GPUDiscreteCallback,
                                           args...)
     apply_discrete_callback!(integrator, ts, us,
@@ -90,7 +48,8 @@ end
                              args...)
 end
 
-@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
+@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
+                                                            GPUATsit5Integrator}, ts, us,
                                           discrete_modified::Bool,
                                           saved_in_cb::Bool, callback::GPUDiscreteCallback,
                                           args...)
@@ -101,7 +60,8 @@ end
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-@inline function apply_discrete_callback!(integrator::GPUTsit5Integrator, ts, us,
+@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
+                                                            GPUATsit5Integrator}, ts, us,
                                           discrete_modified::Bool,
                                           saved_in_cb::Bool, callback::GPUDiscreteCallback)
     bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us, callback)
@@ -127,6 +87,7 @@ end
         error("Current interpolant only works between tprev and t")
     elseif t != integrator.t
         integrator.u = integrator(t)
+        integrator.step_idx -= (integrator.t - t) / integrator.dt
         integrator.t = t
         #integrator.dt = integrator.t - integrator.tprev
     end
@@ -143,11 +104,13 @@ end
     _change_t_via_interpolation!(integrator, t, modify_save_endpoint)
 end
 
-@inline function apply_callback!(integrator,
+@inline function apply_callback!(integrator::Union{GPUTsit5Integrator, GPUATsit5Integrator},
                                  callback::GPUContinuousCallback,
-                                 cb_time, prev_sign, event_idx)
+                                 cb_time, prev_sign, event_idx, ts, us)
     DiffEqBase.change_t_via_interpolation!(integrator, integrator.tprev + cb_time)
 
+    # handle saveat
+    _, savedexactly = savevalues!(integrator, ts, us)
     saved_in_cb = true
 
     integrator.u_modified = true
@@ -169,7 +132,8 @@ end
     true, saved_in_cb
 end
 
-@inline function handle_callbacks!(integrator::GPUATsit5Integrator)
+@inline function handle_callbacks!(integrator::Union{GPUTsit5Integrator, GPUATsit5Integrator
+                                                     }, ts, us)
     discrete_callbacks = integrator.callback.discrete_callbacks
     continuous_callbacks = integrator.callback.continuous_callbacks
     atleast_one_callback = false
@@ -189,42 +153,7 @@ end
             continuous_modified, saved_in_cb = apply_callback!(integrator,
                                                                continuous_callbacks[1],
                                                                time, upcrossing,
-                                                               event_idx)
-        else
-            integrator.event_last_time = 0
-            integrator.vector_event_last_time = 1
-        end
-    end
-    if !(typeof(discrete_callbacks) <: Tuple{})
-        discrete_modified, saved_in_cb = DiffEqBase.apply_discrete_callback!(integrator,
-                                                                             discrete_callbacks...)
-        return discrete_modified, saved_in_cb
-    end
-
-    return false, saved_in_cb
-end
-
-@inline function handle_callbacks!(integrator::GPUTsit5Integrator, ts, us)
-    discrete_callbacks = integrator.callback.discrete_callbacks
-    continuous_callbacks = integrator.callback.continuous_callbacks
-    atleast_one_callback = false
-
-    continuous_modified = false
-    discrete_modified = false
-    saved_in_cb = false
-    if !(typeof(continuous_callbacks) <: Tuple{})
-        event_occurred = false
-
-        time, upcrossing, event_occurred, event_idx, idx, counter = DiffEqBase.find_first_continuous_callback(integrator,
-                                                                                                              continuous_callbacks...)
-
-        if event_occurred
-            integrator.event_last_time = idx
-            integrator.vector_event_last_time = event_idx
-            continuous_modified, saved_in_cb = apply_callback!(integrator,
-                                                               continuous_callbacks[1],
-                                                               time, upcrossing,
-                                                               event_idx)
+                                                               event_idx, ts, us)
         else
             integrator.event_last_time = 0
             integrator.vector_event_last_time = 1
@@ -239,7 +168,8 @@ end
     return false, saved_in_cb
 end
 
-@inline function DiffEqBase.find_callback_time(integrator,
+@inline function DiffEqBase.find_callback_time(integrator::Union{GPUTsit5Integrator,
+                                                                 GPUATsit5Integrator},
                                                callback::DiffEqGPU.GPUContinuousCallback,
                                                counter)
     event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(integrator,
@@ -309,7 +239,9 @@ end
 end
 
 # interp_points = 0 or equivalently nothing
-@inline function DiffEqBase.determine_event_occurance(integrator,
+@inline function DiffEqBase.determine_event_occurance(integrator::Union{GPUTsit5Integrator,
+                                                                        GPUATsit5Integrator
+                                                                        },
                                                       callback::DiffEqGPU.GPUContinuousCallback,
                                                       counter)
     event_occurred = false

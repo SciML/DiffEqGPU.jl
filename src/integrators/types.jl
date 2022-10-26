@@ -72,6 +72,8 @@ mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
     tstops::TS
     tstops_idx::Int
     callback::CB
+    save_everystep::Bool
+    step_idx::Int
     event_last_time::Int
     vector_event_last_time::Int
     last_event_error::T
@@ -146,7 +148,7 @@ end
                                                                        tf, dt,
                                                                        dt, sign(tf - t0), p,
                                                                        true, tstops, 1,
-                                                                       callback,
+                                                                       callback, false, 1,
                                                                        event_last_time,
                                                                        vector_event_last_time,
                                                                        last_event_error,

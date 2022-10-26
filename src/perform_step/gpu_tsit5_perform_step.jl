@@ -224,7 +224,7 @@ end
             end
         end
     end
-    _, saved_in_cb = handle_callbacks!(integ)
+    _, saved_in_cb = handle_callbacks!(integ, ts, us)
     return nothing
 end
 
