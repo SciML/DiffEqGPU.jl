@@ -1,5 +1,7 @@
 cd("./docs")
-using Pkg; Pkg.activate("."); Pkg.instantiate()
+using Pkg;
+Pkg.activate(".");
+Pkg.instantiate();
 using Documenter, DiffEqGPU
 
 include("pages.jl")
