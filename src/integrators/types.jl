@@ -87,6 +87,77 @@ end
 
 const GPUAT5I = GPUATsit5Integrator
 
+## Vern 7
+
+mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
+               DiffEqBase.AbstractODEIntegrator{GPUVern7, IIP, S, T}
+    f::F                  # eom
+    uprev::S              # previous state
+    u::S                  # current state
+    tmp::S                # dummy, same as state
+    tprev::T              # previous time
+    t::T                  # current time
+    t0::T                 # initial time, only for reinit
+    dt::T                 # step size
+    tdir::T
+    p::P                  # parameter container
+    u_modified::Bool
+    tstops::TS
+    tstops_idx::Int
+    cb::CB
+    save_everystep::Bool
+    step_idx::Int
+    k1::S                 #intepolants
+    k2::S
+    k3::S
+    k4::S
+    k5::S
+    k6::S
+    k7::S
+    k8::S
+    k9::S
+    k10::S
+    tab::TabType
+end
+const GPUVern7I = GPUVern7Integrator
+
+mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} <:
+               DiffEqBase.AbstractODEIntegrator{GPUVern7, IIP, S, T}
+    f::F                  # eom
+    uprev::S              # previous state
+    u::S                  # current state
+    tmp::S                # dummy, same as state
+    tprev::T              # previous time
+    t::T                  # current time
+    t0::T                 # initial time, only for reinit
+    tf::T
+    dt::T                 # step size
+    dtnew::T
+    tdir::T
+    p::P                  # parameter container
+    u_modified::Bool
+    tstops::TS
+    tstops_idx::Int
+    cb::CB
+    k1::S         # interpolants of the algorithm
+    k2::S
+    k3::S
+    k4::S
+    k5::S
+    k6::S
+    k7::S
+    k8::S
+    k9::S
+    k10::S
+    tab::TabType
+    qold::Q
+    abstol::TOL
+    reltol::TOL
+    internalnorm::N       # function that computes the error EEst based on state
+end
+
+const GPUAVern7I = GPUAVern7Integrator
+
 #######################################################################################
 # Initialization of Integrators
 #######################################################################################
@@ -134,4 +205,68 @@ end
                                                                        reltol,
                                                                        internalnorm)
 end
-## GPU solver
+
+@inline function gpuvern7_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
+                               p::P, tstops::TS,
+                               callback::CB,
+                               save_everystep::Bool) where {F, P, T, S <: AbstractArray{T},
+                                                            TS, CB}
+    tab = Vern7Tableau(T, T)
+
+    !IIP && @assert S <: SArray
+
+    integ = GPUVern7I{IIP, S, T, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0), copy(u0),
+                                                            t0, t0, t0, dt,
+                                                            sign(dt), p, true, tstops, 1,
+                                                            callback,
+                                                            save_everystep, 1,
+                                                            copy(u0), copy(u0), copy(u0),
+                                                            copy(u0),
+                                                            copy(u0),
+                                                            copy(u0), copy(u0), copy(u0),
+                                                            copy(u0), copy(u0), tab)
+end
+
+@inline function gpuavern7_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
+                                abstol::TOL, reltol::TOL,
+                                internalnorm::N, tstops::TS,
+                                callback::CB) where {F, P, S, T, N, TOL, TS, CB}
+    !IIP && @assert S <: SArray
+
+    tab = Vern7Tableau(T, T)
+
+    qoldinit = eltype(S)(1e-4)
+
+    integ = GPUAVern7I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       t0,
+                                                                                       t0,
+                                                                                       t0,
+                                                                                       tf,
+                                                                                       dt,
+                                                                                       dt,
+                                                                                       sign(tf -
+                                                                                            t0),
+                                                                                       p,
+                                                                                       true,
+                                                                                       tstops,
+                                                                                       1,
+                                                                                       callback,
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       tab,
+                                                                                       qoldinit,
+                                                                                       abstol,
+                                                                                       reltol,
+                                                                                       internalnorm)
+end
