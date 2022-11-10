@@ -2,6 +2,9 @@ using Documenter, DiffEqGPU
 
 include("pages.jl")
 
+cp("./docs/Manifest.toml", "./docs/src/assets/Manifest.toml", force = true)
+cp("./docs/Project.toml", "./docs/src/assets/Project.toml", force = true)
+
 makedocs(sitename = "DiffEqGPU.jl",
          authors = "Chris Rackauckas",
          modules = [DiffEqGPU],
