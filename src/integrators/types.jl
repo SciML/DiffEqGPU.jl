@@ -117,6 +117,12 @@ mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     k8::S
     k9::S
     k10::S
+    k11::S
+    k12::S
+    k13::S
+    k14::S
+    k15::S
+    k16::S
     tab::TabType
 end
 const GPUVern7I = GPUVern7Integrator
@@ -149,6 +155,12 @@ mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     k8::S
     k9::S
     k10::S
+    k11::S
+    k12::S
+    k13::S
+    k14::S
+    k15::S
+    k16::S
     tab::TabType
     qold::Q
     abstol::TOL
@@ -157,6 +169,11 @@ mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
 end
 
 const GPUAVern7I = GPUAVern7Integrator
+
+function (integrator::GPUAVern7I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integ)
+end
 
 #######################################################################################
 # Initialization of Integrators
@@ -224,6 +241,8 @@ end
                                                             copy(u0),
                                                             copy(u0),
                                                             copy(u0), copy(u0), copy(u0),
+                                                            copy(u0), copy(u0), copy(u0),
+                                                            copy(u0), copy(u0), copy(u0),
                                                             copy(u0), copy(u0), tab)
 end
 
@@ -254,6 +273,12 @@ end
                                                                                        tstops,
                                                                                        1,
                                                                                        callback,
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
+                                                                                       copy(u0),
                                                                                        copy(u0),
                                                                                        copy(u0),
                                                                                        copy(u0),

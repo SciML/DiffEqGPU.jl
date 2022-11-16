@@ -18,7 +18,7 @@ import Base.Threads
 using LinearSolve
 #For gpu_tsit5
 using Adapt, SimpleDiffEq, StaticArrays
-using Parameters
+using Parameters, MuladdMacro
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
@@ -997,6 +997,7 @@ end
 
 include("integrators/types.jl")
 include("integrators/integrator_utils.jl")
+include("integrators/interpolants.jl")
 
 include("perform_step/gpu_tsit5_perform_step.jl")
 include("perform_step/gpu_vern7_perform_step.jl")
