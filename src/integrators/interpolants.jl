@@ -29,4 +29,4 @@ end
             integ.k8 * b8Θ + integ.k9 * b9Θ
             + integ.k11 * b11Θ + integ.k12 * b12Θ + integ.k13 * b13Θ +
             integ.k14 * b14Θ + integ.k15 * b15Θ + integ.k16 * b16Θ)
-end 
+end
