@@ -1,4 +1,4 @@
-function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
+function vectorized_solve(probs, prob::ODEProblem, alg;
                           dt, saveat = nothing,
                           save_everystep = true,
                           debug = false, callback = nothing, tstops = nothing, kwargs...)
@@ -27,8 +27,15 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     # Handle tstops
     tstops = cu(tstops)
 
-    kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops, nsteps,
-                                             saveat, Val(save_everystep))
+    if alg isa GPUTsit5
+        kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
+                                                 nsteps,
+                                                 saveat, Val(save_everystep))
+    elseif alg isa GPUVern7
+        kernel = @cuda launch=false vern7_kernel(probs, us, ts, dt, callback, tstops,
+                                                 nsteps,
+                                                 saveat, Val(save_everystep))
+    end
     if debug
         @show CUDA.registers(kernel)
         @show CUDA.memory(kernel)
@@ -50,7 +57,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg::GPUSimpleTsit5;
     ts, us
 end
 
-function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
+function vectorized_asolve(probs, prob::ODEProblem, alg;
                            dt = 0.1f0, saveat = nothing,
                            save_everystep = false,
                            abstol = 1.0f-6, reltol = 1.0f-3,
@@ -76,9 +83,18 @@ function vectorized_asolve(probs, prob::ODEProblem, alg::GPUSimpleATsit5;
 
     tstops = cu(tstops)
 
-    kernel = @cuda launch=false atsit5_kernel(probs, us, ts, dt, callback, tstops, abstol,
-                                              reltol,
-                                              saveat, Val(save_everystep))
+    if alg isa GPUTsit5
+        kernel = @cuda launch=false atsit5_kernel(probs, us, ts, dt, callback, tstops,
+                                                  abstol,
+                                                  reltol,
+                                                  saveat, Val(save_everystep))
+    elseif alg isa GPUVern7
+        kernel = @cuda launch=false avern7_kernel(probs, us, ts, dt, callback, tstops,
+                                                  abstol,
+                                                  reltol,
+                                                  saveat, Val(save_everystep))
+    end
+
     if debug
         @show CUDA.registers(kernel)
         @show CUDA.memory(kernel)

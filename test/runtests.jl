@@ -28,3 +28,5 @@ using SafeTestsets, Test
 @time @testset "Distributed Multi-GPU" begin include("distributed_multi_gpu.jl") end
 @time @testset "GPU Tsit5 Regression" begin include("gpu_tsit5/gpu_tsit5_regression.jl") end
 @time @testset "GPU Tsit5 Callbacks" begin include("gpu_tsit5/gpu_tsit5_callbacks.jl") end
+
+@time @testset "GPU Vern7 Regression" begin include("gpu_vern7/gpu_vern7_regression.jl") end

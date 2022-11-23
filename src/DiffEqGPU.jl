@@ -18,6 +18,7 @@ import Base.Threads
 using LinearSolve
 #For gpu_tsit5
 using Adapt, SimpleDiffEq, StaticArrays
+using Parameters, MuladdMacro
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
@@ -210,6 +211,7 @@ end
 ##Solvers for EnsembleGPUKernel
 abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
 struct GPUTsit5 <: GPUODEAlgorithm end
+struct GPUVern7 <: GPUODEAlgorithm end
 
 ##Each solve on param is done separately with and then all of them get merged
 struct EnsembleGPUKernel <: EnsembleKernelAlgorithm
@@ -249,7 +251,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
     cpu_trajectories = ((ensemblealg isa EnsembleGPUArray ||
                          ensemblealg isa EnsembleGPUKernel) &&
                         ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) &&
-                       (typeof(alg) <: GPUTsit5 &&
+                       (typeof(alg) <: Union{GPUTsit5, GPUVern7} &&
                         (haskey(kwargs, :callback) ? kwargs[:callback] === nothing : true)) ?
                        round(Int, trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
@@ -259,7 +261,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 
     if cpu_trajectories != 0 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
         cpu_II = (gpu_trajectories + 1):trajectories
-        _alg = if typeof(alg) <: GPUTsit5
+        _alg = if typeof(alg) <: Union{GPUTsit5, GPUVern7}
             if adaptive == false
                 GPUSimpleTsit5()
             else
@@ -370,7 +372,7 @@ function batch_solve(ensembleprob, alg,
     #@assert all(p->p.f === probs[1].f,probs)
 
     if ensemblealg isa EnsembleGPUKernel
-        if typeof(alg) <: GPUTsit5
+        if typeof(alg) <: Union{GPUTsit5, GPUVern7}
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
                                                  adaptive; kwargs...)
             [@views ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
@@ -413,10 +415,10 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
     end
     #Adaptive version only works with saveat
     if adaptive
-        ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, GPUSimpleATsit5();
+        ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, alg;
                                    kwargs..., callback = _callback)
     else
-        ts, us = vectorized_solve(cu(probs), ensembleprob.prob, GPUSimpleTsit5();
+        ts, us = vectorized_solve(cu(probs), ensembleprob.prob, alg;
                                   kwargs..., callback = _callback)
     end
     solus = Array(us)
@@ -995,12 +997,15 @@ end
 
 include("integrators/types.jl")
 include("integrators/integrator_utils.jl")
+include("integrators/interpolants.jl")
 
 include("perform_step/gpu_tsit5_perform_step.jl")
+include("perform_step/gpu_vern7_perform_step.jl")
+include("tableaus/verner_tableaus.jl")
 include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
-export GPUTsit5
+export GPUTsit5, GPUVern7
 
 end # module
