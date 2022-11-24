@@ -29,7 +29,7 @@
         k1 = f(uprev, p, t)
         integ.u_modified = false
     else
-        @inbounds k1 = integ.k10
+        @inbounds k1 = integ.k1
     end
 
     k1 = f(uprev, p, t)
@@ -55,37 +55,6 @@
     integ.u = uprev +
               dt * (b1 * k1 + b4 * k4 + b5 * k5 + b6 * k6 + b7 * k7 + b8 * k8 + b9 * k9)
 
-    @unpack c11, a1101, a1104, a1105, a1106, a1107, a1108, a1109, c12, a1201, a1204,
-    a1205, a1206, a1207, a1208, a1209, a1211, c13, a1301, a1304, a1305, a1306, a1307,
-    a1308, a1309, a1311, a1312, c14, a1401, a1404, a1405, a1406, a1407, a1408, a1409,
-    a1411, a1412, a1413, c15, a1501, a1504, a1505, a1506, a1507, a1508, a1509, a1511,
-    a1512, a1513, c16, a1601, a1604, a1605, a1606, a1607, a1608, a1609,
-    a1611, a1612, a1613 = integ.tab.extra
-
-    k11 = f(uprev +
-            dt * (a1101 * k1 + a1104 * k4 + a1105 * k5 + a1106 * k6 +
-             a1107 * k7 + a1108 * k8 + a1109 * k9), p, t + c11 * dt)
-    k12 = f(uprev +
-            dt * (a1201 * k1 + a1204 * k4 + a1205 * k5 + a1206 * k6 +
-             a1207 * k7 + a1208 * k8 + a1209 * k9 + a1211 * k11), p,
-            t + c12 * dt)
-    k13 = f(uprev +
-            dt * (a1301 * k1 + a1304 * k4 + a1305 * k5 + a1306 * k6 +
-             a1307 * k7 + a1308 * k8 + a1309 * k9 + a1311 * k11 +
-             a1312 * k12), p, t + c13 * dt)
-    k14 = f(uprev +
-            dt * (a1401 * k1 + a1404 * k4 + a1405 * k5 + a1406 * k6 +
-             a1407 * k7 + a1408 * k8 + a1409 * k9 + a1411 * k11 +
-             a1412 * k12 + a1413 * k13), p, t + c14 * dt)
-    k15 = f(uprev +
-            dt * (a1501 * k1 + a1504 * k4 + a1505 * k5 + a1506 * k6 +
-             a1507 * k7 + a1508 * k8 + a1509 * k9 + a1511 * k11 +
-             a1512 * k12 + a1513 * k13), p, t + c15 * dt)
-    k16 = f(uprev +
-            dt * (a1601 * k1 + a1604 * k4 + a1605 * k5 + a1606 * k6 +
-             a1607 * k7 + a1608 * k8 + a1609 * k9 + a1611 * k11 +
-             a1612 * k12 + a1613 * k13), p, t + c16 * dt)
-
     @inbounds begin # Necessary for interpolation
         integ.k1 = k1
         integ.k2 = k2
@@ -97,12 +66,6 @@
         integ.k8 = k8
         integ.k9 = k9
         integ.k10 = k10
-        integ.k11 = k11
-        integ.k12 = k12
-        integ.k13 = k13
-        integ.k14 = k14
-        integ.k15 = k15
-        integ.k16 = k16
     end
 
     if integ.cb !== nothing
@@ -200,7 +163,7 @@ end
         k1 = f(uprev, p, t)
         integ.u_modified = false
     else
-        @inbounds k1 = integ.k10
+        @inbounds k1 = integ.k1
     end
 
     EEst = Inf
@@ -237,37 +200,6 @@ end
               (btilde1 * k1 + btilde4 * k4 + btilde5 * k5 + btilde6 * k6 + btilde7 * k7 +
                btilde8 * k8 + btilde9 * k9 + btilde10 * k10)
 
-        @unpack c11, a1101, a1104, a1105, a1106, a1107, a1108, a1109, c12, a1201, a1204,
-        a1205, a1206, a1207, a1208, a1209, a1211, c13, a1301, a1304, a1305, a1306, a1307,
-        a1308, a1309, a1311, a1312, c14, a1401, a1404, a1405, a1406, a1407, a1408, a1409,
-        a1411, a1412, a1413, c15, a1501, a1504, a1505, a1506, a1507, a1508, a1509, a1511,
-        a1512, a1513, c16, a1601, a1604, a1605, a1606, a1607, a1608, a1609,
-        a1611, a1612, a1613 = integ.tab.extra
-
-        k11 = f(uprev +
-                dt * (a1101 * k1 + a1104 * k4 + a1105 * k5 + a1106 * k6 +
-                 a1107 * k7 + a1108 * k8 + a1109 * k9), p, t + c11 * dt)
-        k12 = f(uprev +
-                dt * (a1201 * k1 + a1204 * k4 + a1205 * k5 + a1206 * k6 +
-                 a1207 * k7 + a1208 * k8 + a1209 * k9 + a1211 * k11), p,
-                t + c12 * dt)
-        k13 = f(uprev +
-                dt * (a1301 * k1 + a1304 * k4 + a1305 * k5 + a1306 * k6 +
-                 a1307 * k7 + a1308 * k8 + a1309 * k9 + a1311 * k11 +
-                 a1312 * k12), p, t + c13 * dt)
-        k14 = f(uprev +
-                dt * (a1401 * k1 + a1404 * k4 + a1405 * k5 + a1406 * k6 +
-                 a1407 * k7 + a1408 * k8 + a1409 * k9 + a1411 * k11 +
-                 a1412 * k12 + a1413 * k13), p, t + c14 * dt)
-        k15 = f(uprev +
-                dt * (a1501 * k1 + a1504 * k4 + a1505 * k5 + a1506 * k6 +
-                 a1507 * k7 + a1508 * k8 + a1509 * k9 + a1511 * k11 +
-                 a1512 * k12 + a1513 * k13), p, t + c15 * dt)
-        k16 = f(uprev +
-                dt * (a1601 * k1 + a1604 * k4 + a1605 * k5 + a1606 * k6 +
-                 a1607 * k7 + a1608 * k8 + a1609 * k9 + a1611 * k11 +
-                 a1612 * k12 + a1613 * k13), p, t + c16 * dt)
-
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
@@ -297,12 +229,6 @@ end
                 integ.k8 = k8
                 integ.k9 = k9
                 integ.k10 = k10
-                integ.k11 = k11
-                integ.k12 = k12
-                integ.k13 = k13
-                integ.k14 = k14
-                integ.k15 = k15
-                integ.k16 = k16
             end
 
             integ.dt = dt
