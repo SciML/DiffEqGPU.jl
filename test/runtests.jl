@@ -29,4 +29,5 @@ using SafeTestsets, Test
 @time @testset "GPU Tsit5 Regression" begin include("gpu_tsit5/gpu_tsit5_regression.jl") end
 @time @testset "GPU Tsit5 Callbacks" begin include("gpu_tsit5/gpu_tsit5_callbacks.jl") end
 
-@time @testset "GPU Vern7 Regression" begin include("gpu_vern7/gpu_vern7_regression.jl") end
+@time @testset "GPU Vern7 Regression" begin include("gpu_verner/gpu_vern7_regression.jl") end
+@time @testset "GPU Vern9 Regression" begin include("gpu_verner/gpu_vern9_regression.jl") end
