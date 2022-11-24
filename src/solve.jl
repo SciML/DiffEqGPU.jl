@@ -35,6 +35,10 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         kernel = @cuda launch=false vern7_kernel(probs, us, ts, dt, callback, tstops,
                                                  nsteps,
                                                  saveat, Val(save_everystep))
+    elseif alg isa GPUVern9
+        kernel = @cuda launch=false vern9_kernel(probs, us, ts, dt, callback, tstops,
+                                                 nsteps,
+                                                 saveat, Val(save_everystep))
     end
     if debug
         @show CUDA.registers(kernel)
@@ -90,6 +94,11 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
                                                   saveat, Val(save_everystep))
     elseif alg isa GPUVern7
         kernel = @cuda launch=false avern7_kernel(probs, us, ts, dt, callback, tstops,
+                                                  abstol,
+                                                  reltol,
+                                                  saveat, Val(save_everystep))
+    elseif alg isa GPUVern9
+        kernel = @cuda launch=false avern9_kernel(probs, us, ts, dt, callback, tstops,
                                                   abstol,
                                                   reltol,
                                                   saveat, Val(save_everystep))
