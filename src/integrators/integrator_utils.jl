@@ -87,7 +87,6 @@ end
         error("Current interpolant only works between tprev and t")
     elseif t != integrator.t
         integrator.u = integrator(t)
-        integrator.step_idx -= (integrator.t - t) / integrator.dt
         integrator.t = t
         #integrator.dt = integrator.t - integrator.tprev
     end
@@ -110,7 +109,6 @@ end
     DiffEqBase.change_t_via_interpolation!(integrator, integrator.tprev + cb_time)
 
     # handle saveat
-    _, savedexactly = savevalues!(integrator, ts, us)
     saved_in_cb = true
 
     integrator.u_modified = true
