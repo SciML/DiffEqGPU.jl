@@ -102,6 +102,7 @@ end
 
 function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
     integrator.u_modified = bool
+end
 ## Vern7
 
 mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
