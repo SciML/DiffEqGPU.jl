@@ -120,9 +120,12 @@ mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
     save_everystep::Bool
     step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -136,6 +139,11 @@ mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     tab::TabType
 end
 const GPUVern7I = GPUVern7Integrator
+
+function (integrator::GPUVern7I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
 
 mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern7, IIP, S, T}
@@ -154,7 +162,12 @@ mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
+    save_everystep::Bool
+    step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -176,7 +189,7 @@ const GPUAVern7I = GPUAVern7Integrator
 
 function (integrator::GPUAVern7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integ)
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 ## Vern9
@@ -196,9 +209,12 @@ mutable struct GPUVern9Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
     save_everystep::Bool
     step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -212,6 +228,11 @@ mutable struct GPUVern9Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     tab::TabType
 end
 const GPUVern9I = GPUVern9Integrator
+
+function (integrator::GPUVern9I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
 
 mutable struct GPUAVern9Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern9, IIP, S, T}
@@ -230,7 +251,12 @@ mutable struct GPUAVern9Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
+    save_everystep::Bool
+    step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -252,7 +278,7 @@ const GPUAVern9I = GPUAVern9Integrator
 
 function (integrator::GPUAVern9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integ)
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 #######################################################################################
@@ -322,12 +348,18 @@ end
     tab = Vern7Tableau(T, T)
 
     !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUVern7I{IIP, S, T, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0), copy(u0),
                                                             t0, t0, t0, dt,
                                                             sign(dt), p, true, tstops, 1,
                                                             callback,
                                                             save_everystep, 1,
+                                                            event_last_time,
+                                                            vector_event_last_time,
+                                                            last_event_error,
                                                             copy(u0), copy(u0), copy(u0),
                                                             copy(u0),
                                                             copy(u0),
@@ -344,6 +376,9 @@ end
     tab = Vern7Tableau(T, T)
 
     qoldinit = eltype(S)(1e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUAVern7I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
                                                                                        copy(u0),
@@ -362,6 +397,11 @@ end
                                                                                        tstops,
                                                                                        1,
                                                                                        callback,
+                                                                                       false,
+                                                                                       1,
+                                                                                       event_last_time,
+                                                                                       vector_event_last_time,
+                                                                                       last_event_error,
                                                                                        copy(u0),
                                                                                        copy(u0),
                                                                                        copy(u0),
@@ -387,12 +427,18 @@ end
     tab = Vern9Tableau(T, T)
 
     !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUVern9I{IIP, S, T, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0), copy(u0),
                                                             t0, t0, t0, dt,
                                                             sign(dt), p, true, tstops, 1,
                                                             callback,
                                                             save_everystep, 1,
+                                                            event_last_time,
+                                                            vector_event_last_time,
+                                                            last_event_error,
                                                             copy(u0), copy(u0), copy(u0),
                                                             copy(u0), copy(u0), copy(u0),
                                                             copy(u0), copy(u0),
@@ -408,6 +454,9 @@ end
     tab = Vern9Tableau(T, T)
 
     qoldinit = eltype(S)(1e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUAVern9I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
                                                                                        copy(u0),
@@ -426,6 +475,11 @@ end
                                                                                        tstops,
                                                                                        1,
                                                                                        callback,
+                                                                                       false,
+                                                                                       1,
+                                                                                       event_last_time,
+                                                                                       vector_event_last_time,
+                                                                                       last_event_error,
                                                                                        copy(u0),
                                                                                        copy(u0),
                                                                                        copy(u0),

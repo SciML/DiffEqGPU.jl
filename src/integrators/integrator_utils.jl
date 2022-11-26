@@ -10,8 +10,9 @@ function build_adaptive_tsit5_controller_cache(::Type{T}) where {T}
     return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
 end
 
-function savevalues!(integrator::Union{GPUTsit5Integrator, GPUATsit5Integrator}, ts, us,
-                     force = false)
+function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}, ts,
+                     us,
+                     force = false) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     saved, savedexactly = false, false
 
     if integrator.save_everystep || force
@@ -25,9 +26,16 @@ function savevalues!(integrator::Union{GPUTsit5Integrator, GPUATsit5Integrator},
     saved, savedexactly
 end
 
-@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
-                                                            GPUATsit5Integrator}, ts, us,
-                                          callback::GPUDiscreteCallback)
+@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                       AlgType,
+                                                                                       IIP,
+                                                                                       S, T
+                                                                                       },
+                                          ts, us,
+                                          callback::GPUDiscreteCallback) where {
+                                                                                AlgType <:
+                                                                                GPUODEAlgorithm,
+                                                                                IIP, S, T}
     saved_in_cb = false
     if callback.condition(integrator.u, integrator.t, integrator)
         # handle saveat
@@ -39,20 +47,30 @@ end
     integrator.u_modified, saved_in_cb
 end
 
-@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
-                                                            GPUATsit5Integrator}, ts, us,
+@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                       AlgType,
+                                                                                       IIP,
+                                                                                       S, T
+                                                                                       },
+                                          ts, us,
                                           callback::GPUDiscreteCallback,
-                                          args...)
+                                          args...) where {AlgType <: GPUODEAlgorithm, IIP,
+                                                          S, T}
     apply_discrete_callback!(integrator, ts, us,
                              apply_discrete_callback!(integrator, ts, us, callback)...,
                              args...)
 end
 
-@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
-                                                            GPUATsit5Integrator}, ts, us,
+@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                       AlgType,
+                                                                                       IIP,
+                                                                                       S, T
+                                                                                       },
+                                          ts, us,
                                           discrete_modified::Bool,
                                           saved_in_cb::Bool, callback::GPUDiscreteCallback,
-                                          args...)
+                                          args...) where {AlgType <: GPUODEAlgorithm, IIP,
+                                                          S, T}
     bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us,
                                                   apply_discrete_callback!(integrator, ts,
                                                                            us, callback)...,
@@ -60,15 +78,25 @@ end
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-@inline function apply_discrete_callback!(integrator::Union{GPUTsit5Integrator,
-                                                            GPUATsit5Integrator}, ts, us,
+@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                       AlgType,
+                                                                                       IIP,
+                                                                                       S, T
+                                                                                       },
+                                          ts, us,
                                           discrete_modified::Bool,
-                                          saved_in_cb::Bool, callback::GPUDiscreteCallback)
+                                          saved_in_cb::Bool,
+                                          callback::GPUDiscreteCallback) where {
+                                                                                AlgType <:
+                                                                                GPUODEAlgorithm,
+                                                                                IIP, S, T}
     bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us, callback)
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-@inline function interpolate(integrator, t)
+@inline function interpolate(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T
+                                                                          },
+                             t) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     θ = (t - integrator.tprev) / integrator.dt
     b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integrator.rs, θ)
     return integrator.uprev +
@@ -78,8 +106,21 @@ end
             b7θ * integrator.k7)
 end
 
-@inline function _change_t_via_interpolation!(integrator, t,
-                                              modify_save_endpoint::Type{Val{T}}) where {T}
+@inline function _change_t_via_interpolation!(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                           AlgType,
+                                                                                           IIP,
+                                                                                           S,
+                                                                                           T
+                                                                                           },
+                                              t,
+                                              modify_save_endpoint::Type{Val{T1}}) where {
+                                                                                          AlgType <:
+                                                                                          GPUODEAlgorithm,
+                                                                                          IIP,
+                                                                                          S,
+                                                                                          T,
+                                                                                          T1
+                                                                                          }
     # Can get rid of an allocation here with a function
     # get_tmp_arr(integrator.cache) which gives a pointer to some
     # cache array which can be modified.
@@ -91,21 +132,31 @@ end
         #integrator.dt = integrator.t - integrator.tprev
     end
 end
-@inline function DiffEqBase.change_t_via_interpolation!(integrator::Union{
-                                                                          GPUTsit5Integrator,
-                                                                          GPUATsit5Integrator
-                                                                          }, t,
-                                                        modify_save_endpoint::Type{Val{T}} = Val{
-                                                                                                 false
-                                                                                                 }) where {
-                                                                                                           T
-                                                                                                           }
+@inline function DiffEqBase.change_t_via_interpolation!(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                                     AlgType,
+                                                                                                     IIP,
+                                                                                                     S,
+                                                                                                     T
+                                                                                                     },
+                                                        t,
+                                                        modify_save_endpoint::Type{Val{T1}} = Val{
+                                                                                                  false
+                                                                                                  }) where {
+                                                                                                            AlgType <:
+                                                                                                            GPUODEAlgorithm,
+                                                                                                            IIP,
+                                                                                                            S,
+                                                                                                            T,
+                                                                                                            T1
+                                                                                                            }
     _change_t_via_interpolation!(integrator, t, modify_save_endpoint)
 end
 
-@inline function apply_callback!(integrator::Union{GPUTsit5Integrator, GPUATsit5Integrator},
+@inline function apply_callback!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP,
+                                                                              S, T},
                                  callback::GPUContinuousCallback,
-                                 cb_time, prev_sign, event_idx, ts, us)
+                                 cb_time, prev_sign, event_idx, ts,
+                                 us) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     DiffEqBase.change_t_via_interpolation!(integrator, integrator.tprev + cb_time)
 
     # handle saveat
@@ -130,8 +181,9 @@ end
     true, saved_in_cb
 end
 
-@inline function handle_callbacks!(integrator::Union{GPUTsit5Integrator, GPUATsit5Integrator
-                                                     }, ts, us)
+@inline function handle_callbacks!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
+                                                                                IIP, S, T},
+                                   ts, us) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     discrete_callbacks = integrator.callback.discrete_callbacks
     continuous_callbacks = integrator.callback.continuous_callbacks
     atleast_one_callback = false
@@ -166,10 +218,15 @@ end
     return false, saved_in_cb
 end
 
-@inline function DiffEqBase.find_callback_time(integrator::Union{GPUTsit5Integrator,
-                                                                 GPUATsit5Integrator},
+@inline function DiffEqBase.find_callback_time(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                            AlgType,
+                                                                                            IIP,
+                                                                                            S,
+                                                                                            T
+                                                                                            },
                                                callback::DiffEqGPU.GPUContinuousCallback,
-                                               counter)
+                                               counter) where {AlgType <: GPUODEAlgorithm,
+                                                               IIP, S, T}
     event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(integrator,
                                                                                                                callback,
                                                                                                                counter)
@@ -218,14 +275,27 @@ end
     new_t, prev_sign, event_occurred, event_idx
 end
 
-@inline function SciMLBase.get_tmp_cache(integrator::Union{GPUTsit5Integrator,
-                                                           GPUATsit5Integrator})
+@inline function SciMLBase.get_tmp_cache(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                      AlgType,
+                                                                                      IIP,
+                                                                                      S, T}) where {
+                                                                                                    AlgType <:
+                                                                                                    GPUODEAlgorithm,
+                                                                                                    IIP,
+                                                                                                    S,
+                                                                                                    T
+                                                                                                    }
     return nothing
 end
 
-@inline function DiffEqBase.get_condition(integrator::Union{GPUTsit5Integrator,
-                                                            GPUATsit5Integrator}, callback,
-                                          abst)
+@inline function DiffEqBase.get_condition(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                       AlgType,
+                                                                                       IIP,
+                                                                                       S, T
+                                                                                       },
+                                          callback,
+                                          abst) where {AlgType <: GPUODEAlgorithm, IIP, S, T
+                                                       }
     if abst == integrator.t
         tmp = integrator.u
     elseif abst == integrator.tprev
@@ -237,11 +307,17 @@ end
 end
 
 # interp_points = 0 or equivalently nothing
-@inline function DiffEqBase.determine_event_occurance(integrator::Union{GPUTsit5Integrator,
-                                                                        GPUATsit5Integrator
-                                                                        },
+@inline function DiffEqBase.determine_event_occurance(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                                   AlgType,
+                                                                                                   IIP,
+                                                                                                   S,
+                                                                                                   T
+                                                                                                   },
                                                       callback::DiffEqGPU.GPUContinuousCallback,
-                                                      counter)
+                                                      counter) where {
+                                                                      AlgType <:
+                                                                      GPUODEAlgorithm, IIP,
+                                                                      S, T}
     event_occurred = false
     interp_index = 0
 
