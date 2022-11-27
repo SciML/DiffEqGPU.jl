@@ -92,18 +92,9 @@
         integ.k8 = k14
         integ.k9 = k15
         integ.k10 = k16
-        # integ.k17 = k17
-        # integ.k18 = k18
-        # integ.k19 = k19
-        # integ.k20 = k20
     end
 
-    if integ.cb !== nothing
-        _, saved_in_cb = apply_discrete_callback!(integ, ts, us,
-                                                  integ.cb.discrete_callbacks...)
-    else
-        saved_in_cb = false
-    end
+    _, saved_in_cb = handle_callbacks!(integ, ts, us)
 
     return saved_in_cb
 end
@@ -313,12 +304,7 @@ end
             end
         end
     end
-    if integ.cb !== nothing
-        _, saved_in_cb = DiffEqBase.apply_discrete_callback!(integ,
-                                                             integ.cb.discrete_callbacks...)
-    else
-        saved_in_cb = false
-    end
+    _, saved_in_cb = handle_callbacks!(integ, ts, us)
     return nothing
 end
 

@@ -56,12 +56,7 @@
         integ.k7 = k7
     end
 
-    if integ.cb !== nothing
-        _, saved_in_cb = apply_discrete_callback!(integ, ts, us,
-                                                  integ.cb.discrete_callbacks...)
-    else
-        saved_in_cb = false
-    end
+    _, saved_in_cb = handle_callbacks!(integ, ts, us)
 
     return saved_in_cb
 end
@@ -229,12 +224,7 @@ end
             end
         end
     end
-    if integ.cb !== nothing
-        _, saved_in_cb = DiffEqBase.apply_discrete_callback!(integ,
-                                                             integ.cb.discrete_callbacks...)
-    else
-        saved_in_cb = false
-    end
+    _, saved_in_cb = handle_callbacks!(integ, ts, us)
     return nothing
 end
 

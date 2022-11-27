@@ -23,9 +23,12 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
     save_everystep::Bool
     step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -39,8 +42,9 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
 end
 const GPUT5I = GPUTsit5Integrator
 
-(integrator::GPUTsit5Integrator)(t) = copy(integrator.u)
-(integrator::GPUTsit5Integrator)(out, t) = (out .= integrator.u)
+function (integrator::GPUTsit5Integrator)(t)
+    interpolate(integrator, t)
+end
 
 function DiffEqBase.u_modified!(integrator::GPUTsit5Integrator, bool::Bool)
     integrator.u_modified = bool
@@ -67,7 +71,12 @@ mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
+    save_everystep::Bool
+    step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -87,6 +96,13 @@ end
 
 const GPUAT5I = GPUATsit5Integrator
 
+function (integrator::GPUATsit5Integrator)(t)
+    interpolate(integrator, t)
+end
+
+function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
+    integrator.u_modified = bool
+end
 ## Vern7
 
 mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
@@ -104,9 +120,12 @@ mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
     save_everystep::Bool
     step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -120,6 +139,11 @@ mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     tab::TabType
 end
 const GPUVern7I = GPUVern7Integrator
+
+function (integrator::GPUVern7I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
 
 mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern7, IIP, S, T}
@@ -138,7 +162,12 @@ mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
+    save_everystep::Bool
+    step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -160,7 +189,7 @@ const GPUAVern7I = GPUAVern7Integrator
 
 function (integrator::GPUAVern7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integ)
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 ## Vern9
@@ -180,9 +209,12 @@ mutable struct GPUVern9Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
     save_everystep::Bool
     step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S                 #intepolants
     k2::S
     k3::S
@@ -196,6 +228,11 @@ mutable struct GPUVern9Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     tab::TabType
 end
 const GPUVern9I = GPUVern9Integrator
+
+function (integrator::GPUVern9I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
 
 mutable struct GPUAVern9Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern9, IIP, S, T}
@@ -214,7 +251,12 @@ mutable struct GPUAVern9Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     u_modified::Bool
     tstops::TS
     tstops_idx::Int
-    cb::CB
+    callback::CB
+    save_everystep::Bool
+    step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
@@ -236,7 +278,7 @@ const GPUAVern9I = GPUAVern9Integrator
 
 function (integrator::GPUAVern9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integ)
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 #######################################################################################
@@ -250,10 +292,15 @@ end
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUT5I{IIP, S, T, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt,
                                             sign(dt), p, true, tstops, 1, callback,
-                                            save_everystep, 1,
+                                            save_everystep, 1, event_last_time,
+                                            vector_event_last_time,
+                                            last_event_error,
                                             copy(u0), copy(u0), copy(u0), copy(u0),
                                             copy(u0),
                                             copy(u0), copy(u0), cs, as, rs)
@@ -268,6 +315,9 @@ end
     !IIP && @assert S <: SArray
 
     qoldinit = eltype(S)(1e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUAT5I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB}(f, copy(u0),
                                                                        copy(u0),
@@ -275,7 +325,10 @@ end
                                                                        tf, dt,
                                                                        dt, sign(tf - t0), p,
                                                                        true, tstops, 1,
-                                                                       callback,
+                                                                       callback, false, 1,
+                                                                       event_last_time,
+                                                                       vector_event_last_time,
+                                                                       last_event_error,
                                                                        copy(u0), copy(u0),
                                                                        copy(u0),
                                                                        copy(u0), copy(u0),
@@ -295,12 +348,18 @@ end
     tab = Vern7Tableau(T, T)
 
     !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUVern7I{IIP, S, T, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0), copy(u0),
                                                             t0, t0, t0, dt,
                                                             sign(dt), p, true, tstops, 1,
                                                             callback,
                                                             save_everystep, 1,
+                                                            event_last_time,
+                                                            vector_event_last_time,
+                                                            last_event_error,
                                                             copy(u0), copy(u0), copy(u0),
                                                             copy(u0),
                                                             copy(u0),
@@ -317,6 +376,9 @@ end
     tab = Vern7Tableau(T, T)
 
     qoldinit = eltype(S)(1e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUAVern7I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
                                                                                        copy(u0),
@@ -335,6 +397,11 @@ end
                                                                                        tstops,
                                                                                        1,
                                                                                        callback,
+                                                                                       false,
+                                                                                       1,
+                                                                                       event_last_time,
+                                                                                       vector_event_last_time,
+                                                                                       last_event_error,
                                                                                        copy(u0),
                                                                                        copy(u0),
                                                                                        copy(u0),
@@ -360,12 +427,18 @@ end
     tab = Vern9Tableau(T, T)
 
     !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUVern9I{IIP, S, T, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0), copy(u0),
                                                             t0, t0, t0, dt,
                                                             sign(dt), p, true, tstops, 1,
                                                             callback,
                                                             save_everystep, 1,
+                                                            event_last_time,
+                                                            vector_event_last_time,
+                                                            last_event_error,
                                                             copy(u0), copy(u0), copy(u0),
                                                             copy(u0), copy(u0), copy(u0),
                                                             copy(u0), copy(u0),
@@ -381,6 +454,9 @@ end
     tab = Vern9Tableau(T, T)
 
     qoldinit = eltype(S)(1e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(eltype(S))
 
     integ = GPUAVern9I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
                                                                                        copy(u0),
@@ -399,6 +475,11 @@ end
                                                                                        tstops,
                                                                                        1,
                                                                                        callback,
+                                                                                       false,
+                                                                                       1,
+                                                                                       event_last_time,
+                                                                                       vector_event_last_time,
+                                                                                       last_event_error,
                                                                                        copy(u0),
                                                                                        copy(u0),
                                                                                        copy(u0),
