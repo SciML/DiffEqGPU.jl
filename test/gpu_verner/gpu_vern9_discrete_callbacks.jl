@@ -28,7 +28,7 @@ bench_sol = solve(prob, Vern9(),
                   adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                   tstops = [4.0f0])
 
-@test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 7e-6
+@test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 2e-4
 @test norm(bench_sol.u - sol[1].u) < 3e-5
 
 #Test the truncation error due to floating point math, encountered when adjusting t for tstops
@@ -41,7 +41,7 @@ bench_sol = solve(prob, Vern9(),
                   adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
                   tstops = [4.0f0])
 
-@test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 1e-6
+@test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 2e-6
 @test norm(bench_sol.u - sol[1].u) < 3e-5
 
 @info "Callback: CallbackSets"

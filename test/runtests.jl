@@ -34,4 +34,4 @@ using SafeTestsets, Test
 @time @testset "GPU Vern7 Regression" begin include("gpu_verner/gpu_vern7_regression.jl") end
 @time @testset "GPU Vern7 Discrete Callbacks" begin include("gpu_verner/gpu_vern7_discrete_callbacks.jl") end
 @time @testset "GPU Vern9 Regression" begin include("gpu_verner/gpu_vern9_regression.jl") end
-@time @testset "GPU Vern7 Discrete Callbacks" begin include("gpu_verner/gpu_vern9_discrete_callbacks.jl") end
+@time @testset "GPU Vern9 Discrete Callbacks" begin include("gpu_verner/gpu_vern9_discrete_callbacks.jl") end
