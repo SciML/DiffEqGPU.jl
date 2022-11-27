@@ -53,11 +53,11 @@ bench_sol = solve(prob, Tsit5(),
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
             adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-            saveat = [3.1f0, 9.1f0])
+            saveat = [0.0f0, 9.1f0])
 
 bench_sol = solve(prob, Tsit5(),
                   adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                  saveat = [3.1f0, 9.1f0])
+                  saveat = [0.0f0, 9.1f0])
 
 @test norm(bench_sol.u - sol[1].u) < 2e-4
 
@@ -107,12 +107,12 @@ bench_sol = solve(prob, Tsit5(),
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
             adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-            saveat = [3.1f0, 9.1f0], reltol = 1.0f-6, abstol = 1.0f-6)
+            saveat = [0.0f0, 9.1f0], reltol = 1.0f-6, abstol = 1.0f-6)
 
 bench_sol = solve(prob, Tsit5(),
                   adaptive = true, save_everystep = false, dt = 1.0f0, callback = cb,
                   merge_callbacks = true,
-                  tstops = [24.0f0, 40.0f0], saveat = [3.1f0, 9.1f0], reltol = 1.0f-6,
+                  tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 9.1f0], reltol = 1.0f-6,
                   abstol = 1.0f-6)
 
 @test norm(bench_sol.u - sol[1].u) < 4e-5
@@ -122,11 +122,11 @@ bench_sol = solve(prob, Tsit5(),
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
             trajectories = 2,
             adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-            saveat = [3.1f0, 9.1f0])
+            saveat = [0.0f0, 9.1f0])
 
 asol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
              trajectories = 2,
              adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-             saveat = [3.1f0, 9.1f0])
+             saveat = [0.0f0, 9.1f0])
 
 @test norm(asol[1].u - sol[1].u) < 2e-4
