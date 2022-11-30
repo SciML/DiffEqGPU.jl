@@ -1,4 +1,4 @@
-@inline function step!(integ::GPUVern7I{false, S, T}, ts, us) where {T, S}
+@inline function step!(integ::GPUV7I{false, S, T}, ts, us) where {T, S}
     @unpack dt = integ
     t = integ.t
     p = integ.p
@@ -19,6 +19,7 @@
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
        (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(integ.t) < 0)
         integ.t = integ.tstops[integ.tstops_idx]
+        dt = integ.t - integ.tprev
         integ.tstops_idx += 1
     else
         ##Advance the integrator
@@ -86,16 +87,16 @@ function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
     us = @inbounds view(_us, :, i)
 
     integ = gpuvern7_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
-                          callback, save_everystep)
+                          callback, save_everystep, saveat)
 
     u0 = prob.u0
     tspan = prob.tspan
 
-    cur_t = 0
+    integ.cur_t = 0
     if saveat !== nothing
-        cur_t = 1
+        integ.cur_t = 1
         if prob.tspan[1] == ts[1]
-            cur_t += 1
+            integ.cur_t += 1
             @inbounds us[1] = u0
         end
     else
@@ -107,21 +108,13 @@ function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
     # FSAL
     while integ.t < tspan[2]
         saved_in_cb = step!(integ, ts, us)
-        if saveat === nothing && save_everystep && !saved_in_cb
-            @inbounds us[integ.step_idx] = integ.u
-            @inbounds ts[integ.step_idx] = integ.t
-            integ.step_idx += 1
-        elseif saveat !== nothing
-            while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
-                savet = saveat[cur_t]
-                Θ = (savet - integ.tprev) / integ.dt
-                @inbounds us[cur_t] = _ode_interpolant(Θ, integ.dt, integ.uprev, integ)
-                @inbounds ts[cur_t] = savet
-                cur_t += 1
-            end
-        end
+        !saved_in_cb && savevalues!(integ, ts, us)
     end
-
+    if integ.t > tspan[2] && saveat === nothing
+        ## Intepolate to tf
+        @inbounds us[end] = integ(tspan[2])
+        @inbounds ts[end] = tspan[2]
+    end
     if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
@@ -132,7 +125,7 @@ end
 
 #############################Adaptive Version#####################################
 
-@inline function step!(integ::GPUAVern7I{false, S, T}, ts, us) where {S, T}
+@inline function step!(integ::GPUAV7I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_tsit5_controller_cache(eltype(integ.u))
     dt = integ.dtnew
     t = integ.t
@@ -239,6 +232,8 @@ end
                    integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
                    100 * eps(integ.t) < 0
                     integ.t = integ.tstops[integ.tstops_idx]
+                    integ.u = integ(integ.t)
+                    dt = integ.t - integ.tprev
                     integ.tstops_idx += 1
                 else
                     ##Advance the integrator
@@ -248,7 +243,7 @@ end
         end
     end
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
-    return nothing
+    return saved_in_cb
 end
 
 function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
@@ -271,11 +266,15 @@ function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
     t = tspan[1]
     tf = prob.tspan[2]
 
-    cur_t = 0
+    integ = gpuavern7_init(prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt, prob.p,
+                           abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
+                           saveat)
+
+    integ.cur_t = 0
     if saveat !== nothing
-        cur_t = 1
+        integ.cur_t = 1
         if tspan[1] == ts[1]
-            cur_t += 1
+            integ.cur_t += 1
             @inbounds us[1] = u0
         end
     else
@@ -283,22 +282,15 @@ function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
         @inbounds us[1] = u0
     end
 
-    integ = gpuavern7_init(prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt, prob.p,
-                           abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback)
-
     while integ.t < tspan[2]
-        step!(integ, ts, us)
-        if saveat === nothing && save_everystep
-            error("Do not use saveat == nothing & save_everystep = true in adaptive version")
-        elseif saveat !== nothing
-            while cur_t <= length(saveat) && saveat[cur_t] <= integ.t
-                savet = saveat[cur_t]
-                Θ = (savet - integ.tprev) / integ.dt
-                @inbounds us[cur_t] = _ode_interpolant(Θ, integ.dt, integ.uprev, integ)
-                @inbounds ts[cur_t] = savet
-                cur_t += 1
-            end
-        end
+        saved_in_cb = step!(integ, ts, us)
+        !saved_in_cb && savevalues!(integ, ts, us)
+    end
+
+    if integ.t > tspan[2] && saveat === nothing
+        ## Intepolate to tf
+        @inbounds us[end] = integ(tspan[2])
+        @inbounds ts[end] = tspan[2]
     end
 
     if saveat === nothing && !save_everystep
