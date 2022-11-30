@@ -15,12 +15,26 @@ function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, 
                      force = false) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     saved, savedexactly = false, false
 
-    if integrator.save_everystep || force
+    saveat = integrator.saveat
+    save_everystep = integrator.save_everystep
+
+    if saveat === nothing && save_everystep
         saved = true
         savedexactly = true
         @inbounds us[integrator.step_idx] = integrator.u
         @inbounds ts[integrator.step_idx] = integrator.t
         integrator.step_idx += 1
+    elseif saveat !== nothing
+        saved = true
+        savedexactly = true
+        while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= integrator.t
+            savet = saveat[integrator.cur_t]
+            Θ = (savet - integrator.tprev) / integrator.dt
+            @inbounds us[integrator.cur_t] = _ode_interpolant(Θ, integrator.dt,
+                                                              integrator.uprev, integrator)
+            @inbounds ts[integrator.cur_t] = savet
+            integrator.cur_t += 1
+        end
     end
 
     saved, savedexactly
@@ -128,6 +142,7 @@ end
         error("Current interpolant only works between tprev and t")
     elseif t != integrator.t
         integrator.u = integrator(t)
+        integrator.step_idx -= Int(round((integrator.t - t) / integrator.dt))
         integrator.t = t
         #integrator.dt = integrator.t - integrator.tprev
     end
@@ -160,6 +175,7 @@ end
     DiffEqBase.change_t_via_interpolation!(integrator, integrator.tprev + cb_time)
 
     # handle saveat
+    _, savedexactly = savevalues!(integrator, ts, us)
     saved_in_cb = true
 
     integrator.u_modified = true
