@@ -1,5 +1,5 @@
 
-@inline function bΘs(integ::T, Θ) where {T <: Union{GPUVern7I, GPUAVern7I}}
+@inline function bΘs(integ::T, Θ) where {T <: Union{GPUV7I, GPUAV7I}}
     @unpack r011, r012, r013, r014, r015, r016, r017, r042, r043, r044, r045, r046, r047,
     r052, r053, r054, r055, r056, r057, r062, r063, r064, r065, r066, r067, r072, r073,
     r074, r075, r076, r077, r082, r083, r084, r085, r086, r087, r092, r093, r094, r095,
@@ -26,7 +26,7 @@ end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
                                           integ::T) where {T <:
-                                                           Union{GPUVern7I, GPUAVern7I}}
+                                                           Union{GPUV7I, GPUAV7I}}
     b1Θ, b4Θ, b5Θ, b6Θ, b7Θ, b8Θ, b9Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b16Θ = bΘs(integ, Θ)
 
     @unpack c11, a1101, a1104, a1105, a1106, a1107, a1108, a1109, c12, a1201, a1204,
@@ -70,7 +70,7 @@ end
             k14 * b14Θ + k15 * b15Θ + k16 * b16Θ)
 end
 
-@inline function bΘs(integ::T, Θ) where {T <: Union{GPUVern9I, GPUAVern9I}}
+@inline function bΘs(integ::T, Θ) where {T <: Union{GPUV9I, GPUAV9I}}
     @unpack r011, r012, r013, r014, r015, r016, r017, r018, r019, r082, r083, r084, r085,
     r086, r087, r088, r089, r092, r093, r094, r095, r096, r097, r098, r099, r102, r103,
     r104, r105, r106, r107, r108, r109, r112, r113, r114, r115, r116, r117, r118, r119,
@@ -110,7 +110,7 @@ end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
                                           integ::T) where {T <:
-                                                           Union{GPUVern9I, GPUAVern9I}}
+                                                           Union{GPUV9I, GPUAV9I}}
     b1Θ, b8Θ, b9Θ, b10Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b17Θ, b18Θ, b19Θ, b20Θ,
     b21Θ, b22Θ, b23Θ, b24Θ, b25Θ, b26Θ = bΘs(integ, Θ)
 
@@ -185,4 +185,15 @@ end
             k12 * b18Θ + k13 * b19Θ + k14 * b20Θ + k15 * b21Θ +
             k16 * b22Θ +
             k17 * b23Θ + k18 * b24Θ + k19 * b25Θ + k20 * b26Θ)
+end
+
+@inline @muladd function _ode_interpolant(Θ, dt, y₀,
+                                          integ::T) where {T <:
+                                                           Union{GPUT5I, GPUAT5I}}
+    b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integ.rs, Θ)
+    return y₀ +
+           dt *
+           (b1θ * integ.k1 + b2θ * integ.k2 + b3θ * integ.k3 +
+            b4θ * integ.k4 + b5θ * integ.k5 + b6θ * integ.k6 +
+            b7θ * integ.k7)
 end

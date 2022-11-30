@@ -8,7 +8,7 @@ function Adapt.adapt_structure(to, prob::ODEProblem{<:Any, <:Any, iip}) where {i
                           adapt(to, prob.kwargs)...)
 end
 
-mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
+mutable struct GPUTsit5Integrator{IIP, S, T, ST, P, F, TS, CB} <:
                DiffEqBase.AbstractODEIntegrator{GPUTsit5, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -25,6 +25,8 @@ mutable struct GPUTsit5Integrator{IIP, S, T, P, F, TS, CB} <:
     tstops_idx::Int
     callback::CB
     save_everystep::Bool
+    saveat::ST
+    cur_t::Int
     step_idx::Int
     event_last_time::Int
     vector_event_last_time::Int
@@ -43,7 +45,8 @@ end
 const GPUT5I = GPUTsit5Integrator
 
 function (integrator::GPUTsit5Integrator)(t)
-    interpolate(integrator, t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 function DiffEqBase.u_modified!(integrator::GPUTsit5Integrator, bool::Bool)
@@ -54,7 +57,7 @@ DiffEqBase.isinplace(::GPUT5I{IIP}) where {IIP} = IIP
 
 ## Adaptive TimeStep Integrator
 
-mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
+mutable struct GPUATsit5Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB} <:
                DiffEqBase.AbstractODEIntegrator{GPUTsit5, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -73,6 +76,8 @@ mutable struct GPUATsit5Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB} <:
     tstops_idx::Int
     callback::CB
     save_everystep::Bool
+    saveat::ST
+    cur_t::Int
     step_idx::Int
     event_last_time::Int
     vector_event_last_time::Int
@@ -97,7 +102,8 @@ end
 const GPUAT5I = GPUATsit5Integrator
 
 function (integrator::GPUATsit5Integrator)(t)
-    interpolate(integrator, t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
@@ -105,7 +111,7 @@ function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
 end
 ## Vern7
 
-mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
+mutable struct GPUV7Integrator{IIP, S, T, ST, P, F, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern7, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -122,6 +128,8 @@ mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     tstops_idx::Int
     callback::CB
     save_everystep::Bool
+    saveat::ST
+    cur_t::Int
     step_idx::Int
     event_last_time::Int
     vector_event_last_time::Int
@@ -138,14 +146,14 @@ mutable struct GPUVern7Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     k10::S
     tab::TabType
 end
-const GPUVern7I = GPUVern7Integrator
+const GPUV7I = GPUV7Integrator
 
-function (integrator::GPUVern7I)(t)
+function (integrator::GPUV7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
-mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} <:
+mutable struct GPUAV7Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern7, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -164,6 +172,8 @@ mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     tstops_idx::Int
     callback::CB
     save_everystep::Bool
+    saveat::ST
+    cur_t::Int
     step_idx::Int
     event_last_time::Int
     vector_event_last_time::Int
@@ -185,16 +195,16 @@ mutable struct GPUAVern7Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     internalnorm::N       # function that computes the error EEst based on state
 end
 
-const GPUAVern7I = GPUAVern7Integrator
+const GPUAV7I = GPUAV7Integrator
 
-function (integrator::GPUAVern7I)(t)
+function (integrator::GPUAV7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 ## Vern9
 
-mutable struct GPUVern9Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
+mutable struct GPUV9Integrator{IIP, S, T, ST, P, F, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern9, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -211,6 +221,8 @@ mutable struct GPUVern9Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     tstops_idx::Int
     callback::CB
     save_everystep::Bool
+    saveat::ST
+    cur_t::Int
     step_idx::Int
     event_last_time::Int
     vector_event_last_time::Int
@@ -227,14 +239,14 @@ mutable struct GPUVern9Integrator{IIP, S, T, P, F, TS, CB, TabType} <:
     k10::S
     tab::TabType
 end
-const GPUVern9I = GPUVern9Integrator
+const GPUV9I = GPUV9Integrator
 
-function (integrator::GPUVern9I)(t)
+function (integrator::GPUV9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
-mutable struct GPUAVern9Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} <:
+mutable struct GPUAV9Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType} <:
                DiffEqBase.AbstractODEIntegrator{GPUVern9, IIP, S, T}
     f::F                  # eom
     uprev::S              # previous state
@@ -253,6 +265,8 @@ mutable struct GPUAVern9Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     tstops_idx::Int
     callback::CB
     save_everystep::Bool
+    saveat::ST
+    cur_t::Int
     step_idx::Int
     event_last_time::Int
     vector_event_last_time::Int
@@ -274,9 +288,9 @@ mutable struct GPUAVern9Integrator{IIP, S, T, P, F, N, TOL, Q, TS, CB, TabType} 
     internalnorm::N       # function that computes the error EEst based on state
 end
 
-const GPUAVern9I = GPUAVern9Integrator
+const GPUAV9I = GPUAV9Integrator
 
-function (integrator::GPUAVern9I)(t)
+function (integrator::GPUAV9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
@@ -287,8 +301,9 @@ end
 @inline function gputsit5_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
                                p::P, tstops::TS,
                                callback::CB,
-                               save_everystep::Bool) where {F, P, T, S <: AbstractArray{T},
-                                                            TS, CB}
+                               save_everystep::Bool,
+                               saveat::ST) where {F, P, T, S <: AbstractArray{T},
+                                                  TS, CB, ST}
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
@@ -296,20 +311,23 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
-    integ = GPUT5I{IIP, S, T, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0, dt,
-                                            sign(dt), p, true, tstops, 1, callback,
-                                            save_everystep, 1, event_last_time,
-                                            vector_event_last_time,
-                                            last_event_error,
-                                            copy(u0), copy(u0), copy(u0), copy(u0),
-                                            copy(u0),
-                                            copy(u0), copy(u0), cs, as, rs)
+    integ = GPUT5I{IIP, S, T, ST, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0, t0,
+                                                dt,
+                                                sign(dt), p, true, tstops, 1, callback,
+                                                save_everystep, saveat, 1, 1,
+                                                event_last_time,
+                                                vector_event_last_time,
+                                                last_event_error,
+                                                copy(u0), copy(u0), copy(u0), copy(u0),
+                                                copy(u0),
+                                                copy(u0), copy(u0), cs, as, rs)
 end
 
 @inline function gpuatsit5_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
                                 abstol::TOL, reltol::TOL,
                                 internalnorm::N, tstops::TS,
-                                callback::CB) where {F, P, S, T, N, TOL, TS, CB}
+                                callback::CB,
+                                saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(T)
 
     !IIP && @assert S <: SArray
@@ -319,32 +337,39 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
-    integ = GPUAT5I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB}(f, copy(u0),
-                                                                       copy(u0),
-                                                                       copy(u0), t0, t0, t0,
-                                                                       tf, dt,
-                                                                       dt, sign(tf - t0), p,
-                                                                       true, tstops, 1,
-                                                                       callback, false, 1,
-                                                                       event_last_time,
-                                                                       vector_event_last_time,
-                                                                       last_event_error,
-                                                                       copy(u0), copy(u0),
-                                                                       copy(u0),
-                                                                       copy(u0), copy(u0),
-                                                                       copy(u0),
-                                                                       copy(u0), cs, as,
-                                                                       btildes,
-                                                                       rs, qoldinit, abstol,
-                                                                       reltol,
-                                                                       internalnorm)
+    integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB}(f, copy(u0),
+                                                                           copy(u0),
+                                                                           copy(u0), t0, t0,
+                                                                           t0,
+                                                                           tf, dt,
+                                                                           dt,
+                                                                           sign(tf - t0), p,
+                                                                           true, tstops, 1,
+                                                                           callback, false,
+                                                                           saveat, 1, 1,
+                                                                           event_last_time,
+                                                                           vector_event_last_time,
+                                                                           last_event_error,
+                                                                           copy(u0),
+                                                                           copy(u0),
+                                                                           copy(u0),
+                                                                           copy(u0),
+                                                                           copy(u0),
+                                                                           copy(u0),
+                                                                           copy(u0), cs, as,
+                                                                           btildes,
+                                                                           rs, qoldinit,
+                                                                           abstol,
+                                                                           reltol,
+                                                                           internalnorm)
 end
 
 @inline function gpuvern7_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
                                p::P, tstops::TS,
                                callback::CB,
-                               save_everystep::Bool) where {F, P, T, S <: AbstractArray{T},
-                                                            TS, CB}
+                               save_everystep::Bool,
+                               saveat::ST) where {F, P, T, S <: AbstractArray{T},
+                                                  TS, CB, ST}
     tab = Vern7Tableau(T, T)
 
     !IIP && @assert S <: SArray
@@ -352,25 +377,27 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
-    integ = GPUVern7I{IIP, S, T, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0), copy(u0),
-                                                            t0, t0, t0, dt,
-                                                            sign(dt), p, true, tstops, 1,
-                                                            callback,
-                                                            save_everystep, 1,
-                                                            event_last_time,
-                                                            vector_event_last_time,
-                                                            last_event_error,
-                                                            copy(u0), copy(u0), copy(u0),
-                                                            copy(u0),
-                                                            copy(u0),
-                                                            copy(u0), copy(u0), copy(u0),
-                                                            copy(u0), copy(u0), tab)
+    integ = GPUV7I{IIP, S, T, ST, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0),
+                                                             copy(u0),
+                                                             t0, t0, t0, dt,
+                                                             sign(dt), p, true, tstops, 1,
+                                                             callback,
+                                                             save_everystep, saveat, 1, 1,
+                                                             event_last_time,
+                                                             vector_event_last_time,
+                                                             last_event_error,
+                                                             copy(u0), copy(u0), copy(u0),
+                                                             copy(u0),
+                                                             copy(u0),
+                                                             copy(u0), copy(u0), copy(u0),
+                                                             copy(u0), copy(u0), tab)
 end
 
 @inline function gpuavern7_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
                                 abstol::TOL, reltol::TOL,
                                 internalnorm::N, tstops::TS,
-                                callback::CB) where {F, P, S, T, N, TOL, TS, CB}
+                                callback::CB,
+                                saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern7Tableau(T, T)
@@ -380,50 +407,53 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
-    integ = GPUAVern7I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       t0,
-                                                                                       t0,
-                                                                                       t0,
-                                                                                       tf,
-                                                                                       dt,
-                                                                                       dt,
-                                                                                       sign(tf -
-                                                                                            t0),
-                                                                                       p,
-                                                                                       true,
-                                                                                       tstops,
-                                                                                       1,
-                                                                                       callback,
-                                                                                       false,
-                                                                                       1,
-                                                                                       event_last_time,
-                                                                                       vector_event_last_time,
-                                                                                       last_event_error,
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       tab,
-                                                                                       qoldinit,
-                                                                                       abstol,
-                                                                                       reltol,
-                                                                                       internalnorm)
+    integ = GPUAV7I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        t0,
+                                                                                        t0,
+                                                                                        t0,
+                                                                                        tf,
+                                                                                        dt,
+                                                                                        dt,
+                                                                                        sign(tf -
+                                                                                             t0),
+                                                                                        p,
+                                                                                        true,
+                                                                                        tstops,
+                                                                                        1,
+                                                                                        callback,
+                                                                                        false,
+                                                                                        saveat,
+                                                                                        1,
+                                                                                        1,
+                                                                                        event_last_time,
+                                                                                        vector_event_last_time,
+                                                                                        last_event_error,
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        tab,
+                                                                                        qoldinit,
+                                                                                        abstol,
+                                                                                        reltol,
+                                                                                        internalnorm)
 end
 
 @inline function gpuvern9_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
                                p::P, tstops::TS,
                                callback::CB,
-                               save_everystep::Bool) where {F, P, T, S <: AbstractArray{T},
-                                                            TS, CB}
+                               save_everystep::Bool,
+                               saveat::ST) where {F, P, T, S <: AbstractArray{T},
+                                                  TS, CB, ST}
     tab = Vern9Tableau(T, T)
 
     !IIP && @assert S <: SArray
@@ -431,24 +461,26 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
-    integ = GPUVern9I{IIP, S, T, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0), copy(u0),
-                                                            t0, t0, t0, dt,
-                                                            sign(dt), p, true, tstops, 1,
-                                                            callback,
-                                                            save_everystep, 1,
-                                                            event_last_time,
-                                                            vector_event_last_time,
-                                                            last_event_error,
-                                                            copy(u0), copy(u0), copy(u0),
-                                                            copy(u0), copy(u0), copy(u0),
-                                                            copy(u0), copy(u0),
-                                                            copy(u0), copy(u0), tab)
+    integ = GPUV9I{IIP, S, T, ST, P, F, TS, CB, typeof(tab)}(f, copy(u0), copy(u0),
+                                                             copy(u0),
+                                                             t0, t0, t0, dt,
+                                                             sign(dt), p, true, tstops, 1,
+                                                             callback,
+                                                             save_everystep, saveat, 1, 1,
+                                                             event_last_time,
+                                                             vector_event_last_time,
+                                                             last_event_error,
+                                                             copy(u0), copy(u0), copy(u0),
+                                                             copy(u0), copy(u0), copy(u0),
+                                                             copy(u0), copy(u0),
+                                                             copy(u0), copy(u0), tab)
 end
 
 @inline function gpuavern9_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
                                 abstol::TOL, reltol::TOL,
                                 internalnorm::N, tstops::TS,
-                                callback::CB) where {F, P, S, T, N, TOL, TS, CB}
+                                callback::CB,
+                                saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern9Tableau(T, T)
@@ -458,41 +490,43 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
-    integ = GPUAVern9I{IIP, S, T, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       t0,
-                                                                                       t0,
-                                                                                       t0,
-                                                                                       tf,
-                                                                                       dt,
-                                                                                       dt,
-                                                                                       sign(tf -
-                                                                                            t0),
-                                                                                       p,
-                                                                                       true,
-                                                                                       tstops,
-                                                                                       1,
-                                                                                       callback,
-                                                                                       false,
-                                                                                       1,
-                                                                                       event_last_time,
-                                                                                       vector_event_last_time,
-                                                                                       last_event_error,
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       copy(u0),
-                                                                                       tab,
-                                                                                       qoldinit,
-                                                                                       abstol,
-                                                                                       reltol,
-                                                                                       internalnorm)
+    integ = GPUAV9I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab)}(f,
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        t0,
+                                                                                        t0,
+                                                                                        t0,
+                                                                                        tf,
+                                                                                        dt,
+                                                                                        dt,
+                                                                                        sign(tf -
+                                                                                             t0),
+                                                                                        p,
+                                                                                        true,
+                                                                                        tstops,
+                                                                                        1,
+                                                                                        callback,
+                                                                                        false,
+                                                                                        saveat,
+                                                                                        1,
+                                                                                        1,
+                                                                                        event_last_time,
+                                                                                        vector_event_last_time,
+                                                                                        last_event_error,
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        tab,
+                                                                                        qoldinit,
+                                                                                        abstol,
+                                                                                        reltol,
+                                                                                        internalnorm)
 end

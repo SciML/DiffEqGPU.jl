@@ -29,15 +29,9 @@ function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, 
         savedexactly = true
         while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= integrator.t
             savet = saveat[integrator.cur_t]
-            θ = (savet - integrator.tprev) / integrator.dt
-            b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integrator.rs, θ)
-            @inbounds us[integrator.cur_t] = integrator.uprev +
-                                             integrator.dt *
-                                             (b1θ * integrator.k1 + b2θ * integrator.k2 +
-                                              b3θ * integrator.k3 +
-                                              b4θ * integrator.k4 + b5θ * integrator.k5 +
-                                              b6θ * integrator.k6 +
-                                              b7θ * integrator.k7)
+            Θ = (savet - integrator.tprev) / integrator.dt
+            @inbounds us[integrator.cur_t] = _ode_interpolant(Θ, integrator.dt,
+                                                              integrator.uprev, integrator)
             @inbounds ts[integrator.cur_t] = savet
             integrator.cur_t += 1
         end
@@ -148,6 +142,7 @@ end
         error("Current interpolant only works between tprev and t")
     elseif t != integrator.t
         integrator.u = integrator(t)
+        integrator.step_idx -= Int(round((integrator.t - t) / integrator.dt))
         integrator.t = t
         #integrator.dt = integrator.t - integrator.tprev
     end
@@ -180,6 +175,7 @@ end
     DiffEqBase.change_t_via_interpolation!(integrator, integrator.tprev + cb_time)
 
     # handle saveat
+    _, savedexactly = savevalues!(integrator, ts, us)
     saved_in_cb = true
 
     integrator.u_modified = true
