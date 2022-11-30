@@ -15,12 +15,32 @@ function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, 
                      force = false) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     saved, savedexactly = false, false
 
-    if integrator.save_everystep || force
+    saveat = integrator.saveat
+    save_everystep = integrator.save_everystep
+
+    if saveat === nothing && save_everystep
         saved = true
         savedexactly = true
         @inbounds us[integrator.step_idx] = integrator.u
         @inbounds ts[integrator.step_idx] = integrator.t
         integrator.step_idx += 1
+    elseif saveat !== nothing
+        saved = true
+        savedexactly = true
+        while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= integrator.t
+            savet = saveat[integrator.cur_t]
+            θ = (savet - integrator.tprev) / integrator.dt
+            b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integrator.rs, θ)
+            @inbounds us[integrator.cur_t] = integrator.uprev +
+                                             integrator.dt *
+                                             (b1θ * integrator.k1 + b2θ * integrator.k2 +
+                                              b3θ * integrator.k3 +
+                                              b4θ * integrator.k4 + b5θ * integrator.k5 +
+                                              b6θ * integrator.k6 +
+                                              b7θ * integrator.k7)
+            @inbounds ts[integrator.cur_t] = savet
+            integrator.cur_t += 1
+        end
     end
 
     saved, savedexactly
