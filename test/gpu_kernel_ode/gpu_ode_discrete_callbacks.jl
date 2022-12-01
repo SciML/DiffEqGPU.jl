@@ -11,16 +11,16 @@ prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
 prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
 
-condition(u, t, integrator) = t == 2.40f0
-
-affect!(integrator) = integrator.u += @SVector[10.0f0]
-
-cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
-
 algs = [GPUTsit5(), GPUVern7(), GPUVern9()]
 
 for alg in algs
     @info typeof(alg)
+
+    condition(u, t, integrator) = t == 2.40f0
+
+    affect!(integrator) = integrator.u += @SVector[10.0f0]
+
+    cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
     @info "Unadaptive version"
 
@@ -169,4 +169,27 @@ for alg in algs
     @test norm(asol[1](2.40f0) - sol[1](2.40f0)) < 3e-3
     @test norm(asol[1](4.0f0) - sol[1](4.0f0)) < 4e-3
     @test norm(asol[1].u - sol[1].u) < 4e-3
+
+    @info "Terminate callback"
+
+    condition(u, t, integrator) = t == 2.40f0
+
+    function affect!(integrator)
+        integrator.u += @SVector[10.0f0]
+        terminate!(integrator)
+    end
+
+    cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
+
+    sol = solve(monteprob, alg, EnsembleGPUKernel(),
+                trajectories = 2,
+                adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                tstops = [2.40f0])
+
+    bench_sol = solve(prob, Vern9(),
+                      adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      tstops = [2.40f0])
+
+    @test norm(bench_sol.t - sol[1].t) < 2e-3
+    @test norm(bench_sol.u - sol[1].u) < 5e-3
 end
