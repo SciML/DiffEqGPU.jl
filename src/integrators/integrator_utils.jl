@@ -42,14 +42,15 @@ end
 
 @inline function DiffEqBase.terminate!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
                                                                                     IIP, S,
-                                                                                    T}) where {
-                                                                                               AlgType <:
-                                                                                               GPUODEAlgorithm,
-                                                                                               IIP,
-                                                                                               S,
-                                                                                               T
-                                                                                               }
-    integrator.retcode = ReturnCode.Terminated
+                                                                                    T},
+                                       retcode = ReturnCode.Terminated) where {
+                                                                               AlgType <:
+                                                                               GPUODEAlgorithm,
+                                                                               IIP,
+                                                                               S,
+                                                                               T
+                                                                               }
+    integrator.retcode = retcode
 end
 
 @inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
