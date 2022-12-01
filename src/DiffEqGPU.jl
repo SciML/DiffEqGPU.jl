@@ -450,15 +450,27 @@ function batch_solve(ensembleprob, alg,
         if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9}
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
                                                  adaptive; kwargs...)
-            [@views ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
-                                                                      solts[:, i],
-                                                                      solus[:, i],
-                                                                      k = nothing,
-                                                                      destats = nothing,
-                                                                      calculate_error = false),
-                                             i)[1]
-             for i in eachindex(probs)]
 
+            sols = Array{ODESolution}(undef, length(probs))
+
+            for i in eachindex(probs)
+                ts = @view solts[:, i]
+                us = @view solus[:, i]
+                sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
+                sols[i] = @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
+                                                                                   alg,
+                                                                                   ts[1:sol_idx],
+                                                                                   us[1:sol_idx],
+                                                                                   k = nothing,
+                                                                                   destats = nothing,
+                                                                                   calculate_error = false,
+                                                                                   retcode = sol_idx !=
+                                                                                             length(ts) ?
+                                                                                             ReturnCode.Terminated :
+                                                                                             ReturnCode.Success),
+                                                          i)[1]
+            end
+            sols
         else
             error("We don't have solvers implemented for this algorithm yet")
         end
