@@ -18,10 +18,12 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
             len = 2
         end
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        fill!(ts, prob.tspan[1])
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
         saveat = CuArray{typeof(dt)}(saveat)
         ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        fill!(ts, prob.tspan[1])
         us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
@@ -80,10 +82,12 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         #     len += length(tstops)
         # end
         ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        fill!(ts, prob.tspan[1])
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
         saveat = CuArray{typeof(dt)}(saveat)
         ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        fill!(ts, prob.tspan[1])
         us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
