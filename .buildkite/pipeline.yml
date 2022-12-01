@@ -5,7 +5,7 @@ steps:
           version: "1"
           persist_depot_dirs: ""
       - JuliaCI/julia-test#v1:
-           coverage: false # 1000x slowdown
+           coverage: true
     agents:
       queue: "juliagpu"
       cuda: "*"
