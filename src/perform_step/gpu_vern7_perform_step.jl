@@ -106,7 +106,7 @@ function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
 
     integ.step_idx += 1
     # FSAL
-    while integ.t < tspan[2]
+    while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)
     end
@@ -282,7 +282,7 @@ function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
         @inbounds us[1] = u0
     end
 
-    while integ.t < tspan[2]
+    while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)
     end

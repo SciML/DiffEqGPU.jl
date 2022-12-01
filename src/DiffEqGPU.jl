@@ -1081,5 +1081,6 @@ include("solve.jl")
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5, GPUVern7, GPUVern9
+export terminate!
 
 end # module

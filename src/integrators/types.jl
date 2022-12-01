@@ -41,6 +41,7 @@ mutable struct GPUTsit5Integrator{IIP, S, T, ST, P, F, TS, CB} <:
     cs::SVector{6, T}     # ci factors cache: time coefficients
     as::SVector{21, T}    # aij factors cache: solution coefficients
     rs::SVector{22, T}    # rij factors cache: interpolation coefficients
+    retcode::DiffEqBase.ReturnCode.T
 end
 const GPUT5I = GPUTsit5Integrator
 
@@ -97,6 +98,7 @@ mutable struct GPUATsit5Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB} <:
     abstol::TOL
     reltol::TOL
     internalnorm::N       # function that computes the error EEst based on state
+    retcode::DiffEqBase.ReturnCode.T
 end
 
 const GPUAT5I = GPUATsit5Integrator
@@ -145,6 +147,7 @@ mutable struct GPUV7Integrator{IIP, S, T, ST, P, F, TS, CB, TabType} <:
     k9::S
     k10::S
     tab::TabType
+    retcode::DiffEqBase.ReturnCode.T
 end
 const GPUV7I = GPUV7Integrator
 
@@ -193,6 +196,7 @@ mutable struct GPUAV7Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType}
     abstol::TOL
     reltol::TOL
     internalnorm::N       # function that computes the error EEst based on state
+    retcode::DiffEqBase.ReturnCode.T
 end
 
 const GPUAV7I = GPUAV7Integrator
@@ -238,6 +242,7 @@ mutable struct GPUV9Integrator{IIP, S, T, ST, P, F, TS, CB, TabType} <:
     k9::S
     k10::S
     tab::TabType
+    retcode::DiffEqBase.ReturnCode.T
 end
 const GPUV9I = GPUV9Integrator
 
@@ -286,6 +291,7 @@ mutable struct GPUAV9Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType}
     abstol::TOL
     reltol::TOL
     internalnorm::N       # function that computes the error EEst based on state
+    retcode::DiffEqBase.ReturnCode.T
 end
 
 const GPUAV9I = GPUAV9Integrator
@@ -320,7 +326,8 @@ end
                                                 last_event_error,
                                                 copy(u0), copy(u0), copy(u0), copy(u0),
                                                 copy(u0),
-                                                copy(u0), copy(u0), cs, as, rs)
+                                                copy(u0), copy(u0), cs, as, rs,
+                                                DiffEqBase.ReturnCode.Default)
 end
 
 @inline function gpuatsit5_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
@@ -361,7 +368,8 @@ end
                                                                            rs, qoldinit,
                                                                            abstol,
                                                                            reltol,
-                                                                           internalnorm)
+                                                                           internalnorm,
+                                                                           DiffEqBase.ReturnCode.Default)
 end
 
 @inline function gpuvern7_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
@@ -390,7 +398,8 @@ end
                                                              copy(u0),
                                                              copy(u0),
                                                              copy(u0), copy(u0), copy(u0),
-                                                             copy(u0), copy(u0), tab)
+                                                             copy(u0), copy(u0), tab,
+                                                             DiffEqBase.ReturnCode.Default)
 end
 
 @inline function gpuavern7_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
@@ -445,7 +454,8 @@ end
                                                                                         qoldinit,
                                                                                         abstol,
                                                                                         reltol,
-                                                                                        internalnorm)
+                                                                                        internalnorm,
+                                                                                        DiffEqBase.ReturnCode.Default)
 end
 
 @inline function gpuvern9_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
@@ -473,7 +483,8 @@ end
                                                              copy(u0), copy(u0), copy(u0),
                                                              copy(u0), copy(u0), copy(u0),
                                                              copy(u0), copy(u0),
-                                                             copy(u0), copy(u0), tab)
+                                                             copy(u0), copy(u0), tab,
+                                                             DiffEqBase.ReturnCode.Default)
 end
 
 @inline function gpuavern9_init(f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T, p::P,
@@ -528,5 +539,6 @@ end
                                                                                         qoldinit,
                                                                                         abstol,
                                                                                         reltol,
-                                                                                        internalnorm)
+                                                                                        internalnorm,
+                                                                                        DiffEqBase.ReturnCode.Default)
 end

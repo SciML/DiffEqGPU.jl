@@ -40,6 +40,18 @@ function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, 
     saved, savedexactly
 end
 
+@inline function DiffEqBase.terminate!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
+                                                                                    IIP, S,
+                                                                                    T}) where {
+                                                                                               AlgType <:
+                                                                                               GPUODEAlgorithm,
+                                                                                               IIP,
+                                                                                               S,
+                                                                                               T
+                                                                                               }
+    integrator.retcode = ReturnCode.Terminated
+end
+
 @inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
                                                                                        AlgType,
                                                                                        IIP,
