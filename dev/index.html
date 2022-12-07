@@ -1,27 +1,14 @@
 <!DOCTYPE html>
-<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Home · DiffEqGPU.jl</title><script async src="https://www.googletagmanager.com/gtag/js?id=UA-90474609-3"></script><script>  window.dataLayer = window.dataLayer || [];
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs · DiffEqGPU.jl</title><script async src="https://www.googletagmanager.com/gtag/js?id=UA-90474609-3"></script><script>  window.dataLayer = window.dataLayer || [];
   function gtag(){dataLayer.push(arguments);}
   gtag('js', new Date());
   gtag('config', 'UA-90474609-3', {'page_path': location.pathname + location.search + location.hash});
-</script><script data-outdated-warner src="assets/warner.js"></script><link rel="canonical" href="https://docs.sciml.ai/DiffEqGPU/stable/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script><link href="assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="DiffEqGPU.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>DiffEqGPU.jl</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>Home</a><ul class="internal"><li><a class="tocitem" href="#Within-Method-GPU-Parallelism-with-Direct-CuArray-Usage"><span>Within-Method GPU Parallelism with Direct CuArray Usage</span></a></li><li><a class="tocitem" href="#Parameter-Parallelism-with-GPU-Ensemble-Methods"><span>Parameter-Parallelism with GPU Ensemble Methods</span></a></li><li><a class="tocitem" href="#Reproducibility"><span>Reproducibility</span></a></li></ul></li><li><a class="tocitem" href="diffeqgpu/">API</a></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>Home</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Home</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/SciML/DiffEqGPU.jl/blob/master/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="DiffEqGPU"><a class="docs-heading-anchor" href="#DiffEqGPU">DiffEqGPU</a><a id="DiffEqGPU-1"></a><a class="docs-heading-anchor-permalink" href="#DiffEqGPU" title="Permalink"></a></h1><p>This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making use of GPUs in the differential equation solvers.</p><h2 id="Within-Method-GPU-Parallelism-with-Direct-CuArray-Usage"><a class="docs-heading-anchor" href="#Within-Method-GPU-Parallelism-with-Direct-CuArray-Usage">Within-Method GPU Parallelism with Direct CuArray Usage</a><a id="Within-Method-GPU-Parallelism-with-Direct-CuArray-Usage-1"></a><a class="docs-heading-anchor-permalink" href="#Within-Method-GPU-Parallelism-with-Direct-CuArray-Usage" title="Permalink"></a></h2><p>The native Julia libraries, including (but not limited to) OrdinaryDiffEq, StochasticDiffEq, and DelayDiffEq, are compatible with <code>u0</code> being a <code>CuArray</code>. When this occurs, all array operations take place on the GPU, including any implicit solves. This is independent of the DiffEqGPU library. These speedup the solution of a differential equation which is sufficiently large or expensive. This does not require DiffEqGPU.jl.</p><p>For example, the following is a GPU-accelerated solve with <code>Tsit5</code>:</p><pre><code class="language-julia hljs">using OrdinaryDiffEq, CUDA, LinearAlgebra
+</script><script data-outdated-warner src="assets/warner.js"></script><link rel="canonical" href="https://docs.sciml.ai/DiffEqGPU/stable/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script><link href="assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="DiffEqGPU.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>DiffEqGPU.jl</a></span></div><form class="docs-search" action="search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a><ul class="internal"><li><a class="tocitem" href="#The-two-ways-to-accelerate-ODE-solvers-with-GPUs"><span>The two ways to accelerate ODE solvers with GPUs</span></a></li><li><a class="tocitem" href="#Example-of-Within-Method-GPU-Parallelism"><span>Example of Within-Method GPU Parallelism</span></a></li><li><a class="tocitem" href="#Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods"><span>Example of Parameter-Parallelism with GPU Ensemble Methods</span></a></li><li><a class="tocitem" href="#Reproducibility"><span>Reproducibility</span></a></li></ul></li><li><span class="tocitem">Tutorials</span><ul><li><a class="tocitem" href="tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation</a></li><li><a class="tocitem" href="tutorials/parallel_callbacks/">Massively Parallel ODE Solving with Event Handling and Callbacks</a></li><li><a class="tocitem" href="tutorials/multigpu/">Setting Up Multi-GPU Parallel Parameter Sweeps</a></li></ul></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="manual/ensemblegpukernel/">EnsembleGPUKernel</a></li><li><a class="tocitem" href="manual/ensemblegpuarray/">EnsembleGPUArray</a></li><li><a class="tocitem" href="manual/optimal_trajectories/">Choosing Optimal Numbers of Trajectories</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/SciML/DiffEqGPU.jl/blob/master/docs/src/index.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs"><a class="docs-heading-anchor" href="#DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs">DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a><a id="DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs-1"></a><a class="docs-heading-anchor-permalink" href="#DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs" title="Permalink"></a></h1><p>This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making use of GPUs in the differential equation solvers.</p><h2 id="The-two-ways-to-accelerate-ODE-solvers-with-GPUs"><a class="docs-heading-anchor" href="#The-two-ways-to-accelerate-ODE-solvers-with-GPUs">The two ways to accelerate ODE solvers with GPUs</a><a id="The-two-ways-to-accelerate-ODE-solvers-with-GPUs-1"></a><a class="docs-heading-anchor-permalink" href="#The-two-ways-to-accelerate-ODE-solvers-with-GPUs" title="Permalink"></a></h2><p>There are two very different ways that one can accelerate an ODE solution with GPUs. There is one case where <code>u</code> is very big and <code>f</code> is very expensive but very structured, and you use GPUs to accelerate the computation of said <code>f</code>. The other use case is where <code>u</code> is very small but you want to solve the ODE <code>f</code> over many different initial conditions (<code>u0</code>) or parameters <code>p</code>. In that case, you can use GPUs to parallelize over different parameters and initial conditions. In other words:</p><table><tr><th style="text-align: right">Type of Problem</th><th style="text-align: right">SciML Solution</th></tr><tr><td style="text-align: right">Accelerate a big ODE</td><td style="text-align: right">Use <a href="https://cuda.juliagpu.org/stable/">CUDA.jl&#39;s</a> CuArray as <code>u0</code></td></tr><tr><td style="text-align: right">Solve the same ODE with many <code>u0</code> and <code>p</code></td><td style="text-align: right">Use <a href="https://docs.sciml.ai/DiffEqGPU/stable/">DiffEqGPU.jl&#39;s</a> <code>EnsembleGPUArray</code> and <code>EnsembleGPUKernel</code></td></tr></table><h2 id="Example-of-Within-Method-GPU-Parallelism"><a class="docs-heading-anchor" href="#Example-of-Within-Method-GPU-Parallelism">Example of Within-Method GPU Parallelism</a><a id="Example-of-Within-Method-GPU-Parallelism-1"></a><a class="docs-heading-anchor-permalink" href="#Example-of-Within-Method-GPU-Parallelism" title="Permalink"></a></h2><pre><code class="language-julia hljs">using OrdinaryDiffEq, CUDA, LinearAlgebra
 u0 = cu(rand(1000))
 A  = cu(randn(1000,1000))
 f(du,u,p,t)  = mul!(du,A,u)
 prob = ODEProblem(f,u0,(0.0f0,1.0f0)) # Float32 is better on GPUs!
-sol = solve(prob,Tsit5())</code></pre><h2 id="Parameter-Parallelism-with-GPU-Ensemble-Methods"><a class="docs-heading-anchor" href="#Parameter-Parallelism-with-GPU-Ensemble-Methods">Parameter-Parallelism with GPU Ensemble Methods</a><a id="Parameter-Parallelism-with-GPU-Ensemble-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Parameter-Parallelism-with-GPU-Ensemble-Methods" title="Permalink"></a></h2><p>Parameter-parallel GPU methods are provided for the case where a single solve is too cheap to benefit from within-method parallelism, but the solution of the same structure (same <code>f</code>) is required for very many different choices of <code>u0</code> or <code>p</code>. For these cases, DiffEqGPU exports the following ensemble algorithms:</p><ul><li><code>EnsembleGPUArray</code>: Utilizes the CuArray setup to parallelize ODE solves across the GPU.</li><li><code>EnsembleGPUKernel</code>: Utilizes the GPU kernels to parallelize each ODE solve with their separate ODE integrator on each kernel. </li><li><code>EnsembleCPUArray</code>: A test version for analyzing the overhead of the array-based parallelism setup.</li></ul><p>For more information on using the ensemble interface, see <a href="https://docs.sciml.ai/dev/modules/DiffEqDocs/features/ensemble/">the DiffEqDocs page on ensembles</a></p><p>For example, the following solves the Lorenz equation with 10,000 separate random parameters on the GPU:</p><pre><code class="language-julia hljs">using DiffEqGPU, OrdinaryDiffEq
-function lorenz(du,u,p,t)
-    du[1] = p[1]*(u[2]-u[1])
-    du[2] = u[1]*(p[2]-u[3]) - u[2]
-    du[3] = u[1]*u[2] - p[3]*u[3]
-end
-
-u0 = Float32[1.0;0.0;0.0]
-tspan = (0.0f0,100.0f0)
-p = [10.0f0,28.0f0,8/3f0]
-prob = ODEProblem(lorenz,u0,tspan,p)
-prob_func = (prob,i,repeat) -&gt; remake(prob,p=rand(Float32,3).*p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
-@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)</code></pre><h3 id="EnsembleGPUKernel"><a class="docs-heading-anchor" href="#EnsembleGPUKernel">EnsembleGPUKernel</a><a id="EnsembleGPUKernel-1"></a><a class="docs-heading-anchor-permalink" href="#EnsembleGPUKernel" title="Permalink"></a></h3><p>The <code>EnsembleGPUKernel</code> requires a specialized ODE algorithm which is written on the GPU kernel. These implementations are part of DiffEqGPU. These implementations do not allow mutation of arrays, hence use out-of-place (OOP) <code>ODEProblem</code>.</p><h4 id="Support"><a class="docs-heading-anchor" href="#Support">Support</a><a id="Support-1"></a><a class="docs-heading-anchor-permalink" href="#Support" title="Permalink"></a></h4><ul><li><code>Tsit5</code>: The kernelized version can be called using <code>GPUTsit5()</code> with the <code>EnsembleProblem</code>. </li></ul><p>Taking the example above, we simulate the lorenz equation:</p><pre><code class="language-julia hljs">using DiffEqGPU, OrdinaryDiffEq, StaticArrays
+sol = solve(prob,Tsit5())</code></pre><h2 id="Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods"><a class="docs-heading-anchor" href="#Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods">Example of Parameter-Parallelism with GPU Ensemble Methods</a><a id="Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods" title="Permalink"></a></h2><pre><code class="language-julia hljs">using DiffEqGPU, OrdinaryDiffEq, StaticArrays
 
 function lorenz(u, p, t)
     σ = p[1]
@@ -40,131 +27,16 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -&gt; remake(prob, p = (@SVector rand(Float32, 3)).*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0)
-
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = true, dt = 0.1f0, save_everystep = false)</code></pre><h4 id="Callbacks-with-EnsembleGPUKernel"><a class="docs-heading-anchor" href="#Callbacks-with-EnsembleGPUKernel">Callbacks with EnsembleGPUKernel</a><a id="Callbacks-with-EnsembleGPUKernel-1"></a><a class="docs-heading-anchor-permalink" href="#Callbacks-with-EnsembleGPUKernel" title="Permalink"></a></h4><p>Using callbacks with EnsembleGPUKernel methods requires their own GPU-compatible callback implementations. MWE:</p><pre><code class="language-julia hljs">using DiffEqGPU, StaticArrays, OrdinaryDiffEq
-function f(u, p, t)
-    du1 = -u[1]
-    return SVector{1}(du1)
-end
-
-u0 = @SVector [10.0f0]
-prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
-prob_func = (prob, i, repeat) -&gt; remake(prob, p = prob.p)
-monteprob = EnsembleProblem(prob, safetycopy = false)
-
-condition(u, t, integrator) = t == 4.0f0
-affect!(integrator) = integrator.u += @SVector[10.0f0]
-
-gpu_cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
-
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
-            trajectories = 10,
-            adaptive = false, dt = 0.01f0, callback = gpu_cb, merge_callbacks = true,
-            tstops = [4.0f0])</code></pre><h4 id="Current-Support"><a class="docs-heading-anchor" href="#Current-Support">Current Support</a><a id="Current-Support-1"></a><a class="docs-heading-anchor-permalink" href="#Current-Support" title="Permalink"></a></h4><p>Automated GPU parameter parallelism support is continuing to be improved, so there are currently a few limitations. Not everything is supported yet, but most of the standard features have support, including:</p><ul><li>Explicit Runge-Kutta methods</li><li>Implicit Runge-Kutta methods</li><li>Rosenbrock methods</li><li>DiscreteCallbacks and ContinuousCallbacks</li><li>Multiple GPUs over clusters</li></ul><h4 id="Current-Limitations"><a class="docs-heading-anchor" href="#Current-Limitations">Current Limitations</a><a id="Current-Limitations-1"></a><a class="docs-heading-anchor-permalink" href="#Current-Limitations" title="Permalink"></a></h4><p>Stiff ODEs require the analytical solution of every derivative function it requires. For example, Rosenbrock methods require the Jacobian and the gradient with respect to time, and so these two functions are required to be given. Note that they can be generated by the <a href="https://docs.juliadiffeq.org/latest/tutorials/advanced_ode_example/#Automatic-Derivation-of-Jacobian-Functions-1">modelingtoolkitize</a> approach. For example, 10,000 trajectories solved with Rodas5 and TRBDF2 is done via:</p><pre><code class="language-julia hljs">function lorenz_jac(J,u,p,t)
-    σ = p[1]
-    ρ = p[2]
-    β = p[3]
-    x = u[1]
-    y = u[2]
-    z = u[3]
-    J[1,1] = -σ
-    J[2,1] = ρ - z
-    J[3,1] = y
-    J[1,2] = σ
-    J[2,2] = -1
-    J[3,2] = x
-    J[1,3] = 0
-    J[2,3] = -x
-    J[3,3] = -β
-end
-
-function lorenz_tgrad(J,u,p,t)
-    nothing
-end
-
-func = ODEFunction(lorenz,jac=lorenz_jac,tgrad=lorenz_tgrad)
-prob_jac = ODEProblem(func,u0,tspan,p)
-monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
-
-@time solve(monteprob_jac,Rodas5(),EnsembleGPUArray(),dt=0.1,trajectories=10_000,saveat=1.0f0)
-@time solve(monteprob_jac,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=10_000,saveat=1.0f0)</code></pre><p>These limitations are not fundamental and will be eased over time.</p><h4 id="Setting-Up-Multi-GPU"><a class="docs-heading-anchor" href="#Setting-Up-Multi-GPU">Setting Up Multi-GPU</a><a id="Setting-Up-Multi-GPU-1"></a><a class="docs-heading-anchor-permalink" href="#Setting-Up-Multi-GPU" title="Permalink"></a></h4><p>To setup a multi-GPU environment, first setup a processes such that every process has a different GPU. For example:</p><pre><code class="language-julia hljs"># Setup processes with different CUDA devices
-using Distributed
-addprocs(numgpus)
-import CUDAdrv, CUDAnative
-
-let gpuworkers = asyncmap(collect(zip(workers(), CUDAdrv.devices()))) do (p, d)
-  remotecall_wait(CUDAnative.device!, p, d)
-  p
-end</code></pre><p>Then setup the calls to work with distributed processes:</p><pre><code class="language-julia hljs">@everywhere using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test, Random
-
-@everywhere begin
-    function lorenz_distributed(du,u,p,t)
-        du[1] = p[1]*(u[2]-u[1])
-        du[2] = u[1]*(p[2]-u[3]) - u[2]
-        du[3] = u[1]*u[2] - p[3]*u[3]
-    end
-    CuArrays.allowscalar(false)
-    u0 = Float32[1.0;0.0;0.0]
-    tspan = (0.0f0,100.0f0)
-    p = [10.0f0,28.0f0,8/3f0]
-    Random.seed!(1)
-    function prob_func_distributed(prob,i,repeat)
-        remake(prob,p=rand(3).*p)
-    end
-end</code></pre><p>Now each batch will run on separate GPUs. Thus we need to use the <code>batch_size</code> keyword argument from the Ensemble interface to ensure there are multiple batches. Let&#39;s solve 40,000 trajectories, batching 10,000 trajectories at a time:</p><pre><code class="language-julia hljs">prob = ODEProblem(lorenz_distributed,u0,tspan,p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
-
-@time sol2 = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=40_000,
-                                                 batch_size=10_000,saveat=1.0f0)</code></pre><p>This will <code>pmap</code> over the batches, and thus if you have 4 processes each with a GPU, each batch of 10,000 trajectories will be run simultaneously. If you have two processes with two GPUs, this will do two sets of 10,000 at a time.</p><h4 id="Example-Multi-GPU-Script"><a class="docs-heading-anchor" href="#Example-Multi-GPU-Script">Example Multi-GPU Script</a><a id="Example-Multi-GPU-Script-1"></a><a class="docs-heading-anchor-permalink" href="#Example-Multi-GPU-Script" title="Permalink"></a></h4><p>In this example we know we have a 2-GPU system (1 eGPU), and we split the work across the two by directly defining the devices on the two worker processes:</p><pre><code class="language-julia hljs">using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test
-CuArrays.device!(0)
-
-using Distributed
-addprocs(2)
-@everywhere using DiffEqGPU, CuArrays, OrdinaryDiffEq, Test, Random
-
-@everywhere begin
-    function lorenz_distributed(du,u,p,t)
-        du[1] = p[1]*(u[2]-u[1])
-        du[2] = u[1]*(p[2]-u[3]) - u[2]
-        du[3] = u[1]*u[2] - p[3]*u[3]
-    end
-    CuArrays.allowscalar(false)
-    u0 = Float32[1.0;0.0;0.0]
-    tspan = (0.0f0,100.0f0)
-    p = [10.0f0,28.0f0,8/3f0]
-    Random.seed!(1)
-    pre_p_distributed = [rand(Float32,3) for i in 1:100_000]
-    function prob_func_distributed(prob,i,repeat)
-        remake(prob,p=pre_p_distributed[i].*p)
-    end
-end
-
-@sync begin
-    @spawnat 2 begin
-        CuArrays.allowscalar(false)
-        CuArrays.device!(0)
-    end
-    @spawnat 3 begin
-        CuArrays.allowscalar(false)
-        CuArrays.device!(1)
-    end
-end
-
-CuArrays.allowscalar(false)
-prob = ODEProblem(lorenz_distributed,u0,tspan,p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
-
-@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,batch_size=50_000,saveat=1.0f0)</code></pre><h4 id="Optimal-Numbers-of-Trajectories"><a class="docs-heading-anchor" href="#Optimal-Numbers-of-Trajectories">Optimal Numbers of Trajectories</a><a id="Optimal-Numbers-of-Trajectories-1"></a><a class="docs-heading-anchor-permalink" href="#Optimal-Numbers-of-Trajectories" title="Permalink"></a></h4><p>There is a balance between two things for choosing the number of trajectories:</p><ul><li>The number of trajectories needs to be high enough that the work per kernel is sufficient to overcome the kernel call cost.</li><li>More trajectories means that every trajectory will need more time steps since the adaptivity syncs all solves.</li></ul><p>From our testing, the balance is found at around 10,000 trajectories being optimal. Thus for larger sets of trajectories, use a batch size of 10,000. Of course, benchmark for yourself on your own setup!</p><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Status `~/work/DiffEqGPU.jl/DiffEqGPU.jl/docs/Project.toml`
+@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0)</code></pre><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Status `~/work/DiffEqGPU.jl/DiffEqGPU.jl/docs/Project.toml`
   [071ae1c0] DiffEqGPU v1.23.0 `~/work/DiffEqGPU.jl/DiffEqGPU.jl`
   [e30172f5] Documenter v0.27.23</code></pre></details><details><summary>and using this machine and Julia version.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Julia Version 1.8.3
 Commit 0434deb161e (2022-11-14 20:14 UTC)
 Platform Info:
   OS: Linux (x86_64-linux-gnu)
-  CPU: 2 × Intel(R) Xeon(R) Platinum 8171M CPU @ 2.60GHz
+  CPU: 2 × Intel(R) Xeon(R) CPU E5-2673 v4 @ 2.30GHz
   WORD_SIZE: 64
   LIBM: libopenlibm
-  LLVM: libLLVM-13.0.1 (ORCJIT, skylake-avx512)
+  LLVM: libLLVM-13.0.1 (ORCJIT, broadwell)
   Threads: 1 on 2 virtual cores</code></pre></details><details><summary>A more complete overview of all dependencies and their versions is also provided.</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Status `~/work/DiffEqGPU.jl/DiffEqGPU.jl/docs/Manifest.toml`
   [a4c015fc] ANSIColoredPrinters v0.0.1
   [621f4979] AbstractFFTs v1.2.1
@@ -195,7 +67,7 @@ Platform Info:
   [864edb3b] DataStructures v0.18.13
   [e2d170a0] DataValueInterfaces v1.0.0
   [b429d917] DensityInterface v0.4.0
-  [2b5f629d] DiffEqBase v6.108.0
+  [2b5f629d] DiffEqBase v6.110.0
   [071ae1c0] DiffEqGPU v1.23.0 `~/work/DiffEqGPU.jl/DiffEqGPU.jl`
   [163ba53b] DiffResults v1.1.0
   [b552c78f] DiffRules v1.12.2
@@ -203,18 +75,18 @@ Platform Info:
   [ffbed154] DocStringExtensions v0.9.2
   [e30172f5] Documenter v0.27.23
   [fa6b7ba4] DualNumbers v0.6.8
-  [4e289a0a] EnumX v1.0.3
+  [4e289a0a] EnumX v1.0.4
   [e2ba6199] ExprTools v0.1.8
   [7034ab61] FastBroadcast v0.2.3
-  [29a986be] FastLapackInterface v1.2.7
+  [29a986be] FastLapackInterface v1.2.8
   [1a297f60] FillArrays v0.13.5
   [6a86dc24] FiniteDiff v2.17.0
-  [f6369f11] ForwardDiff v0.10.33
+  [f6369f11] ForwardDiff v0.10.32
   [069b7b12] FunctionWrappers v1.1.3
   [77dc65aa] FunctionWrappersWrappers v0.1.1
   [0c68f7d7] GPUArrays v8.5.0
   [46192b85] GPUArraysCore v0.1.2
-  [61eb1bfa] GPUCompiler v0.16.6
+  [61eb1bfa] GPUCompiler v0.16.7
   [3e5b6fbb] HostCPUFeatures v0.1.13
   [34004b35] HypergeometricFunctions v0.3.11
   [b5f81e59] IOCapture v0.2.2
@@ -229,7 +101,7 @@ Platform Info:
   [63c18a36] KernelAbstractions v0.8.6
   [ba0b0d4f] Krylov v0.9.0
   [0b1a1467] KrylovKit v0.6.0
-  [929cbde3] LLVM v4.14.0
+  [929cbde3] LLVM v4.14.1
   [10f19ff3] LayoutPointers v0.1.12
   [7ed4a6bd] LinearSolve v1.31.0
   [2ab3a3ac] LogExpFunctions v0.3.19
@@ -246,13 +118,14 @@ Platform Info:
   [69de0a69] Parsers v2.5.1
   [f517fe37] Polyester v0.6.18
   [1d0040c9] PolyesterWeave v0.1.11
+  [d236fae5] PreallocationTools v0.4.5
   [21216c6a] Preferences v1.3.0
   [1fd47b50] QuadGK v2.6.0
   [74087812] Random123 v1.6.0
   [e6cf234a] RandomNumbers v1.5.3
   [3cdcf5f2] RecipesBase v1.3.2
   [731186ca] RecursiveArrayTools v2.32.3
-  [f2c3362d] RecursiveFactorization v0.2.12
+  [f2c3362d] RecursiveFactorization v0.2.13
   [189a3867] Reexport v1.2.2
   [ae029012] Requires v1.3.0
   [79098fc4] Rmath v0.7.0
@@ -263,17 +136,17 @@ Platform Info:
   [0bca4576] SciMLBase v1.77.0
   [efcf1570] Setfield v1.1.1
   [05bca326] SimpleDiffEq v1.7.0
-  [727e6d20] SimpleNonlinearSolve v0.1.2
+  [727e6d20] SimpleNonlinearSolve v0.1.3
   [66db9d55] SnoopPrecompile v1.0.1
   [a2af1166] SortingAlgorithms v1.1.0
   [276daf66] SpecialFunctions v2.1.7
-  [aedffcd0] Static v0.8.2
+  [aedffcd0] Static v0.8.3
   [90137ffa] StaticArrays v1.5.11
   [1e83bf80] StaticArraysCore v1.4.0
   [82ae8749] StatsAPI v1.5.0
   [2913bbd2] StatsBase v0.33.21
-  [4c63d2b9] StatsFuns v1.1.0
-⌅ [7792a7ef] StrideArraysCore v0.3.17
+  [4c63d2b9] StatsFuns v1.1.1
+  [7792a7ef] StrideArraysCore v0.4.4
   [3783bdb8] TableTraits v1.0.1
   [bd369af6] Tables v1.10.0
   [8290d209] ThreadingUtilities v0.5.0
@@ -333,6 +206,6 @@ Platform Info:
   [8e850b90] libblastrampoline_jll v5.1.1+0
   [8e850ede] nghttp2_jll v1.48.0+0
   [3f19e933] p7zip_jll v17.4.0+0
-Info Packages marked with ⌅ have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`</code></pre></details>You can also download the 
+Info Packages marked with ⌅ have new versions available but compatibility constraints restrict them from upgrading. To see why use `status --outdated -m`</code></pre></details>You can also download the
 <a href="https://github.com/SciML/DiffEqGPU.jl/tree/gh-pages/v1.23.0/assets/Manifest.toml">manifest</a> file and the
-<a href="https://github.com/SciML/DiffEqGPU.jl/tree/gh-pages/v1.23.0/assets/Project.toml">project</a> file.</article><nav class="docs-footer"><a class="docs-footer-nextpage" href="diffeqgpu/">API »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Thursday 1 December 2022 08:41">Thursday 1 December 2022</span>. Using Julia version 1.8.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+<a href="https://github.com/SciML/DiffEqGPU.jl/tree/gh-pages/v1.23.0/assets/Project.toml">project</a> file.</article><nav class="docs-footer"><a class="docs-footer-nextpage" href="tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Wednesday 7 December 2022 09:27">Wednesday 7 December 2022</span>. Using Julia version 1.8.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
