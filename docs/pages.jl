@@ -7,8 +7,8 @@ pages = ["index.md",
             "tutorials/multigpu.md"
             ],
         "Manual" => Any[
-            "tutorials/ensemblegpukernel.md",
-            "tutorials/ensemblegpuarray.md",
-            "tutorials/optimal_trajectories.md"
+            "manual/ensemblegpukernel.md",
+            "manual/ensemblegpuarray.md",
+            "manual/optimal_trajectories.md"
         ]
         ]
