@@ -2,13 +2,13 @@
 
 pages = ["index.md",
         "Tutorials" => Any[
-            "gpu_ensemble_basic.md",
-            "parallel_callbacks.md",
-            "multigpu.md"
+            "tutorials/gpu_ensemble_basic.md",
+            "tutorials/parallel_callbacks.md",
+            "tutorials/multigpu.md"
             ],
         "Manual" => Any[
-            "ensemblegpukernel.md",
-            "ensemblegpuarray.md",
-            "optimal_trajectories.md"
+            "tutorials/ensemblegpukernel.md",
+            "tutorials/ensemblegpuarray.md",
+            "tutorials/optimal_trajectories.md"
         ]
         ]
