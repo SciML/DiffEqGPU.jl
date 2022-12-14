@@ -1,12 +1,12 @@
 # EnsembleGPUKernel
 
-## API
+## [API](@id egk_doc)
 
 ```@docs
 EnsembleGPUKernel
 ```
 
-### Specialized Solvers
+### [Specialized Solvers](@id specialsolvers)
 
 ```@docs
 GPUTsit5

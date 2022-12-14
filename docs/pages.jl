@@ -6,9 +6,15 @@ pages = ["index.md",
             "tutorials/parallel_callbacks.md",
             "tutorials/multigpu.md"
             ],
+        "Examples" => Any[
+            "examples/sde.md",
+            "examples/ad.md",
+            "examples/reductions.md",
+        ],
         "Manual" => Any[
             "manual/ensemblegpukernel.md",
             "manual/ensemblegpuarray.md",
             "manual/optimal_trajectories.md"
+            "manual/choosing_ensembler.md"
         ]
         ]
