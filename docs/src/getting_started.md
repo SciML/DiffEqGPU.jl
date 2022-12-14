@@ -45,9 +45,13 @@ Notice that the solution values `sol[i]` are CUDA-based arrays, which can be mov
 to the CPU using `Array(sol[i])`.
 
 More details on effective use of within-method GPU parallelism can be found in
-[the within-method GPU parallelism tutorial](@ref withingpu)
+[the within-method GPU parallelism tutorial](@ref withingpu).
 
 ## Example of Parameter-Parallelism with GPU Ensemble Methods
+
+On the other side of the spectrum, what if we want to solve tons of small ODEs? For this
+use case we would use the ensembling methods to solve the same ODE many times with
+different parameters. This looks like:
 
 ```julia
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays
@@ -69,5 +73,7 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000)
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000)
 ```
+
+To dig more into this example, see the [ensemble GPU solving tutorial](@ref lorenz)
