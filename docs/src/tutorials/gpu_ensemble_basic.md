@@ -4,7 +4,7 @@ For example, the following solves the Lorenz equation with 10,000 separate rando
 [`EnsembleProblem` as per DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/). Here's a perfectly good multithreaded CPU parallelized Lorenz solve
 over randomized parameters:
 
-```@example lorenz
+```julia
 using DiffEqGPU, OrdinaryDiffEq
 function lorenz(du,u,p,t)
     du[1] = p[1]*(u[2]-u[1])
