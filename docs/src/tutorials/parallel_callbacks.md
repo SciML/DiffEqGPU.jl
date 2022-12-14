@@ -1,4 +1,4 @@
-# Massively Parallel ODE Solving with Event Handling and Callbacks
+# [Massively Parallel ODE Solving with Event Handling and Callbacks](@id events)
 
 ```julia
 using DiffEqGPU, StaticArrays, OrdinaryDiffEq

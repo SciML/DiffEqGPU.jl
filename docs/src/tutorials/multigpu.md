@@ -1,4 +1,4 @@
-# Setting Up Multi-GPU Parallel Parameter Sweeps
+# [Setting Up Multi-GPU Parallel Parameter Sweeps](@id multigpu)
 
 !!! note
 

@@ -1,6 +1,8 @@
 # [Massively Data-Parallel ODE Solving the Lorenz Equation](@id lorenz)
 
-For example, the following solves the Lorenz equation with 10,000 separate random parameters on the GPU:
+For example, the following solves the Lorenz equation with 10,000 separate random parameters on the GPU. To start, we create a normal
+[`EnsembleProblem` as per DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/). Here's a perfectly good multithreaded CPU parallelized Lorenz solve
+over randomized parameters:
 
 ```julia
 using DiffEqGPU, OrdinaryDiffEq
@@ -16,9 +18,22 @@ p = [10.0f0,28.0f0,8/3f0]
 prob = ODEProblem(lorenz,u0,tspan,p)
 prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
-@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0);
-@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0);
+sol = solve(monteprob,Tsit5(),EnsembleThreads(),trajectories=10_000,saveat=1.0f0);
 ```
+
+Changing this to being GPU-parallelized is as simple as changing the ensembler method to
+`EnsembleGPUArray`:
+
+```julia
+sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0);
+```
+
+and voila, the method is re-compiled to parallelize the solves over a GPU!
+
+While `EnsembleGPUArray` has a bit of overhead due to its form of GPU code construction,
+`EnsembleGPUKernel` is a more restrictive GPU-itizing algorithm that achieves a much lower
+overhead in kernel launching costs. However, it requires this problem to be written in
+out-of-place form and use [special solvers](@ref specialsolvers). This looks like:
 
 ```julia
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays
@@ -39,12 +54,21 @@ p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0);
-
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0);
+sol = solve(monteprob,GPUTsit5(),EnsembleGPUKernel(),trajectories=10_000,saveat=1.0f0)
 ```
+
+Note that this form is also compatible with `EnsembleThreads()`, and `EnsembleGPUArray()`,
+so `EnsembleGPUKernel()` simply supports a subset of possible problem types. For more
+information on the limitations of `EnsembleGPUKernel()`, see [its docstring](@ref egk_doc).
+
 ## Using Stiff ODE Solvers with EnsembleGPUArray
+
+DiffEqGPU also supports more advanced features than shown above. Other tutorials dive into
+[handling events or callbacks](@ref events) and [multi-GPU parallelism](@ref multigpu).
+But the simplest thing to show is that the generality of solvers allows for other types of
+equations. For example, one can handle stiff ODEs with `EnsembleGPUArray` simply by using a
+stiff ODE solver. Note that as explained in the docstring, analytical derivatives
+(Jacobian and time gradient) must be supplied. For the Lorenz equation, this looks like:
 
 ```julia
 function lorenz_jac(J,u,p,t)
@@ -73,6 +97,5 @@ func = ODEFunction(lorenz,jac=lorenz_jac,tgrad=lorenz_tgrad)
 prob_jac = ODEProblem(func,u0,tspan,p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
-@time solve(monteprob_jac,Rodas5(),EnsembleGPUArray(),dt=0.1,trajectories=10_000,saveat=1.0f0)
-@time solve(monteprob_jac,TRBDF2(),EnsembleGPUArray(),dt=0.1,trajectories=10_000,saveat=1.0f0)
+solve(monteprob_jac,Rodas5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
 ```
