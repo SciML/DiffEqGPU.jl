@@ -1,16 +1,4 @@
-# DiffEqGPU
-
-[![Join the chat at https://julialang.zulipchat.com #sciml-bridged](https://img.shields.io/static/v1?label=Zulip&message=chat&color=9558b2&labelColor=389826)](https://julialang.zulipchat.com/#narrow/stream/279055-sciml-bridged)
-[![Global Docs](https://img.shields.io/badge/docs-SciML-blue.svg)](https://docs.sciml.ai/DiffEqGPU/stable/)
-[![Build status](https://badge.buildkite.com/409ab4d885030062681a444328868d2e8ad117cadc0a7e1424.svg)](https://buildkite.com/julialang/diffeqgpu-dot-jl)
-
-[![codecov](https://codecov.io/gh/SciML/DiffEqGPU.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/SciML/DiffEqGPU.jl)
-
-[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
-[![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
-
-This library is a component package of the DifferentialEquations.jl ecosystem. It includes
-functionality for making use of GPUs in the differential equation solvers.
+# Getting Started with GPU-Accelerated Differential Equations in Julia
 
 ## The two ways to accelerate ODE solvers with GPUs
 
@@ -26,7 +14,23 @@ use GPUs to parallelize over different parameters and initial conditions. In oth
 | Accelerate a big ODE                      | Use [CUDA.jl's](https://cuda.juliagpu.org/stable/) CuArray as `u0`                                       |
 | Solve the same ODE with many `u0` and `p` | Use [DiffEqGPU.jl's](https://docs.sciml.ai/DiffEqGPU/stable/) `EnsembleGPUArray` and `EnsembleGPUKernel` |
 
-## Example of Within-Method GPU Parallelism
+## Simple Example of Within-Method GPU Parallelism
+
+The following is a quick and dirty example of doing within-method GPU parallelism.
+Let's say we had a simple but large ODE with many linear algebra or map/broadcast
+operations:
+
+```julia
+using OrdinaryDiffEq, LinearAlgebra
+u0 = rand(1000)
+A  = randn(1000,1000)
+f(du,u,p,t)  = mul!(du,A,u)
+prob = ODEProblem(f,u0,(0.0,1.0))
+sol = solve(prob,Tsit5())
+```
+
+Translating this to a GPU-based solve of the ODE simply requires moving the arrays for
+the initial condition, parameters, and caches to the GPU. This looks like:
 
 ```julia
 using OrdinaryDiffEq, CUDA, LinearAlgebra
@@ -37,7 +41,17 @@ prob = ODEProblem(f,u0,(0.0f0,1.0f0)) # Float32 is better on GPUs!
 sol = solve(prob,Tsit5())
 ```
 
+Notice that the solution values `sol[i]` are CUDA-based arrays, which can be moved back
+to the CPU using `Array(sol[i])`.
+
+More details on effective use of within-method GPU parallelism can be found in
+[the within-method GPU parallelism tutorial](@ref withingpu).
+
 ## Example of Parameter-Parallelism with GPU Ensemble Methods
+
+On the other side of the spectrum, what if we want to solve tons of small ODEs? For this
+use case we would use the ensembling methods to solve the same ODE many times with
+different parameters. This looks like:
 
 ```julia
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays
@@ -59,5 +73,7 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0)
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000)
 ```
+
+To dig more into this example, see the [ensemble GPU solving tutorial](@ref lorenz).

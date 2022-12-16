@@ -1,5 +1,0 @@
-# API
-
-```@autodocs
-Modules = [DiffEqGPU]
-```
