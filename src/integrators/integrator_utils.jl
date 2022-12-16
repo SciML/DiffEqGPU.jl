@@ -10,9 +10,10 @@ function build_adaptive_tsit5_controller_cache(::Type{T}) where {T}
     return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
 end
 
-function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}, ts,
-                     us,
-                     force = false) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
+@inline function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T
+                                                                          }, ts,
+                             us,
+                             force = false) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     saved, savedexactly = false, false
 
     saveat = integrator.saveat
