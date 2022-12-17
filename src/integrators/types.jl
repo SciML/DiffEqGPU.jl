@@ -45,12 +45,12 @@ mutable struct GPUTsit5Integrator{IIP, S, T, ST, P, F, TS, CB} <:
 end
 const GPUT5I = GPUTsit5Integrator
 
-function (integrator::GPUTsit5Integrator)(t)
+@inline function (integrator::GPUTsit5Integrator)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
-function DiffEqBase.u_modified!(integrator::GPUTsit5Integrator, bool::Bool)
+@inline function DiffEqBase.u_modified!(integrator::GPUTsit5Integrator, bool::Bool)
     integrator.u_modified = bool
 end
 
@@ -103,12 +103,12 @@ end
 
 const GPUAT5I = GPUATsit5Integrator
 
-function (integrator::GPUATsit5Integrator)(t)
+@inline function (integrator::GPUATsit5Integrator)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
-function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
+@inline function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
     integrator.u_modified = bool
 end
 ## Vern7
@@ -151,7 +151,7 @@ mutable struct GPUV7Integrator{IIP, S, T, ST, P, F, TS, CB, TabType} <:
 end
 const GPUV7I = GPUV7Integrator
 
-function (integrator::GPUV7I)(t)
+@inline function (integrator::GPUV7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
@@ -201,7 +201,7 @@ end
 
 const GPUAV7I = GPUAV7Integrator
 
-function (integrator::GPUAV7I)(t)
+@inline function (integrator::GPUAV7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
@@ -246,7 +246,7 @@ mutable struct GPUV9Integrator{IIP, S, T, ST, P, F, TS, CB, TabType} <:
 end
 const GPUV9I = GPUV9Integrator
 
-function (integrator::GPUV9I)(t)
+@inline function (integrator::GPUV9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
@@ -296,7 +296,7 @@ end
 
 const GPUAV9I = GPUAV9Integrator
 
-function (integrator::GPUAV9I)(t)
+@inline function (integrator::GPUAV9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
