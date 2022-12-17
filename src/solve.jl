@@ -64,6 +64,48 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     ts, us
 end
 
+function vectorized_solve(probs, prob::SDEProblem, alg;
+                          dt, saveat = nothing,
+                          save_everystep = true,
+                          debug = false,
+                          kwargs...)
+    if saveat === nothing
+        if save_everystep
+            len = length(prob.tspan[1]:dt:prob.tspan[2])
+        else
+            len = 2
+        end
+        ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        fill!(ts, prob.tspan[1])
+        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
+    else
+        error("GPUEM does not support saveat yet")
+        # saveat = CuArray{typeof(dt)}(saveat)
+        # ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        # fill!(ts, prob.tspan[1])
+        # us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+    end
+
+    if alg isa GPUEM
+        kernel = @cuda launch=false em_kernel(probs, us, ts, dt,
+                                              saveat, Val(save_everystep))
+    end
+    if debug
+        @show CUDA.registers(kernel)
+        @show CUDA.memory(kernel)
+    end
+
+    config = launch_configuration(kernel.fun)
+    threads = min(length(probs), config.threads)
+    # XXX: this kernel performs much better with all blocks active
+    blocks = max(cld(length(probs), threads), config.blocks)
+    threads = cld(length(probs), blocks)
+
+    kernel(probs, us, ts, dt, saveat; threads, blocks)
+
+    ts, us
+end
+
 function vectorized_asolve(probs, prob::ODEProblem, alg;
                            dt = 0.1f0, saveat = nothing,
                            save_everystep = false,
