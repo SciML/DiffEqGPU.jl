@@ -337,6 +337,7 @@ end
 
 ##Solvers for EnsembleGPUKernel
 abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
+abstract type GPUSDEAlgorithm <: DiffEqBase.AbstractSDEAlgorithm end
 
 """
 GPUTsit5()
@@ -362,6 +363,8 @@ A specialized implementation of the 9th order `GPUVern9` method specifically for
 generation with EnsembleGPUKernel.
 """
 struct GPUVern9 <: GPUODEAlgorithm end
+
+struct GPUEM <: GPUSDEAlgorithm end
 
 """
 ```julia
@@ -443,7 +446,7 @@ end
 
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
                            alg::Union{SciMLBase.DEAlgorithm, Nothing,
-                                      DiffEqGPU.GPUODEAlgorithm},
+                                      DiffEqGPU.GPUODEAlgorithm, DiffEqGPU.GPUSDEAlgorithm},
                            ensemblealg::Union{EnsembleArrayAlgorithm,
                                               EnsembleKernelAlgorithm};
                            trajectories, batch_size = trajectories,
@@ -578,11 +581,12 @@ function batch_solve(ensembleprob, alg,
     #@assert all(p->p.f === probs[1].f,probs)
 
     if ensemblealg isa EnsembleGPUKernel
-        if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9}
+        if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9, GPUEM}
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
                                                  adaptive; kwargs...)
 
-            sols = Array{ODESolution}(undef, length(probs))
+            sols = alg isa GPUEM ? Array{RODESolution}(undef, length(probs)) :
+                   Array{ODESolution}(undef, length(probs))
 
             for i in eachindex(probs)
                 ts = @view solts[:, i]
@@ -1218,12 +1222,13 @@ include("integrators/interpolants.jl")
 include("perform_step/gpu_tsit5_perform_step.jl")
 include("perform_step/gpu_vern7_perform_step.jl")
 include("perform_step/gpu_vern9_perform_step.jl")
+include("perform_step/gpu_em_perform_step.jl")
 include("tableaus/verner_tableaus.jl")
 include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
-export GPUTsit5, GPUVern7, GPUVern9
+export GPUTsit5, GPUVern7, GPUVern9, GPUEM
 export terminate!
 
 end # module
