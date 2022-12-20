@@ -60,7 +60,7 @@ for alg in algs
     @test length(sol[1].u) == length(saveat)
     @test length(asol[1].u) == length(saveat)
 
-    saveat = 0.0:0.1:10.0
+    saveat = 0.f0:0.1f0:10.f0
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(), trajectories = 2,
                 adaptive = false, dt = 0.01f0, saveat = saveat)
