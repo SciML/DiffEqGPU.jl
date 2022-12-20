@@ -177,5 +177,5 @@ function vectorized_asolve(probs, prob::SDEProblem, alg;
                            save_everystep = true,
                            debug = false,
                            kwargs...)
-    error("Adaptive time-stepping is not supported yet.")
+    error("Adaptive time-stepping is not supported yet with GPUEM.")
 end
