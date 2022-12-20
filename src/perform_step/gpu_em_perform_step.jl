@@ -16,6 +16,8 @@ function em_kernel(probs, _us, _ts, dt,
     tspan = prob.tspan
     p = prob.p
 
+    is_diagonal_noise = SciMLBase.is_diagonal_noise(prob)
+
     @inbounds ts[1] = prob.tspan[1]
     @inbounds us[1] = prob.u0
 
@@ -27,8 +29,13 @@ function em_kernel(probs, _us, _ts, dt,
     for j in 2:n
         uprev = u
 
-        u = uprev + f(uprev, p, t) * dt +
-            sqdt * g(uprev, p, t) .* randn(typeof(u0))
+        if is_diagonal_noise
+            u = uprev + f(uprev, p, t) * dt +
+                sqdt * g(uprev, p, t) .* randn(typeof(u0))
+        else
+            u = uprev + f(uprev, p, t) * dt +
+                sqdt * g(uprev, p, t) * randn(typeof(prob.noise_rate_prototype[1, :]))
+        end
 
         t += dt
 

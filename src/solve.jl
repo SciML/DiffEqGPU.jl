@@ -194,3 +194,11 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     #EDIT: Done when using with DiffEqGPU
     ts, us
 end
+
+function vectorized_asolve(probs, prob::SDEProblem, alg;
+                           dt, saveat = nothing,
+                           save_everystep = true,
+                           debug = false,
+                           kwargs...)
+    error("Adaptive time-stepping is not supported yet with GPUEM.")
+end

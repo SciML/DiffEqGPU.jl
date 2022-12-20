@@ -464,7 +464,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
     cpu_trajectories = ((ensemblealg isa EnsembleGPUArray ||
                          ensemblealg isa EnsembleGPUKernel) &&
                         ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) &&
-                       (typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9} &&
+                       (typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9, GPUEM} &&
                         (haskey(kwargs, :callback) ? kwargs[:callback] === nothing : true)) ?
                        round(Int, trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
@@ -479,6 +479,12 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
                 GPUSimpleTsit5()
             else
                 GPUSimpleATsit5()
+            end
+        elseif typeof(alg) <: Union{GPUEM}
+            if adaptive == false
+                SimpleEM()
+            else
+                error("Adaptive EM is not supported yet.")
             end
         else
             alg
@@ -589,7 +595,8 @@ function batch_solve(ensembleprob, alg,
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
                                                  adaptive; kwargs...)
 
-            sols = alg isa GPUEM ? Array{RODESolution}(undef, length(probs)) :
+            sols = ensembleprob.prob isa SDEProblem ?
+                   Array{RODESolution}(undef, length(probs)) :
                    Array{ODESolution}(undef, length(probs))
 
             for i in eachindex(probs)
