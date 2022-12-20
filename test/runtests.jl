@@ -30,3 +30,4 @@ using SafeTestsets, Test
 @time @testset "GPU Kernelized ODE Regression" begin include("gpu_kernel_ode/gpu_ode_regression.jl") end
 @time @testset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_ode/gpu_ode_regression.jl") end
 @time @testset "GPU Kernelized ODE ContinuousCallback" begin include("gpu_kernel_ode/gpu_ode_regression.jl") end
+@time @testset "GPU Kernelized SDE Regression" begin include("gpu_kernel_ode/gpu_sde_regression.jl") end
