@@ -1,7 +1,12 @@
-# [Massively Parallel ODE Solving using lower API for lower overheads](@id lowerAPI)
+# [Using the EnsembleGPUKernel Lower Level API for Decreased Overhead](@id lowerlevel)
 
+`EnsembleGPUKernel` is designed to match the SciML ensemble interface in order to allow for directly
+converting CPU code to GPU code without any code changes. However, this hiding of the GPU aspects
+decreases the overall performance as it always transfers the problem to the GPU and the result back
+to the CPU for the user. These overheads can be removed by directly using the lower level API elements
+of EnsembleGPUKernel.
 
-There are overheads in GPU solves when using `EnsembleGPUKernel` (For eg. offloading GPU Arrays to CPU). The example below provides a way to generate solves using lower level API with lower overheads:
+The example below provides a way to generate solves using lower level API with lower overheads:
 
 ```julia
 using DiffEqGPU, StaticArrays, CUDA
@@ -22,28 +27,22 @@ u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
 tspan = (0.0f0, 10.0f0)
 p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
-ensembleProb = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 ## Building different problems for different parameters
-I = 1:trajectories
-if ensembleProb.safetycopy
-    probs = map(I) do i
-        ensembleProb.prob_func(deepcopy(ensembleProb.prob), i, 1)
-    end
-else
-    probs = map(I) do i
-        ensembleProb.prob_func(ensembleProb.prob, i, 1)
-    end
+probs = map(I) do 1:trajectories
+    remake(prob, p = (@SVector rand(Float32, 3)).*p)
 end
-
-## Make them compatible with CUDA
+    
+## Move the arrays to the GPU
 probs = cu(probs)
 
 ## Finally use the lower API for faster solves! (Fixed time-stepping)
-@time ts,us = DiffEqGPU.vectorized_solve(probs, ensembleProb.prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+@time ts,us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
 
 ## Adaptive time-stepping
-@time ts,us = DiffEqGPU.vectorized_asolve(probs, ensembleProb.prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+@time ts,us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
 
 ```
+
+Note that the core is the function `DiffEqGPU.vectorized_solve` which is the solver for the CUDA-based `probs`
+which uses the manually converted problems, and returns `us` which is a vector of CuArrays for the solution.

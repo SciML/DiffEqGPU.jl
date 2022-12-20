@@ -312,6 +312,10 @@ This introduces the following limitations on its usage:
 - To use multiple GPUs over clusters, one must manually setup one process per GPU. See the
   multi-GPU tutorial for more details.
 
+!!! warn
+    Callbacks with `terminate!` does not work well with `EnsembleGPUArray` as the entire 
+    integration will hault when any of the trajectories hault. Use with caution.
+
 ## Example
 
 ```julia
