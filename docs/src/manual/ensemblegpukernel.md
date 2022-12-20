@@ -13,3 +13,9 @@ GPUTsit5
 GPUVern7
 GPUVern9
 ```
+
+## Lower Level API
+
+```@docs
+DiffEqGPU.vectorized_solve
+```
