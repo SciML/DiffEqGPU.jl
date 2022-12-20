@@ -1,4 +1,4 @@
-# [Massively Parallel ODE Solving using lower API for lower overheads](@id events)
+# [Massively Parallel ODE Solving using lower API for lower overheads](@id lowerAPI)
 
 
 There are overheads in GPU solves when using `EnsembleGPUKernel` (For eg. offloading GPU Arrays to CPU). The example below provides a way to generate solves using lower level API with lower overheads:
