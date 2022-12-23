@@ -313,7 +313,7 @@ This introduces the following limitations on its usage:
   multi-GPU tutorial for more details.
 
 !!! warn
-    Callbacks with `terminate!` does not work well with `EnsembleGPUArray` as the entire 
+    Callbacks with `terminate!` does not work well with `EnsembleGPUArray` as the entire
     integration will hault when any of the trajectories hault. Use with caution.
 
 ## Example
@@ -430,6 +430,11 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 struct EnsembleGPUKernel <: EnsembleKernelAlgorithm
     cpu_offload::Float64
 end
+
+cpu_alg = Dict(GPUTsit5 => (GPUSimpleTsit5(), GPUSimpleATsit5()),
+               GPUVern7 => (GPUSimpleVern7(), GPUSimpleAVern7()),
+               GPUVern9 => (GPUSimpleVern9(), GPUSimpleAVern9()))
+
 # Work around the fact that Zygote cannot handle the task system
 # Work around the fact that Zygote isderiving fails with constants?
 function EnsembleGPUArray()
@@ -476,9 +481,9 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
         cpu_II = (gpu_trajectories + 1):trajectories
         _alg = if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9}
             if adaptive == false
-                GPUSimpleTsit5()
+                cpu_alg[typeof(alg)][1]
             else
-                GPUSimpleATsit5()
+                cpu_alg[typeof(alg)][2]
             end
         elseif typeof(alg) <: Union{GPUEM}
             if adaptive == false
@@ -585,15 +590,24 @@ function batch_solve(ensembleprob, alg,
             ensembleprob.prob_func(ensembleprob.prob, i, 1)
         end
     end
-    @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan), probs[1]),
-                probs)
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
     if ensemblealg isa EnsembleGPUKernel
+        # Using inner saveat requires all of them to be of same size,
+        # because the dimension of CuMatrix is decided by it.
+        # The columns of it are accessed at each thread.
+        @assert all(Base.Fix2((prob1, prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
+                                                                   nothing)),
+                                                        sizeof(get(prob2.kwargs, :saveat,
+                                                                   nothing))), probs[1]),
+                    probs)
         if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9, GPUEM}
+            # Get inner saveat if global one isn't specified
+            _saveat = get(probs[1].kwargs, :saveat, nothing)
+            saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
-                                                 adaptive; kwargs...)
+                                                 adaptive; saveat = saveat, kwargs...)
 
             sols = ensembleprob.prob isa SDEProblem ?
                    Array{RODESolution}(undef, length(probs)) :
@@ -621,6 +635,9 @@ function batch_solve(ensembleprob, alg,
             error("We don't have solvers implemented for this algorithm yet")
         end
     else
+        @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
+                              probs[1]),
+                    probs)
         u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
         p = reduce(hcat,
                    probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)
