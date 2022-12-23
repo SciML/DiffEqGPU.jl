@@ -597,11 +597,25 @@ function batch_solve(ensembleprob, alg,
         # Using inner saveat requires all of them to be of same size,
         # because the dimension of CuMatrix is decided by it.
         # The columns of it are accessed at each thread.
-        @assert all(Base.Fix2((prob1, prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
+        if !all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
+                          probs[1]),
+                probs)
+            if !iszero(ensemblealg.cpu_offload)
+                error("Different time spans in an Ensemble Simulation with CPU offloading is not supported yet.")
+            end
+            if get(probs[1].kwargs, :saveat, nothing) === nothing && !adaptive &&
+               get(kwargs, :save_everystep, true)
+                error("Using different time-spans require either turning off save_everystep or using saveat. If using saveat, it should be of same length across the ensemble.")
+            end
+            if !all(Base.Fix2((prob1, prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
                                                                    nothing)),
                                                         sizeof(get(prob2.kwargs, :saveat,
                                                                    nothing))), probs[1]),
                     probs)
+                error("Using different saveat in EnsembleGPUKernel requires all of them to be of same length. Use saveats of same size only.")
+            end
+        end
+
         if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9, GPUEM}
             # Get inner saveat if global one isn't specified
             _saveat = get(probs[1].kwargs, :saveat, nothing)
