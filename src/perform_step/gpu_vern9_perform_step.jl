@@ -113,6 +113,10 @@ function vern9_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
 
+    _saveat = get(prob.kwargs, :saveat, nothing)
+
+    saveat = _saveat === nothing ? saveat : _saveat
+
     integ = gpuvern9_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
                           callback, save_everystep, saveat)
 
@@ -316,6 +320,10 @@ function avern9_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
     # TODO: optimize contiguous view to return a CuDeviceArray
+
+    _saveat = get(prob.kwargs, :saveat, nothing)
+
+    saveat = _saveat === nothing ? saveat : _saveat
 
     u0 = prob.u0
     tspan = prob.tspan

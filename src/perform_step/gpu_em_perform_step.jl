@@ -10,6 +10,10 @@ function em_kernel(probs, _us, _ts, dt,
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
 
+    _saveat = get(prob.kwargs, :saveat, nothing)
+
+    saveat = _saveat === nothing ? saveat : _saveat
+
     f = prob.f
     g = prob.g
     u0 = prob.u0
