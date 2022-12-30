@@ -103,11 +103,10 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        error("GPUEM does not support saveat yet")
-        # saveat = CuArray{typeof(dt)}(saveat)
-        # ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
-        # fill!(ts, prob.tspan[1])
-        # us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        saveat = CuArray{typeof(dt)}(saveat)
+        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        fill!(ts, prob.tspan[1])
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
     if alg isa GPUEM

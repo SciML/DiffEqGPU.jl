@@ -5,20 +5,20 @@ Random.seed!(100)
 
 @info "Convergence Test"
 
-# dX_t = u*dt + udW_t
-f(u, p, t) = u
-g(u, p, t) = u
-u0 = @SVector [0.5f0]
-
-tspan = (0.0f0, 1.0f0)
-prob = SDEProblem(f, g, u0, tspan)
-
-monteprob = EnsembleProblem(prob)
-
 algs = [GPUEM(), GPUSIEA()]
 
 for alg in algs
     @info alg
+
+    # dX_t = u*dt + udW_t
+    f(u, p, t) = u
+    g(u, p, t) = u
+    u0 = @SVector [0.5f0]
+
+    tspan = (0.0f0, 1.0f0)
+    prob = SDEProblem(f, g, u0, tspan)
+
+    monteprob = EnsembleProblem(prob)
 
     dt = Float32(1 // 2^(8))
     sol = solve(monteprob, alg, EnsembleGPUKernel(), dt = dt, trajectories = 1000,
@@ -61,6 +61,11 @@ for alg in algs
 
     @test sol.converged == true
     @test length(sol[1].u) == 2
+
+    saveat = [0.3f0, 0.5f0]
+
+    sol = solve(monteprob, alg, EnsembleGPUKernel(0.0), dt = dt, trajectories = 10,
+                adaptive = false, saveat = saveat)
 end
 
 @info "Non-Diagonal Noise"

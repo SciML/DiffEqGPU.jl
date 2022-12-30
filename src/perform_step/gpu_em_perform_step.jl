@@ -22,13 +22,22 @@ function em_kernel(probs, _us, _ts, dt,
 
     is_diagonal_noise = SciMLBase.is_diagonal_noise(prob)
 
-    @inbounds ts[1] = prob.tspan[1]
-    @inbounds us[1] = prob.u0
+    cur_t = 0
+    if saveat !== nothing
+        cur_t = 1
+        if tspan[1] == saveat[1]
+            cur_t += 1
+            @inbounds us[1] = u0
+        end
+    else
+        @inbounds ts[1] = tspan[1]
+        @inbounds us[1] = u0
+    end
 
     sqdt = sqrt(dt)
     u = copy(u0)
     t = copy(tspan[1])
-    n = length(ts)
+    n = length(tspan[1]:dt:tspan[2])
 
     for j in 2:n
         uprev = u
@@ -47,7 +56,14 @@ function em_kernel(probs, _us, _ts, dt,
             @inbounds us[j] = u
             @inbounds ts[j] = t
         elseif saveat !== nothing
-            error("GPUEM does not support saveat yet")
+            while cur_t <= length(saveat) && saveat[cur_t] <= t
+                savet = saveat[cur_t]
+                Θ = (savet - (t - dt)) / dt
+                # Linear Interpolation
+                @inbounds us[cur_t] = uprev + (u - uprev) * Θ
+                @inbounds ts[cur_t] = savet
+                cur_t += 1
+            end
         end
     end
 
