@@ -8,6 +8,7 @@ using KernelAbstractions, CUDA, SciMLBase, DiffEqBase, LinearAlgebra, Distribute
 using CUDAKernels
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
+CUDA.seed!(100)
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
@@ -368,7 +369,21 @@ generation with EnsembleGPUKernel.
 """
 struct GPUVern9 <: GPUODEAlgorithm end
 
+"""
+GPUEM()
+
+A specialized implementation of the Euler-Maruyama `GPUEM` method with weak order 1.0. Made specifically for kernel
+generation with EnsembleGPUKernel.
+"""
 struct GPUEM <: GPUSDEAlgorithm end
+
+"""
+GPUSIEA()
+
+A specialized implementation of the weak order 2.0 for Ito SDEs `GPUSIEA` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPUSIEA <: GPUSDEAlgorithm end
 
 """
 ```julia
@@ -469,8 +484,7 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
     cpu_trajectories = ((ensemblealg isa EnsembleGPUArray ||
                          ensemblealg isa EnsembleGPUKernel) &&
                         ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION) &&
-                       (typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9, GPUEM} &&
-                        (haskey(kwargs, :callback) ? kwargs[:callback] === nothing : true)) ?
+                       (haskey(kwargs, :callback) ? kwargs[:callback] === nothing : true) ?
                        round(Int, trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
 
@@ -479,13 +493,13 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 
     if cpu_trajectories != 0 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
         cpu_II = (gpu_trajectories + 1):trajectories
-        _alg = if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9}
+        _alg = if typeof(alg) <: GPUODEAlgorithm
             if adaptive == false
                 cpu_alg[typeof(alg)][1]
             else
                 cpu_alg[typeof(alg)][2]
             end
-        elseif typeof(alg) <: Union{GPUEM}
+        elseif typeof(alg) <: GPUSDEAlgorithm
             if adaptive == false
                 SimpleEM()
             else
@@ -616,7 +630,7 @@ function batch_solve(ensembleprob, alg,
             end
         end
 
-        if typeof(alg) <: Union{GPUTsit5, GPUVern7, GPUVern9, GPUEM}
+        if alg isa Union{GPUODEAlgorithm, GPUSDEAlgorithm}
             # Get inner saveat if global one isn't specified
             _saveat = get(probs[1].kwargs, :saveat, nothing)
             saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
@@ -1265,12 +1279,13 @@ include("perform_step/gpu_tsit5_perform_step.jl")
 include("perform_step/gpu_vern7_perform_step.jl")
 include("perform_step/gpu_vern9_perform_step.jl")
 include("perform_step/gpu_em_perform_step.jl")
+include("perform_step/gpu_siea_perform_step.jl")
 include("tableaus/verner_tableaus.jl")
 include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
-export GPUTsit5, GPUVern7, GPUVern9, GPUEM
+export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 export terminate!
 
 end # module
