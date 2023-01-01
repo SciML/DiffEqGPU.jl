@@ -8,7 +8,6 @@ using KernelAbstractions, CUDA, SciMLBase, DiffEqBase, LinearAlgebra, Distribute
 using CUDAKernels
 using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
-CUDA.seed!(100)
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
