@@ -87,6 +87,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     ts, us
 end
 
+# SDEProblems over GPU cannot support u0 as a Number type, because GPU kernels compiled only through u0 being StaticArrays
 function vectorized_solve(probs, prob::SDEProblem, alg;
                           dt, saveat = nothing,
                           save_everystep = true,
@@ -102,16 +103,20 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        error("GPUEM does not support saveat yet")
-        # saveat = CuArray{typeof(dt)}(saveat)
-        # ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
-        # fill!(ts, prob.tspan[1])
-        # us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        saveat = CuArray{typeof(dt)}(saveat)
+        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        fill!(ts, prob.tspan[1])
+        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
     if alg isa GPUEM
         kernel = @cuda launch=false em_kernel(probs, us, ts, dt,
                                               saveat, Val(save_everystep))
+    elseif alg isa Union{GPUSIEA}
+        SciMLBase.is_diagonal_noise(prob) ? nothing :
+        error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
+        kernel = @cuda launch=false siea_kernel(probs, us, ts, dt,
+                                                saveat, Val(save_everystep))
     end
     if debug
         @show CUDA.registers(kernel)

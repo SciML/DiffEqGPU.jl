@@ -39,7 +39,7 @@ for alg in algs
 
     ### solve parameters
 
-    saveat = [0.0f0, 4.0f0]
+    saveat = [2.0f0, 4.0f0]
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(), trajectories = 2,
                 adaptive = false, dt = 0.01f0, saveat = saveat)

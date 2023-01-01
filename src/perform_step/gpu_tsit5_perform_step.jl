@@ -91,7 +91,7 @@ function tsit5_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
     integ.cur_t = 0
     if saveat !== nothing
         integ.cur_t = 1
-        if prob.tspan[1] == ts[1]
+        if prob.tspan[1] == saveat[1]
             integ.cur_t += 1
             @inbounds us[1] = u0
         end
@@ -256,7 +256,7 @@ function atsit5_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
     integ.cur_t = 0
     if saveat !== nothing
         integ.cur_t = 1
-        if tspan[1] == ts[1]
+        if tspan[1] == saveat[1]
             integ.cur_t += 1
             @inbounds us[1] = u0
         end

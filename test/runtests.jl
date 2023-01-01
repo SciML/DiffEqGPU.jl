@@ -27,7 +27,7 @@ using SafeTestsets, Test
 # Not safe because distributed doesn't play nicely with modules.
 @time @testset "Distributed Multi-GPU" begin include("distributed_multi_gpu.jl") end
 
-@time @testset "GPU Kernelized ODE Regression" begin include("gpu_kernel_ode/gpu_ode_regression.jl") end
-@time @testset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_ode/gpu_ode_regression.jl") end
-@time @testset "GPU Kernelized ODE ContinuousCallback" begin include("gpu_kernel_ode/gpu_ode_regression.jl") end
-@time @testset "GPU Kernelized SDE Regression" begin include("gpu_kernel_ode/gpu_sde_regression.jl") end
+@time @testset "GPU Kernelized ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
+@time @testset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
+@time @testset "GPU Kernelized ODE ContinuousCallback" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
+@time @testset "GPU Kernelized SDE Regression" begin include("gpu_kernel_de/gpu_sde_regression.jl") end
