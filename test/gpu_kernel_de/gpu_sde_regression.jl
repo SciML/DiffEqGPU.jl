@@ -87,6 +87,7 @@ function g(u, p, t)
 end
 
 u0 = @SVector ones(Float32, 2)
+dt = Float32(1 // 2^(8))
 noise_rate_prototype = @SMatrix zeros(Float32, 2, 4)
 prob = SDEProblem(f, g, u0, (0.0f0, 1.0f0), noise_rate_prototype = noise_rate_prototype)
 monteprob = EnsembleProblem(prob)
