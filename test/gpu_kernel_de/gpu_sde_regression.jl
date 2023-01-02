@@ -1,7 +1,4 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, Statistics
-using Random
-
-Random.seed!(100)
 
 @info "Convergence Test"
 
@@ -16,7 +13,7 @@ for alg in algs
     u0 = @SVector [0.5f0]
 
     tspan = (0.0f0, 1.0f0)
-    prob = SDEProblem(f, g, u0, tspan)
+    prob = SDEProblem(f, g, u0, tspan; seed = 123)
 
     monteprob = EnsembleProblem(prob)
 
