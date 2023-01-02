@@ -12,6 +12,8 @@ EnsembleGPUKernel
 GPUTsit5
 GPUVern7
 GPUVern9
+GPUEM
+GPUSIEA
 ```
 
 ## Lower Level API
