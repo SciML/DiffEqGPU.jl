@@ -4,7 +4,7 @@ u₀ = SA[0.1f0]
 f(u, p, t) = SA[p[1] * u[1]]
 g(u, p, t) = SA[p[2] * u[1]]
 tspan = (0.0f0, 1.0f0)
-p = SA[1.5f0, 0.01f0]
+p = SA[1.5f0, 1f0]
 
 prob = SDEProblem(f, g, u₀, tspan, p; seed = 1234)
 
