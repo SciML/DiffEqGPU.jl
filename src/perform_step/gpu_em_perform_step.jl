@@ -6,6 +6,8 @@ function em_kernel(probs, _us, _ts, dt,
     # get the actual problem for this thread
     prob = @inbounds probs[i]
 
+    Random.seed!(prob.seed)
+
     # get the input/output arrays for this thread
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
