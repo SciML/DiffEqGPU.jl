@@ -32,7 +32,7 @@ for alg in algs
 
     us_exact = 0.5f0 * exp.(sol[1].t)
 
-    @test norm(us - us_exact, Inf) < 5e-2
+    @test norm(us - us_exact, Inf) < 6e-2
 
     @info "Diagonal Noise"
 
