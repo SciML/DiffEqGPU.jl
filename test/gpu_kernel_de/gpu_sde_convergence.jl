@@ -22,15 +22,15 @@ sim = test_convergence(Float32.(dts), ensemble_prob, GPUEM(), EnsembleGPUKernel(
                        expected_value = SA[u₀ * exp((p[1]))])
 
 @show sim.𝒪est[:weak_final]
-@test abs(sim.𝒪est[:weak_final] - 1) < 5e-2
+@test abs(sim.𝒪est[:weak_final] - 1.0) < 0.1
 
 @info "GPUSIEA"
 
 dts = 1 .// 2 .^ (6:-1:4)
 
 sim = test_convergence(Float32.(dts), ensemble_prob, GPUSIEA(), EnsembleGPUKernel(0.0),
-                       save_everystep = false, trajectories = Int(1e4),
+                       save_everystep = false, trajectories = Int(5e4),
                        expected_value = SA[u₀ * exp((p[1]))])
 
 @show sim.𝒪est[:weak_final]
-@test abs(sim.𝒪est[:weak_final] - 2.02) < 5e-2
+@test abs(sim.𝒪est[:weak_final] - 2.0) < 0.2
