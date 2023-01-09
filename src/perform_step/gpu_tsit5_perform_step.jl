@@ -66,10 +66,9 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-function tsit5_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
+@kernel function tsit5_kernel(@Const(probs), _us, _ts, dt, callback, tstops, nsteps,
                       saveat, ::Val{save_everystep}) where {save_everystep}
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(probs) && return
+    i = @index(Global, Linear)
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]

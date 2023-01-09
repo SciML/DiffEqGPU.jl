@@ -52,11 +52,13 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
 
     # Handle tstops
     tstops = cu(tstops)
+    ka = alg isa GPUTsit5
 
     if alg isa GPUTsit5
-        kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
-                                                 nsteps,
-                                                 saveat, Val(save_everystep))
+        kernel = tsit5_kernel(CUDADevice(), 128)
+        # @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
+        #                                          nsteps,
+        #                                          saveat, Val(save_everystep))
     elseif alg isa GPUVern7
         kernel = @cuda launch=false vern7_kernel(probs, us, ts, dt, callback, tstops,
                                                  nsteps,
@@ -66,18 +68,24 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
                                                  nsteps,
                                                  saveat, Val(save_everystep))
     end
-    if debug
-        @show CUDA.registers(kernel)
-        @show CUDA.memory(kernel)
+    if !ka
+        if debug
+            @show CUDA.registers(kernel)
+            @show CUDA.memory(kernel)
+        end
+
+        config = launch_configuration(kernel.fun)
+        threads = min(length(probs), config.threads)
+        # XXX: this kernel performs much better with all blocks active
+        blocks = max(cld(length(probs), threads), config.blocks)
+        threads = cld(length(probs), blocks)
+
+        kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat; threads, blocks)
+    else
+        event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat;
+            ndrange=length(probs), depdendencies=Event(CUDADevice()))
+        wait(CUDADevice(), event)
     end
-
-    config = launch_configuration(kernel.fun)
-    threads = min(length(probs), config.threads)
-    # XXX: this kernel performs much better with all blocks active
-    blocks = max(cld(length(probs), threads), config.blocks)
-    threads = cld(length(probs), blocks)
-
-    kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat; threads, blocks)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
