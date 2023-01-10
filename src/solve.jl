@@ -55,7 +55,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     ka = alg isa GPUTsit5
 
     if alg isa GPUTsit5
-        kernel = tsit5_kernel(CUDADevice(), 128)
+        kernel = tsit5_kernel(CUDADevice())
         # @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
         #                                          nsteps,
         #                                          saveat, Val(save_everystep))
@@ -83,7 +83,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat; threads, blocks)
     else
         event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat;
-            ndrange=length(probs), depdendencies=Event(CUDADevice()))
+            ndrange=length(probs), dependencies=Event(CUDADevice()))
         wait(CUDADevice(), event)
     end
 
