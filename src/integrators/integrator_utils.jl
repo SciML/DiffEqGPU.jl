@@ -211,6 +211,78 @@ end
     true, saved_in_cb
 end
 
+# Use Recursion to find the first callback for type-stability
+
+# Base Case: Only one callback
+@inline function find_first_continuous_callback(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                             AlgType,
+                                                                                             IIP,
+                                                                                             S,
+                                                                                             T
+                                                                                             },
+                                                callback::DiffEqBase.AbstractContinuousCallback) where {
+                                                                                                        AlgType <:
+                                                                                                        GPUODEAlgorithm,
+                                                                                                        IIP,
+                                                                                                        S,
+                                                                                                        T
+                                                                                                        }
+    (find_callback_time(integrator, callback, 1)..., 1, 1)
+end
+
+# Starting Case: Compute on the first callback
+@inline function find_first_continuous_callback(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                             AlgType,
+                                                                                             IIP,
+                                                                                             S,
+                                                                                             T
+                                                                                             },
+                                                callback::DiffEqBase.AbstractContinuousCallback,
+                                                args...) where {AlgType <: GPUODEAlgorithm,
+                                                                IIP, S, T}
+    find_first_continuous_callback(integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
+                                                                                IIP, S, T},
+                                   find_callback_time(integrator, callback, 1)..., 1, 1,
+                                   args...) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
+end
+
+@inline function find_first_continuous_callback(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                             AlgType,
+                                                                                             IIP,
+                                                                                             S,
+                                                                                             T
+                                                                                             },
+                                                tmin::Number, upcrossing::Number,
+                                                event_occured::Bool, event_idx::Int,
+                                                idx::Int,
+                                                counter::Int,
+                                                callback2) where {
+                                                                  AlgType <:
+                                                                  GPUODEAlgorithm, IIP, S, T
+                                                                  }
+    counter += 1 # counter is idx for callback2.
+    tmin2, upcrossing2, event_occurred2, event_idx2 = find_callback_time(integrator,
+                                                                         callback2, counter)
+
+    if event_occurred2 && (tmin2 < tmin || !event_occured)
+        return tmin2, upcrossing2, true, event_idx2, counter, counter
+    else
+        return tmin, upcrossing, event_occured, event_idx, idx, counter
+    end
+end
+
+@inline function find_first_continuous_callback(integrator, tmin::Number,
+                                                upcrossing::Number,
+                                                event_occured::Bool, event_idx::Int,
+                                                idx::Int,
+                                                counter::Int, callback2, args...)
+    find_first_continuous_callback(integrator,
+                                   find_first_continuous_callback(integrator, tmin,
+                                                                  upcrossing, event_occured,
+                                                                  event_idx, idx, counter,
+                                                                  callback2)..., args...)
+end
+
 @inline function handle_callbacks!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
                                                                                 IIP, S, T},
                                    ts, us) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
@@ -224,8 +296,8 @@ end
     if !(typeof(continuous_callbacks) <: Tuple{})
         event_occurred = false
 
-        time, upcrossing, event_occurred, event_idx, idx, counter = DiffEqBase.find_first_continuous_callback(integrator,
-                                                                                                              continuous_callbacks...)
+        time, upcrossing, event_occurred, event_idx, idx, counter = find_first_continuous_callback(integrator,
+                                                                                                   continuous_callbacks...)
 
         if event_occurred
             integrator.event_last_time = idx
@@ -248,15 +320,37 @@ end
     return false, saved_in_cb
 end
 
-@inline function DiffEqBase.find_callback_time(integrator::DiffEqBase.AbstractODEIntegrator{
-                                                                                            AlgType,
-                                                                                            IIP,
-                                                                                            S,
-                                                                                            T
-                                                                                            },
-                                               callback::DiffEqGPU.GPUContinuousCallback,
-                                               counter) where {AlgType <: GPUODEAlgorithm,
-                                                               IIP, S, T}
+@inline function zero_func(abst, p)
+    integrator = p[1]
+    callback = p[2]
+    get_condition(integrator, callback, abst)
+end
+
+@inline function bisection(f, tup, p, t_forward::Bool, rootfind::SciMLBase.RootfindOpt,
+                           abstol, reltol;
+                           maxiters = 1000)
+    prob = SimpleNonlinearSolve.IntervalNonlinearProblem{false}(f,
+                                                                tup, p)
+    if rootfind == SciMLBase.LeftRootFind
+        SimpleNonlinearSolve.solve(prob,
+                                   SimpleNonlinearSolve.Falsi(), abstol = abstol,
+                                   reltol = reltol).left
+    else
+        SimpleNonlinearSolve.solve(prob,
+                                   SimpleNonlinearSolve.Falsi(), abstol = abstol,
+                                   reltol = reltol).right
+    end
+end
+
+@inline function find_callback_time(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                                 AlgType,
+                                                                                 IIP,
+                                                                                 S,
+                                                                                 T
+                                                                                 },
+                                    callback::DiffEqGPU.GPUContinuousCallback,
+                                    counter) where {AlgType <: GPUODEAlgorithm,
+                                                    IIP, S, T}
     event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(integrator,
                                                                                                                callback,
                                                                                                                counter)
@@ -268,28 +362,30 @@ end
             top_t = integrator.t
             bottom_t = integrator.tprev
             if callback.rootfind != SciMLBase.NoRootFind
-                function zero_func(abst, p = nothing)
-                    DiffEqBase.get_condition(integrator, callback, abst)
-                end
-                if zero_func(top_t) == 0
+                # function zero_func(abst, p = nothing)
+                #     DiffEqBase.get_condition(integrator, callback, abst)
+                # end
+                p = (integrator, callback)
+                if zero_func(top_t, p) == 0
                     Θ = top_t
                 else
                     if integrator.event_last_time == counter &&
-                       abs(zero_func(bottom_t)) <= 100abs(integrator.last_event_error) &&
+                       abs(zero_func(bottom_t, p)) <= 100abs(integrator.last_event_error) &&
                        prev_sign_index == 1
 
                         # Determined that there is an event by derivative
                         # But floating point error may make the end point negative
                         bottom_t += integrator.dt * callback.repeat_nudge
-                        sign_top = sign(zero_func(top_t))
-                        sign(zero_func(bottom_t)) * sign_top >= zero(sign_top) &&
+                        sign_top = sign(zero_func(top_t, p))
+                        sign(zero_func(bottom_t, p)) * sign_top >= zero(sign_top) &&
                             error("Double callback crossing floating pointer reducer errored. Report this issue.")
                     end
-                    Θ = DiffEqBase.bisection(zero_func, (bottom_t, top_t),
-                                             isone(integrator.tdir),
-                                             callback.rootfind, callback.abstol,
-                                             callback.reltol)
-                    integrator.last_event_error = DiffEqBase.ODE_DEFAULT_NORM(zero_func(Θ),
+                    Θ = bisection(zero_func, (bottom_t, top_t), p,
+                                  isone(integrator.tdir),
+                                  callback.rootfind, callback.abstol,
+                                  callback.reltol)
+                    integrator.last_event_error = DiffEqBase.ODE_DEFAULT_NORM(zero_func(Θ,
+                                                                                        p),
                                                                               Θ)
                 end
                 new_t = Θ - integrator.tprev
@@ -318,14 +414,14 @@ end
     return nothing
 end
 
-@inline function DiffEqBase.get_condition(integrator::DiffEqBase.AbstractODEIntegrator{
-                                                                                       AlgType,
-                                                                                       IIP,
-                                                                                       S, T
-                                                                                       },
-                                          callback,
-                                          abst) where {AlgType <: GPUODEAlgorithm, IIP, S, T
-                                                       }
+function get_condition(integrator::DiffEqBase.AbstractODEIntegrator{
+                                                                    AlgType,
+                                                                    IIP,
+                                                                    S, T
+                                                                    },
+                       callback,
+                       abst) where {AlgType <: GPUODEAlgorithm, IIP, S, T
+                                    }
     if abst == integrator.t
         tmp = integrator.u
     elseif abst == integrator.tprev
@@ -373,7 +469,7 @@ end
 
         # Evaluate condition slightly in future
         abst = integrator.tprev + integrator.dt * callback.repeat_nudge
-        tmp_condition = DiffEqBase.get_condition(integrator, callback, abst)
+        tmp_condition = get_condition(integrator, callback, abst)
         prev_sign = sign(tmp_condition)
     else
         prev_sign = sign(previous_condition)
@@ -381,11 +477,12 @@ end
 
     prev_sign_index = 1
     abst = integrator.t
-    next_condition = DiffEqBase.get_condition(integrator, callback, abst)
+    next_condition = get_condition(integrator, callback, abst)
     next_sign = sign(next_condition)
 
-    if ((prev_sign < 0 && callback.affect! !== nothing) ||
-        (prev_sign > 0 && callback.affect_neg! !== nothing)) && prev_sign * next_sign <= 0
+    if ((prev_sign < zero(prev_sign) && callback.affect! !== nothing) ||
+        (prev_sign > zero(prev_sign) && callback.affect_neg! !== nothing)) &&
+       prev_sign * next_sign <= zero(prev_sign)
         event_occurred = true
     end
     event_idx = 1

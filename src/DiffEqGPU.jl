@@ -20,6 +20,7 @@ using LinearSolve
 using Adapt, SimpleDiffEq, StaticArrays
 using Parameters, MuladdMacro
 using Random
+using SimpleNonlinearSolve
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
