@@ -1,7 +1,8 @@
 # Choosing the Ensemble: EnsembleGPUArray vs EnsembleGPUKernel
 
-The short answer for how to choose an ensembler is that, if `EnsembleGPUKernel` works on
-your problem, you should use it. A more complex discussion is the following:
+The short answer for how to choose an ensemble method is that,
+if `EnsembleGPUKernel` works on your problem, you should use it.
+A more complex discussion is the following:
 
 - `EnsembleGPUKernel` is more asynchronous and has lower kernel call counts than
   `EnsembleGPUArray`. This should amount to lower overhead in any case where the algorithms

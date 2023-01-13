@@ -6,7 +6,7 @@ decreases the overall performance as it always transfers the problem to the GPU 
 to the CPU for the user. These overheads can be removed by directly using the lower level API elements
 of EnsembleGPUKernel.
 
-The example below provides a way to generate solves using lower level API with lower overheads:
+The example below provides a way to generate solves using the lower level API with lower overheads:
 
 ```julia
 using DiffEqGPU, StaticArrays, CUDA

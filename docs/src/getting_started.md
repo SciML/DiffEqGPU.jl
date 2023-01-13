@@ -5,7 +5,7 @@
 There are two very different ways that one can
 accelerate an ODE solution with GPUs. There is one case where `u` is very big and `f`
 is very expensive but very structured, and you use GPUs to accelerate the computation
-of said `f`. The other use case is where `u` is very small but you want to solve the ODE
+of said `f`. The other use case is where `u` is very small, but you want to solve the ODE
 `f` over many different initial conditions (`u0`) or parameters `p`. In that case, you can
 use GPUs to parallelize over different parameters and initial conditions. In other words:
 
@@ -50,7 +50,7 @@ More details on effective use of within-method GPU parallelism can be found in
 ## Example of Parameter-Parallelism with GPU Ensemble Methods
 
 On the other side of the spectrum, what if we want to solve tons of small ODEs? For this
-use case we would use the ensembling methods to solve the same ODE many times with
+use case, we would use the ensemble methods to solve the same ODE many times with
 different parameters. This looks like:
 
 ```julia

@@ -2,18 +2,18 @@
 
 !!! note
 
-    This tutorial assumes one already has familarity with EnsembleGPUArray and
+    This tutorial assumes one already has familiarity with EnsembleGPUArray and
     EnsembleGPUKernel. Please see [the Lorenz equation tutorial](@ref lorenz) before
     reading this tutorial!
 
-In this tutorial we will show how to increase the number of trajectories that can be
-computed in parallel by setting up and using a multi-GPU solve. For this, we will setup
+In this tutorial, we will show how to increase the number of trajectories that can be
+computed in parallel by setting up and using a multi-GPU solve. For this, we will set up
 one Julia process for each GPU and let the internal `pmap` system of `EnsembleGPUArray`
 parallelize the system across all of our GPUs. Let's dig in.
 
 ## Setting Up a Multi-GPU Julia Environment
 
-To setup a multi-GPU environment, first setup a processes such that every process
+To set up a multi-GPU environment, first set up processes such that each process
 has a different GPU. For example:
 
 ```julia
@@ -28,7 +28,7 @@ let gpuworkers = asyncmap(collect(zip(workers(), CUDA.devices()))) do (p, d)
 end
 ```
 
-Then setup the calls to work with distributed processes:
+Then set up the calls to work with distributed processes:
 
 ```julia
 @everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
@@ -50,7 +50,7 @@ Then setup the calls to work with distributed processes:
 end
 ```
 
-Now each batch will run on separate GPUs. Thus we need to use the `batch_size`
+Now each batch will run on separate GPUs. Thus, we need to use the `batch_size`
 keyword argument from the Ensemble interface to ensure there are multiple batches.
 Let's solve 40,000 trajectories, batching 10,000 trajectories at a time:
 
@@ -68,7 +68,7 @@ two processes with two GPUs, this will do two sets of 10,000 at a time.
 
 ## Example Multi-GPU Script
 
-In this example we know we have a 2-GPU system (1 eGPU), and we split the work
+In this example, we know we have a 2-GPU system (1 eGPU), and we split the work
 across the two by directly defining the devices on the two worker processes:
 
 ```julia

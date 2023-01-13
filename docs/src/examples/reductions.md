@@ -1,10 +1,10 @@
 # Batched Reductions for Lowering Peak Memory Requirements
 
 Just as in the regular form of the
-[DifferentialEquations.jl ensembling interface](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/),
+[DifferentialEquations.jl ensemble interface](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/),
 a `reduction` function can be given to reduce between batches. Here we show an example
 of running 20 ODEs at a time, grabbing its value at the end, and reducing by summing all
-of the values. This then allows for only saving the sum of the previous batches, boosting
+the values. This then allows for only saving the sum of the previous batches, boosting
 the trajectory count to an amount that is higher than would fit in memory, and only saving
 the summed values.
 
