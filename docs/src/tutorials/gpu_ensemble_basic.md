@@ -21,14 +21,14 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
 sol = solve(monteprob,Tsit5(),EnsembleThreads(),trajectories=10_000,saveat=1.0f0);
 ```
 
-Changing this to being GPU-parallelized is as simple as changing the ensembler method to
+Changing this to being GPU-parallelized is as simple as changing the ensemble method to
 `EnsembleGPUArray`:
 
 ```julia
 sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0);
 ```
 
-and voila, the method is re-compiled to parallelize the solves over a GPU!
+and voilà, the method is re-compiled to parallelize the solves over a GPU!
 
 While `EnsembleGPUArray` has a bit of overhead due to its form of GPU code construction,
 `EnsembleGPUKernel` is a more restrictive GPU-itizing algorithm that achieves a much lower
@@ -67,7 +67,7 @@ DiffEqGPU also supports more advanced features than shown above. Other tutorials
 [handling events or callbacks](@ref events) and [multi-GPU parallelism](@ref multigpu).
 But the simplest thing to show is that the generality of solvers allows for other types of
 equations. For example, one can handle stiff ODEs with `EnsembleGPUArray` simply by using a
-stiff ODE solver. Note that as explained in the docstring, analytical derivatives
+stiff ODE solver. Note that, as explained in the docstring, analytical derivatives
 (Jacobian and time gradient) must be supplied. For the Lorenz equation, this looks like:
 
 ```julia

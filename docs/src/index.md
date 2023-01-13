@@ -12,12 +12,12 @@ using Pkg
 Pkg.add("DiffEqGPU")
 ```
 
-This will also install all of the dependencies, including the
-[CUDA.jl](https://cuda.juliagpu.org/stable/), which will also install all of the required
+This will also install all the dependencies, including the
+[CUDA.jl](https://cuda.juliagpu.org/stable/), which will also install all the required
 versions of CUDA and CuDNN required by these libraries. Note that the same requirements
-of CUDA.jl apply to DiffEqGPU, such as requiring a GPU with CUDA v11 compatability. For
+of CUDA.jl apply to DiffEqGPU, such as requiring a GPU with CUDA v11 compatibility. For
 more information on these requirements, see
-[the requirements of CUDA.jl](https://cuda.juliagpu.org/stable/installation/overview/)
+[the requirements of CUDA.jl](https://cuda.juliagpu.org/stable/installation/overview/).
 
 ## Contributing
 

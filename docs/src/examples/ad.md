@@ -1,6 +1,6 @@
 # Using GPU-accelerated Ensembles with Automatic Differentiation
 
-`EnsembleGPUArray` comes with derivative overloads for reverse mode automatic differentiation
+`EnsembleGPUArray` comes with derivative overloads for reverse mode automatic differentiation,
 and thus can be thrown into deep learning training loops. The following is an example
 of this use:
 
@@ -43,7 +43,7 @@ Flux.@epochs 10 Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
 ```
 
 Forward-mode automatic differentiation works as well, as demonstrated by its capability
-to recompile for Dual number arithmatic:
+to recompile for Dual number arithmetic:
 
 ```julia
 using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test
