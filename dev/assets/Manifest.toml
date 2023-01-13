@@ -200,9 +200,9 @@ version = "6.113.1"
 
 [[deps.DiffEqGPU]]
 deps = ["Adapt", "ArrayInterfaceGPUArrays", "CUDA", "CUDAKernels", "ChainRulesCore", "DiffEqBase", "Distributed", "DocStringExtensions", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "LinearSolve", "MuladdMacro", "Parameters", "Random", "RecursiveArrayTools", "SciMLBase", "SimpleDiffEq", "StaticArrays", "ZygoteRules"]
-path = "/var/lib/buildkite-agent/builds/gpuci-3/julialang/diffeqgpu-dot-jl"
+path = "/var/lib/buildkite-agent/builds/gpuci-4/julialang/diffeqgpu-dot-jl"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
-version = "1.25.0"
+version = "1.26.0"
 
 [[deps.DiffResults]]
 deps = ["StaticArraysCore"]
