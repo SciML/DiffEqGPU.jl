@@ -9,7 +9,7 @@ of EnsembleGPUKernel.
 The example below provides a way to generate solves using lower level API with lower overheads:
 
 ```julia
-using DiffEqGPU, StaticArrays, CUDA
+using DiffEqGPU, StaticArrays, CUDA, DiffEqBase
 
 trajectories =  10_000 
 
@@ -29,7 +29,7 @@ p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
 ## Building different problems for different parameters
-probs = map(I) do 1:trajectories
+probs = map(1:trajectories) do i
     remake(prob, p = (@SVector rand(Float32, 3)).*p)
 end
     
@@ -37,11 +37,18 @@ end
 probs = cu(probs)
 
 ## Finally use the lower API for faster solves! (Fixed time-stepping)
-@time ts,us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+
+# Run once for compilation
+@time @CUDA.sync ts,us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+
+@time @CUDA.sync ts,us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+
 
 ## Adaptive time-stepping
-@time ts,us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+# Run once for compilation
+@time @CUDA.sync ts,us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
 
+@time @CUDA.sync ts,us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
 ```
 
 Note that the core is the function `DiffEqGPU.vectorized_solve` which is the solver for the CUDA-based `probs`

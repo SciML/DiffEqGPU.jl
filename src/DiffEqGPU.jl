@@ -1085,7 +1085,8 @@ function generate_callback(prob, I, ensemblealg; kwargs...)
     prob_cb = get(prob.kwargs, :callback, ())
     kwarg_cb = get(kwargs, :merge_callbacks, false) ? get(kwargs, :callback, ()) : ()
 
-    if isempty(prob_cb) && isempty(kwarg_cb)
+    if (prob_cb === nothing || isempty(prob_cb)) &&
+       (kwarg_cb === nothing || isempty(kwarg_cb))
         return nothing
     else
         return CallbackSet(generate_callback(prob_cb, I, ensemblealg),
