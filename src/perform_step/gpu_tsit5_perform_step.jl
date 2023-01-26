@@ -115,8 +115,6 @@ end
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
-
-    return nothing
 end
 
 #############################Adaptive Version#####################################
