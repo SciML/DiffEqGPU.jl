@@ -80,9 +80,9 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         blocks = max(cld(length(probs), threads), config.blocks)
         threads = cld(length(probs), blocks)
 
-        kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat; threads, blocks)
+        kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep); threads, blocks)
     else
-        event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat;
+        event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
             ndrange=length(probs), dependencies=Event(CUDADevice()))
         wait(CUDADevice(), event)
     end
