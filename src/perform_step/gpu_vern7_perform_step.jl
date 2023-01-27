@@ -74,10 +74,9 @@
     return saved_in_cb
 end
 
-function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
-                      saveat, ::Val{save_everystep}) where {save_everystep}
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(probs) && return
+@kernel function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
+                              saveat, ::Val{save_everystep}) where {save_everystep}
+    i = @index(Global, Linear)
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -123,8 +122,6 @@ function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
-
-    return nothing
 end
 
 #############################Adaptive Version#####################################
@@ -250,10 +247,9 @@ end
     return saved_in_cb
 end
 
-function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
-                       saveat, ::Val{save_everystep}) where {save_everystep}
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(probs) && return
+@kernel function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
+                               saveat, ::Val{save_everystep}) where {save_everystep}
+    i = @index(Global, Linear)
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -305,6 +301,4 @@ function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
-
-    return nothing
 end

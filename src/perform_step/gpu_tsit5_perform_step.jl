@@ -67,7 +67,7 @@ end
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
 @kernel function tsit5_kernel(@Const(probs), _us, _ts, dt, callback, tstops, nsteps,
-                      saveat, ::Val{save_everystep}) where {save_everystep}
+                              saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -222,10 +222,9 @@ end
     return saved_in_cb
 end
 
-function atsit5_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
-                       saveat, ::Val{save_everystep}) where {save_everystep}
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(probs) && return
+@kernel function atsit5_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
+                               saveat, ::Val{save_everystep}) where {save_everystep}
+    i = @index(Global, Linear)
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -277,6 +276,4 @@ function atsit5_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
-
-    return nothing
 end
