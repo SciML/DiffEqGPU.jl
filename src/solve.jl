@@ -52,32 +52,17 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
 
     # Handle tstops
     tstops = cu(tstops)
-
+    dev = CUDADevice{#=prefer_blocks=#true}()
     if alg isa GPUTsit5
-        kernel = @cuda launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
-                                                 nsteps,
-                                                 saveat, Val(save_everystep))
+        kernel = tsit5_kernel(dev)
     elseif alg isa GPUVern7
-        kernel = @cuda launch=false vern7_kernel(probs, us, ts, dt, callback, tstops,
-                                                 nsteps,
-                                                 saveat, Val(save_everystep))
+        kernel = vern7_kernel(dev)
     elseif alg isa GPUVern9
-        kernel = @cuda launch=false vern9_kernel(probs, us, ts, dt, callback, tstops,
-                                                 nsteps,
-                                                 saveat, Val(save_everystep))
+        kernel = vern9_kernel(dev)
     end
-    if debug
-        @show CUDA.registers(kernel)
-        @show CUDA.memory(kernel)
-    end
-
-    config = launch_configuration(kernel.fun)
-    threads = min(length(probs), config.threads)
-    # XXX: this kernel performs much better with all blocks active
-    blocks = max(cld(length(probs), threads), config.blocks)
-    threads = cld(length(probs), blocks)
-
-    kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat; threads, blocks)
+    event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
+                   ndrange=length(probs), dependencies=Event(dev))
+    wait(dev, event)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -162,35 +147,18 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     end
 
     tstops = cu(tstops)
-
+    dev = CUDADevice{#=prefer_blocks=#true}()
     if alg isa GPUTsit5
-        kernel = @cuda launch=false atsit5_kernel(probs, us, ts, dt, callback, tstops,
-                                                  abstol,
-                                                  reltol,
-                                                  saveat, Val(save_everystep))
+        kernel = atsit5_kernel(dev)
     elseif alg isa GPUVern7
-        kernel = @cuda launch=false avern7_kernel(probs, us, ts, dt, callback, tstops,
-                                                  abstol,
-                                                  reltol,
-                                                  saveat, Val(save_everystep))
+        kernel = avern7_kernel(dev)
     elseif alg isa GPUVern9
-        kernel = @cuda launch=false avern9_kernel(probs, us, ts, dt, callback, tstops,
-                                                  abstol,
-                                                  reltol,
-                                                  saveat, Val(save_everystep))
+        kernel = avern9_kernel(dev)
     end
-
-    if debug
-        @show CUDA.registers(kernel)
-        @show CUDA.memory(kernel)
-    end
-
-    config = launch_configuration(kernel.fun)
-    threads = min(length(probs), config.threads)
-    # XXX: this kernel performs much better with all blocks active
-    blocks = max(cld(length(probs), threads), config.blocks)
-    threads = cld(length(probs), blocks)
-    kernel(probs, us, ts, dt, callback, tstops, abstol, reltol, saveat; threads, blocks)
+    event = kernel(probs, us, ts, dt, callback, tstops,
+                   abstol, reltol, saveat, Val(save_everystep);
+                   ndrange=length(probs), dependencies=Event(dev))
+    wait(dev, event)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
