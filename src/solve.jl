@@ -53,6 +53,9 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     # Handle tstops
     tstops = cu(tstops)
     dev = CUDADevice{true}() #=prefer_blocks=#
+    
+    # dev = backend(input)
+    tstops = adapt(dev, tstops)
     if alg isa GPUTsit5
         kernel = tsit5_kernel(dev)
     elseif alg isa GPUVern7

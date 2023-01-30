@@ -4,10 +4,9 @@ $(DocStringExtensions.README)
 module DiffEqGPU
 
 using DocStringExtensions
-using KernelAbstractions, CUDA, SciMLBase, DiffEqBase, LinearAlgebra, Distributed
-using CUDAKernels
-using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
-using CUDA: CUBLAS
+using KernelAbstractions
+import KernelAbstractions: get_device
+using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
@@ -20,6 +19,9 @@ using LinearSolve
 using Adapt, SimpleDiffEq, StaticArrays
 using Parameters, MuladdMacro
 using Random
+
+# TODO: remove
+using CUDA, CUDAKernels
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
@@ -72,7 +74,10 @@ end
 end
 
 maxthreads(::CPU) = 1024
-maxthreads(::CUDADevice) = 256
+
+# move to KA
+Adapt.adapt_storage(::CPU, a::Array) = a
+allocate(::CPU, ::Type{T}, init, dims) where T = Array{T}(init, dims)
 
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
@@ -132,12 +137,7 @@ end
     end
 end
 
-function cuda_lufact!(W)
-    CUBLAS.getrf_strided_batched!(W, false)
-    return nothing
-end
-
-function cpu_lufact!(W)
+function lufact!(::CPU, W)
     len = size(W, 1)
     for i in 1:size(W, 3)
         _W = @inbounds @view(W[:, :, i])
@@ -336,7 +336,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
 @time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
 ```
 """
-struct EnsembleGPUArray <: EnsembleArrayAlgorithm
+struct EnsembleGPUArray{Dev<:KernelAbstractions.Device} <: EnsembleArrayAlgorithm
+    device::Dev
     cpu_offload::Float64
 end
 
@@ -827,7 +828,7 @@ end
 function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = u isa CuArray ? CUDADevice() : CPU()
+            version = get_device(u)
             wgs = workgroupsize(version, size(u, 2))
             wait(version,
                  kernel(version)(f, du, u, p, t; ndrange = size(u, 2),
@@ -841,30 +842,28 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
         _Wfact!_t = let jac = prob.f.jac,
             kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
     else
@@ -877,7 +876,7 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
 
             function (J, u, p, t)
-                version = u isa CuArray ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(tgrad, J, u, p, t;
@@ -902,7 +901,7 @@ end
 function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = u isa CuArray ? CUDADevice() : CPU()
+            version = get_device(u)
             wgs = workgroupsize(version, size(u, 2))
             wait(version,
                  kernel(version)(f, du, u, p, t;
@@ -914,7 +913,7 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
 
     _g = let f = prob.f.g, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = u isa CuArray ? CUDADevice() : CPU()
+            version = get_device(u)
             wgs = workgroupsize(version, size(u, 2))
             wait(version,
                  kernel(version)(f, du, u, p, t;
@@ -929,30 +928,28 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
         _Wfact!_t = let jac = prob.f.jac,
             kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
     else
@@ -965,7 +962,7 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
 
             function (J, u, p, t)
-                version = u isa CuArray ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(tgrad, J, u, p, t;
@@ -1000,7 +997,7 @@ function generate_callback(callback::DiscreteCallback, I,
     _affect! = callback.affect!
 
     condition = function (u, t, integrator)
-        version = u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(u)
         wgs = workgroupsize(version, size(u, 2))
         wait(version,
              discrete_condition_kernel(version)(_condition, cur, u, t, integrator.p;
@@ -1011,7 +1008,7 @@ function generate_callback(callback::DiscreteCallback, I,
     end
 
     affect! = function (integrator)
-        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         wait(version,
              discrete_affect!_kernel(version)(_affect!, cur, integrator.u, integrator.t,
@@ -1032,7 +1029,7 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     _affect_neg! = callback.affect_neg!
 
     condition = function (out, u, t, integrator)
-        version = u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(u)
         wgs = workgroupsize(version, size(u, 2))
         wait(version,
              continuous_condition_kernel(version)(_condition, out, u, t, integrator.p;
@@ -1043,7 +1040,7 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     end
 
     affect! = function (integrator, event_idx)
-        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         wait(version,
              continuous_affect!_kernel(version)(_affect!, event_idx, integrator.u,
@@ -1054,7 +1051,7 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     end
 
     affect_neg! = function (integrator, event_idx)
-        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         wait(version,
              continuous_affect!_kernel(version)(_affect_neg!, event_idx, integrator.u,
@@ -1118,7 +1115,7 @@ function SciMLBase.solve(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFa
     A = cache.A
     b = cache.b
     x = cache.u
-    version = b isa CuArray ? CUDADevice() : CPU()
+    version = get_device(b)
     copyto!(x, b)
     wgs = workgroupsize(version, p.nfacts)
     # Note that the matrix is already factorized, only ldiv is needed.
@@ -1132,7 +1129,7 @@ end
 
 # Old stuff
 function (p::LinSolveGPUSplitFactorize)(x, A, b, update_matrix = false; kwargs...)
-    version = b isa CuArray ? CUDADevice() : CPU()
+    version = get_device(b)
     copyto!(x, b)
     wgs = workgroupsize(version, p.nfacts)
     wait(version,
@@ -1285,5 +1282,9 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 export terminate!
+
+if !isdefined(Base, :get_extension)
+  include("../ext/CUDAExt.jl")
+end
 
 end # module
