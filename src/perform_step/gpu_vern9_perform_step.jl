@@ -102,7 +102,7 @@
 end
 
 @kernel function vern9_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
-                      saveat, ::Val{save_everystep}) where {save_everystep}
+                              saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread

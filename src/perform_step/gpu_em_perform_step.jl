@@ -1,7 +1,6 @@
-function em_kernel(probs, _us, _ts, dt,
-                   saveat, ::Val{save_everystep}) where {save_everystep}
-    i = (blockIdx().x - 1) * blockDim().x + threadIdx().x
-    i > length(probs) && return
+@kernel function em_kernel(@Const(probs), _us, _ts, dt,
+                           saveat, ::Val{save_everystep}) where {save_everystep}
+    i = @index(Global, Linear)
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -73,6 +72,4 @@ function em_kernel(probs, _us, _ts, dt,
         @inbounds us[2] = u
         @inbounds ts[2] = t
     end
-
-    return nothing
 end
