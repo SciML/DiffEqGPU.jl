@@ -52,7 +52,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
 
     # Handle tstops
     tstops = cu(tstops)
-    dev = CUDADevice{#=prefer_blocks=#true}()
+    dev = CUDADevice{true}() #=prefer_blocks=#
     if alg isa GPUTsit5
         kernel = tsit5_kernel(dev)
     elseif alg isa GPUVern7
@@ -61,7 +61,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         kernel = vern9_kernel(dev)
     end
     event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
-                   ndrange=length(probs), dependencies=Event(dev))
+                   ndrange = length(probs), dependencies = Event(dev))
     wait(dev, event)
 
     # we build the actual solution object on the CPU because the GPU would create one
@@ -94,27 +94,19 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
+    dev = CUDADevice{true}() #=prefer_blocks=#
+
     if alg isa GPUEM
-        kernel = @cuda launch=false em_kernel(probs, us, ts, dt,
-                                              saveat, Val(save_everystep))
+        kernel = em_kernel(dev)
     elseif alg isa Union{GPUSIEA}
         SciMLBase.is_diagonal_noise(prob) ? nothing :
         error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
-        kernel = @cuda launch=false siea_kernel(probs, us, ts, dt,
-                                                saveat, Val(save_everystep))
-    end
-    if debug
-        @show CUDA.registers(kernel)
-        @show CUDA.memory(kernel)
+        kernel = siea_kernel(dev)
     end
 
-    config = launch_configuration(kernel.fun)
-    threads = min(length(probs), config.threads)
-    # XXX: this kernel performs much better with all blocks active
-    blocks = max(cld(length(probs), threads), config.blocks)
-    threads = cld(length(probs), blocks)
-
-    kernel(probs, us, ts, dt, saveat; threads, blocks)
+    event = kernel(probs, us, ts, dt, saveat, Val(save_everystep);
+                   ndrange = length(probs), dependencies = Event(dev))
+    wait(dev, event)
 
     ts, us
 end
@@ -147,7 +139,7 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     end
 
     tstops = cu(tstops)
-    dev = CUDADevice{#=prefer_blocks=#true}()
+    dev = CUDADevice{true}() #=prefer_blocks=#
     if alg isa GPUTsit5
         kernel = atsit5_kernel(dev)
     elseif alg isa GPUVern7
@@ -157,7 +149,7 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     end
     event = kernel(probs, us, ts, dt, callback, tstops,
                    abstol, reltol, saveat, Val(save_everystep);
-                   ndrange=length(probs), dependencies=Event(dev))
+                   ndrange = length(probs), dependencies = Event(dev))
     wait(dev, event)
 
     # we build the actual solution object on the CPU because the GPU would create one
