@@ -77,7 +77,7 @@ maxthreads(::CPU) = 1024
 
 # move to KA
 Adapt.adapt_storage(::CPU, a::Array) = a
-allocate(::CPU, ::Type{T}, init, dims) where T = Array{T}(init, dims)
+allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
 
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
@@ -336,7 +336,7 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
 @time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
 ```
 """
-struct EnsembleGPUArray{Dev<:KernelAbstractions.Device} <: EnsembleArrayAlgorithm
+struct EnsembleGPUArray{Dev <: KernelAbstractions.Device} <: EnsembleArrayAlgorithm
     device::Dev
     cpu_offload::Float64
 end
@@ -687,12 +687,19 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
                             convert.(DiffEqGPU.GPUContinuousCallback,
                                      _callback.continuous_callbacks)...)
 
+    gpu_probs = if has_cuda() && has_cuda_gpu()
+        cu(probs)
+    else
+        ## TODO: Add support for ROCArrays
+        # gpu_probs = probs |> ROCArray
+    end
+
     #Adaptive version only works with saveat
     if adaptive
         ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, alg;
                                    kwargs..., callback = _callback)
     else
-        ts, us = vectorized_solve(cu(probs), ensembleprob.prob, alg;
+        ts, us = vectorized_solve(gpu_probs, ensembleprob.prob, alg;
                                   kwargs..., callback = _callback)
     end
     solus = Array(us)
@@ -1284,7 +1291,7 @@ export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 export terminate!
 
 if !isdefined(Base, :get_extension)
-  include("../ext/CUDAExt.jl")
+    include("../ext/CUDAExt.jl")
 end
 
 end # module

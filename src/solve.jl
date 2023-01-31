@@ -50,12 +50,17 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
-    # Handle tstops
-    tstops = cu(tstops)
-    dev = CUDADevice{true}() #=prefer_blocks=#
-    
+    dev = if get_device(probs) isa CUDADevice
+        # Handle tstops
+        tstops = cu(tstops)
+        CUDADevice{true}() #=prefer_blocks=#
+    else
+        ## TODO: Add support for AMD GPU
+    end
+
     # dev = backend(input)
     tstops = adapt(dev, tstops)
+    probs = adapt(dev, probs)
     if alg isa GPUTsit5
         kernel = tsit5_kernel(dev)
     elseif alg isa GPUVern7

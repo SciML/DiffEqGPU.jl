@@ -1,23 +1,25 @@
 module CUDAExt
-    using KernelAbstractions
-    using CUDA, CUDAKernels, Adapt
-    import DiffEqGPU
+using KernelAbstractions
+using CUDA, CUDAKernels, Adapt
+import DiffEqGPU
 
-    using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
-    using CUDA: CUBLAS
+using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
+using CUDA: CUBLAS
 
-    DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64) = DiffEqGPU.EnsembleGPUArray(CUDADevice(), cpu_offload)
-    DiffEqGPU.maxthreads(::CUDADevice) = 256
+function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
+    DiffEqGPU.EnsembleGPUArray(CUDADevice(), cpu_offload)
+end
+DiffEqGPU.maxthreads(::CUDADevice) = 256
 
-    # TODO move to KA
-    Adapt.adapt_storage(::CPU, a::CuArray) = adapt(Array, a)
-    Adapt.adapt_storage(::CUDADevice, a::CuArray) = a
-    Adapt.adapt_storage(::CUDADevice, a::Array) = adapt(CuArray, a)
+# TODO move to KA
+Adapt.adapt_storage(::CPU, a::CuArray) = adapt(Array, a)
+Adapt.adapt_storage(::CUDADevice, a::CuArray) = a
+Adapt.adapt_storage(::CUDADevice, a::Array) = adapt(CuArray, a)
 
-    DiffEqGPU.allocate(::CUDADevice, ::Type{T}, init, dims) where T = CuArray{T}(init, dims)
+DiffEqGPU.allocate(::CUDADevice, ::Type{T}, init, dims) where {T} = CuArray{T}(init, dims)
 
-    function DiffEqGPU.lufact!(::CUDADevice, W)
-        CUBLAS.getrf_strided_batched!(W, false)
-        return nothing
-    end
+function DiffEqGPU.lufact!(::CUDADevice, W)
+    CUBLAS.getrf_strided_batched!(W, false)
+    return nothing
+end
 end
