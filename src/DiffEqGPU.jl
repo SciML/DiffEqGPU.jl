@@ -22,6 +22,7 @@ using Random
 
 # TODO: remove
 using CUDA, CUDAKernels
+using AMDGPU, ROCKernels
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
@@ -689,14 +690,14 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
 
     gpu_probs = if has_cuda() && has_cuda_gpu()
         cu(probs)
-    else
+    elseif has_rocm_gpu()
         ## TODO: Add support for ROCArrays
-        # gpu_probs = probs |> ROCArray
+        roc(probs)
     end
 
     #Adaptive version only works with saveat
     if adaptive
-        ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, alg;
+        ts, us = vectorized_asolve(gpu_probs, ensembleprob.prob, alg;
                                    kwargs..., callback = _callback)
     else
         ts, us = vectorized_solve(gpu_probs, ensembleprob.prob, alg;
