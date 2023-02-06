@@ -43,7 +43,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         else
             len = 2
         end
-        ts = allocate(dev, typeof(dt), (len, length(probs))
+        ts = allocate(dev, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
