@@ -1,4 +1,4 @@
-using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA, Test
+using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA, CUDAKernels, Test
 CUDA.allowscalar(false)
 
 function modelf(du, u, p, t)
@@ -13,7 +13,7 @@ function model()
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(), saveat = 0.1, trajectories = 10)
+    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(CUDADevice()), saveat = 0.1, trajectories = 10)
 end
 
 # loss function

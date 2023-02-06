@@ -20,10 +20,6 @@ using Adapt, SimpleDiffEq, StaticArrays
 using Parameters, MuladdMacro
 using Random
 
-# TODO: remove
-using CUDA, CUDAKernels
-using AMDGPU, ROCKernels
-
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
     @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
@@ -75,10 +71,12 @@ end
 end
 
 maxthreads(::CPU) = 1024
+maybe_prefer_blocks(::CPU) = CPU()
 
 # move to KA
 Adapt.adapt_storage(::CPU, a::Array) = a
 allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
+allocate(dev, T, dims) = allocate(dev, T, undef, dims)
 
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
@@ -337,10 +335,11 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
 @time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
 ```
 """
-struct EnsembleGPUArray{Dev <: KernelAbstractions.Device} <: EnsembleArrayAlgorithm
+struct EnsembleGPUArray{Dev} <: EnsembleArrayAlgorithm
     device::Dev
     cpu_offload::Float64
 end
+
 
 ##Solvers for EnsembleGPUKernel
 abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
@@ -444,7 +443,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 @time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0)
 ```
 """
-struct EnsembleGPUKernel <: EnsembleKernelAlgorithm
+struct EnsembleGPUKernel{Dev} <: EnsembleKernelAlgorithm
+    dev::Dev
     cpu_offload::Float64
 end
 
@@ -454,20 +454,20 @@ cpu_alg = Dict(GPUTsit5 => (GPUSimpleTsit5(), GPUSimpleATsit5()),
 
 # Work around the fact that Zygote cannot handle the task system
 # Work around the fact that Zygote isderiving fails with constants?
-function EnsembleGPUArray()
-    EnsembleGPUArray(0.2)
+function EnsembleGPUArray(dev)
+    EnsembleGPUArray(dev, 0.2)
 end
 
-function EnsembleGPUKernel()
-    EnsembleGPUKernel(0.2)
+function EnsembleGPUKernel(dev)
+    EnsembleGPUKernel(dev, 0.2)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
     EnsembleGPUArray(0.0), _ -> NoTangent()
 end
 
-ZygoteRules.@adjoint function EnsembleGPUArray()
-    EnsembleGPUArray(0.0), _ -> nothing
+ZygoteRules.@adjoint function EnsembleGPUArray(dev)
+    EnsembleGPUArray(dev, 0.0), _ -> nothing
 end
 
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
@@ -688,19 +688,17 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
                             convert.(DiffEqGPU.GPUContinuousCallback,
                                      _callback.continuous_callbacks)...)
 
-    gpu_probs = if has_cuda() && has_cuda_gpu()
-        cu(probs)
-    elseif has_rocm_gpu()
-        ## TODO: Add support for ROCArrays
-        roc(probs)
+    if ensemblealg isa EnsembleGPUArray
+        dev = ensemblealg.device
+        probs = adapt(dev, probs)
     end
 
     #Adaptive version only works with saveat
     if adaptive
-        ts, us = vectorized_asolve(gpu_probs, ensembleprob.prob, alg;
+        ts, us = vectorized_asolve(probs, ensembleprob.prob, alg;
                                    kwargs..., callback = _callback)
     else
-        ts, us = vectorized_solve(gpu_probs, ensembleprob.prob, alg;
+        ts, us = vectorized_solve(probs, ensembleprob.prob, alg;
                                   kwargs..., callback = _callback)
     end
     solus = Array(us)
@@ -710,16 +708,22 @@ end
 
 function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
     if ensemblealg isa EnsembleGPUArray
-        u0 = CuArray(u0)
-        p = CuArray(p)
+        dev = ensemblealg.device
+        u0 = adapt(dev, u0)
+        p = adapt(dev, p)
     end
 
     len = length(probs[1].u0)
 
     if SciMLBase.has_jac(probs[1].f)
-        jac_prototype = ensemblealg isa EnsembleGPUArray ?
-                        cu(zeros(Float32, len, len, length(I))) :
-                        zeros(Float32, len, len, length(I))
+        if ensemblealg isa EnsembleGPUArray
+            dev = ensemblealg.device
+            jac_prototype = allocate(dev, Float32, (len, len, length(I)))
+            fill!(jac_prototype, 0.0)
+        else
+            jac_prototype =  zeros(Float32, len, len, length(I)
+        end
+
         if probs[1].f.colorvec !== nothing
             colorvec = repeat(probs[1].f.colorvec, length(I))
         else
@@ -778,16 +782,21 @@ function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg
     u0 = convert.(eltype(pdual), u0)
 
     if ensemblealg isa EnsembleGPUArray
-        u0 = CuArray(u0)
-        pdual = CuArray(pdual)
+        dev = ensemblealg.device
+        u0 = adapt(dev, u0)
+        pdual = adapt(dev, pdual)
     end
 
     len = length(probs[1].u0)
 
     if SciMLBase.has_jac(probs[1].f)
-        jac_prototype = ensemblealg isa EnsembleGPUArray ?
-                        cu(zeros(Float32, len, len, length(I))) :
-                        zeros(Float32, len, len, length(I))
+        if ensemblealg isa EnsembleGPUArray
+            dev = ensemblealg.device
+            jac_prototype = allocate(dev, Float32, (len, len, length(I)))
+            fill!(jac_prototype, 0.0)
+        else
+            jac_prototype = zeros(Float32, len, len, length(I)
+        end
         if probs[1].f.colorvec !== nothing
             colorvec = repeat(probs[1].f.colorvec, length(I))
         else
@@ -995,7 +1004,8 @@ end
 function generate_callback(callback::DiscreteCallback, I,
                            ensemblealg)
     if ensemblealg isa EnsembleGPUArray
-        cur = CuArray([false for i in 1:I])
+        dev = ensemblealg.device
+        cur = adapt(dev, [false for i in 1:I])
     elseif ensemblealg isa EnsembleGPUKernel
         return callback
     else

@@ -10,6 +10,7 @@ function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
     DiffEqGPU.EnsembleGPUArray(CUDADevice(), cpu_offload)
 end
 DiffEqGPU.maxthreads(::CUDADevice) = 256
+DiffEqGPU.maybe_prefer_blocks(::CUDADevice) = CUDADevice(; prefer_blocks=true)
 
 # TODO move to KA
 Adapt.adapt_storage(::CPU, a::CuArray) = adapt(Array, a)

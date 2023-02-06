@@ -1,6 +1,6 @@
 using Distributed
 addprocs(2)
-@everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
+@everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random, CUDAKernels
 
 @everywhere begin
     function lorenz_distributed(du, u, p, t)
@@ -24,10 +24,10 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 10, saveat = 1.0f0)
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 10, saveat = 1.0f0)
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
-@time sol = solve(monteprob, ROCK4(), EnsembleGPUArray(), trajectories = 10, saveat = 1.0f0)
-@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 10,
+@time sol = solve(monteprob, ROCK4(), EnsembleGPUArray(CUDADevice()), trajectories = 10, saveat = 1.0f0)
+@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 10,
                    batch_size = 5, saveat = 1.0f0)
 
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array

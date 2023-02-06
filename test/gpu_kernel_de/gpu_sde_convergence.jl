@@ -1,4 +1,4 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, Statistics
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, Statistics, CUDAKernels
 using DiffEqDevTools
 
 u₀ = SA[0.1f0]

@@ -26,16 +26,13 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
                           save_everystep = true,
                           debug = false, callback = CallbackSet(nothing), tstops = nothing,
                           kwargs...)
+    dev = get_device(probs)
+    dev = maybe_prefer_blocks(dev)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
     nsteps = length(timeseries)
 
-    (ArrayT, dev) = if get_device(probs) isa CUDADevice
-        CuArray, CUDADevice{true}() #=prefer_blocks=#
-    elseif get_device(probs) isa ROCDevice
-        ROCArray, ROCDevice()
-    end
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
@@ -46,14 +43,14 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         else
             len = 2
         end
-        ts = ArrayT{typeof(dt)}(undef, (len, length(probs)))
+        ts = allocate(dev, typeof(dt), (len, length(probs))
         fill!(ts, prob.tspan[1])
-        us = ArrayT{typeof(prob.u0)}(undef, (len, length(probs)))
+        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = ArrayT{typeof(dt)}(saveat)
-        ts = ArrayT{typeof(dt)}(undef, (length(saveat), length(probs)))
+        saveat = allocate(dev, typeof(dt), (saveat,))
+        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = ArrayT{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
     tstops = adapt(ArrayT, tstops)
@@ -83,25 +80,22 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
                           save_everystep = true,
                           debug = false,
                           kwargs...)
-    (ArrayT, dev) = if get_device(probs) isa CUDADevice
-        (CuArray, CUDADevice{true}()) #=prefer_blocks=#
-    elseif get_device(probs) isa ROCDevice
-        (ROCArray, ROCDevice())
-    end
+    dev = get_device(probs)
+    dev = maybe_prefer_blocks(dev)
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
         else
             len = 2
         end
-        ts = ArrayT{typeof(dt)}(undef, (len, length(probs)))
+        ts = allocate(dev, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = ArrayT{typeof(prob.u0)}(undef, (len, length(probs)))
+        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = ArrayT{typeof(dt)}(saveat)
-        ts = ArrayT{typeof(dt)}(undef, (length(saveat), length(probs)))
+        saveat = allocate(dev, typeof(dt), (saveat,))
+        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = ArrayT{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
     us = adapt(ArrayT, us)
@@ -128,11 +122,8 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
                            abstol = 1.0f-6, reltol = 1.0f-3,
                            debug = false, callback = CallbackSet(nothing), tstops = nothing,
                            kwargs...)
-    (ArrayT, dev) = if get_device(probs) isa CUDADevice
-        (CuArray, CUDADevice{true}()) #=prefer_blocks=#
-    elseif get_device(probs) isa ROCDevice
-        (ROCArray, ROCDevice())
-    end
+    dev = get_device(probs)
+    dev = maybe_prefer_blocks(dev)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
@@ -144,19 +135,19 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         # if tstops !== nothing
         #     len += length(tstops)
         # end
-        ts = ArrayT{typeof(dt)}(undef, (len, length(probs)))
+        ts = allocate(dev, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = ArrayT{typeof(prob.u0)}(undef, (len, length(probs)))
+        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = ArrayT{typeof(dt)}(saveat)
-        ts = ArrayT{typeof(dt)}(undef, (length(saveat), length(probs)))
+        saveat = adapt(dev, saveat)
+        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = ArrayT{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
-    us = adapt(ArrayT, us)
-    ts = adapt(ArrayT, ts)
-    tstops = adapt(ArrayT, tstops)
+    us = adapt(dev, us)
+    ts = adapt(dev, ts)
+    tstops = adapt(dev, tstops)
 
     if alg isa GPUTsit5
         kernel = atsit5_kernel(dev)
