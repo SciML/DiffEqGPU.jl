@@ -721,7 +721,7 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
             jac_prototype = allocate(dev, Float32, (len, len, length(I)))
             fill!(jac_prototype, 0.0)
         else
-            jac_prototype =  zeros(Float32, len, len, length(I)
+            jac_prototype =  zeros(Float32, len, len, length(I))
         end
 
         if probs[1].f.colorvec !== nothing
@@ -795,7 +795,7 @@ function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg
             jac_prototype = allocate(dev, Float32, (len, len, length(I)))
             fill!(jac_prototype, 0.0)
         else
-            jac_prototype = zeros(Float32, len, len, length(I)
+            jac_prototype = zeros(Float32, len, len, length(I))
         end
         if probs[1].f.colorvec !== nothing
             colorvec = repeat(probs[1].f.colorvec, length(I))
