@@ -72,18 +72,18 @@ monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
 # TODO: Does not work with Linearsolve.jl v1.35.0 https://github.com/SciML/DiffEqGPU.jl/pull/229
 
-@test_broken @time solve(monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
-                         trajectories = 10,
-                         saveat = 1.0f0)
-@test_broken @time solve(monteprob_jac, Rodas5(), EnsembleGPUArray(CUDADevice()), dt = 0.1,
-                         trajectories = 10,
-                         saveat = 1.0f0)
-@test_broken @time solve(monteprob_jac, TRBDF2(), EnsembleCPUArray(), dt = 0.1,
-                         trajectories = 10,
-                         saveat = 1.0f0)
-@test_broken @time solve(monteprob_jac, TRBDF2(), EnsembleGPUArray(CUDADevice()), dt = 0.1,
-                         trajectories = 10,
-                         saveat = 1.0f0)
+@time solve(monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
+            trajectories = 10,
+            saveat = 1.0f0)
+@time solve(monteprob_jac, Rodas5(), EnsembleGPUArray(CUDADevice()), dt = 0.1,
+            trajectories = 10,
+            saveat = 1.0f0)
+@time solve(monteprob_jac, TRBDF2(), EnsembleCPUArray(), dt = 0.1,
+            trajectories = 10,
+            saveat = 1.0f0)
+@time solve(monteprob_jac, TRBDF2(), EnsembleGPUArray(CUDADevice()), dt = 0.1,
+            trajectories = 10,
+            saveat = 1.0f0)
 
 @info "Callbacks"
 
@@ -186,16 +186,16 @@ rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 
 # TODO: Does not work with Linearsolve.jl v1.35.0 https://github.com/SciML/DiffEqGPU.jl/pull/229
 
-@test_broken @time sol = solve(rober_monteprob, Rodas5(),
-                               EnsembleGPUArray(CUDADevice()), trajectories = 10,
-                               saveat = 1.0f0,
-                               abstol = 1.0f-8,
-                               reltol = 1.0f-8)
-@test_broken @time sol = solve(rober_monteprob, TRBDF2(),
-                               EnsembleGPUArray(CUDADevice()), trajectories = 10,
-                               saveat = 1.0f0,
-                               abstol = 1.0f-4,
-                               reltol = 1.0f-1)
-@test_broken @time sol = solve(rober_monteprob, TRBDF2(), EnsembleThreads(),
-                               trajectories = 10,
-                               abstol = 1e-4, reltol = 1e-1, saveat = 1.0f0)
+@time sol = solve(rober_monteprob, Rodas5(),
+                  EnsembleGPUArray(CUDADevice()), trajectories = 10,
+                  saveat = 1.0f0,
+                  abstol = 1.0f-8,
+                  reltol = 1.0f-8)
+@time sol = solve(rober_monteprob, TRBDF2(),
+                  EnsembleGPUArray(CUDADevice()), trajectories = 10,
+                  saveat = 1.0f0,
+                  abstol = 1.0f-4,
+                  reltol = 1.0f-1)
+@time sol = solve(rober_monteprob, TRBDF2(), EnsembleThreads(),
+                  trajectories = 10,
+                  abstol = 1e-4, reltol = 1e-1, saveat = 1.0f0)

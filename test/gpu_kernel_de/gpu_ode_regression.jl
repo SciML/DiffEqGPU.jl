@@ -1,14 +1,6 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, CUDAKernels
 
-device = if GROUP == "CUDA"
-    using CUDA, CUDAKernels
-    CUDADevice()
-elseif GROUP == "AMDGPU"
-    using AMDGPU, ROCKernels
-    ROCDevice()
-end
-
-@show device
+device = CUDADevice()
 
 function lorenz(u, p, t)
     σ = p[1]

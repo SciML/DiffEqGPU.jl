@@ -32,9 +32,9 @@ prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 @time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 10_000,
                   saveat = 1.0f0)
-@test_broken @time sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(CUDADevice()),
-                               trajectories = 10_000,
-                               saveat = 1.0f0)
-@test_broken @time sol = solve(monteprob, TRBDF2(), EnsembleGPUArray(CUDADevice()),
-                               trajectories = 10_000,
-                               saveat = 1.0f0)
+@time sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(CUDADevice()),
+                  trajectories = 10_000,
+                  saveat = 1.0f0)
+@time sol = solve(monteprob, TRBDF2(), EnsembleGPUArray(CUDADevice()),
+                  trajectories = 10_000,
+                  saveat = 1.0f0)

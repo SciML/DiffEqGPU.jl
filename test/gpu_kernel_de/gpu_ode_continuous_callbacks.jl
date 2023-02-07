@@ -1,13 +1,7 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, CUDAKernels
 @info "Callbacks"
 
-device = if GROUP == "CUDA"
-    using CUDA, CUDAKernels
-    CUDADevice()
-elseif GROUP == "AMDGPU"
-    using AMDGPU, ROCKernels
-    ROCDevice()
-end
+device = CUDADevice()
 
 function f(u, p, t)
     du1 = u[2]
