@@ -65,6 +65,8 @@ StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 ROCKernels = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 
 [targets]
 test = ["BenchmarkTools", "DiffEqDevTools", "ForwardDiff", "Flux", "OrdinaryDiffEq", "SafeTestsets", "StaticArrays", "Statistics", "StochasticDiffEq", "Test", "Random", "SciMLSensitivity", "CUDA", "CUDAKernels"]
