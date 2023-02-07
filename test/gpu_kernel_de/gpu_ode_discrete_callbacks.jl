@@ -15,7 +15,6 @@ function f(u, p, t)
     du1 = -u[1]
     return SVector{1}(du1)
 end
-
 u0 = @SVector [10.0f0]
 prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
 prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
@@ -181,13 +180,6 @@ for alg in algs
     @test norm(asol[1].u - sol[1].u) < 4e-3
 
     @info "Terminate callback"
-
-    condition(u, t, integrator) = t == 2.40f0
-
-    function affect!(integrator)
-        integrator.u += @SVector[10.0f0]
-        terminate!(integrator)
-    end
 
     cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 

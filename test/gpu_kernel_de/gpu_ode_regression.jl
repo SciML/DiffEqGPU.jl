@@ -26,7 +26,6 @@ u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
 tspan = (0.0f0, 10.0f0)
 p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
-device = CUDADevice()
 
 algs = (GPUTsit5(), GPUVern7(), GPUVern9())
 for alg in algs

@@ -17,7 +17,6 @@ using SafeTestsets, Test
 
 const GROUP = get(ENV, "GROUP", "AMDGPU")
 
-
 if GROUP == "CUDA"
     @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
     @time @safetestset "EnsembleGPUArray OOP" begin include("ensemblegpuarray_oop.jl") end
