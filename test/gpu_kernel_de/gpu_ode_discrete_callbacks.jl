@@ -1,6 +1,16 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, CUDAKernels
 @info "Callbacks"
 
+const GROUP = get(ENV, "GROUP", "CUDA")
+
+device = if GROUP == "CUDA"
+    using CUDA, CUDAKernels
+    CUDADevice()
+elseif GROUP == "AMDGPU"
+    using AMDGPU, ROCKernels
+    ROCDevice()
+end
+
 function f(u, p, t)
     du1 = -u[1]
     return SVector{1}(du1)

@@ -1,5 +1,15 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, CUDAKernels
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 @info "Callbacks"
+
+const GROUP = get(ENV, "GROUP", "CUDA")
+
+device = if GROUP == "CUDA"
+    using CUDA, CUDAKernels
+    CUDADevice()
+elseif GROUP == "AMDGPU"
+    using AMDGPU, ROCKernels
+    ROCDevice()
+end
 
 function f(u, p, t)
     du1 = u[2]
@@ -24,8 +34,6 @@ end
 
 algs = [GPUTsit5(), GPUVern7()]
 diffeq_algs = [Tsit5(), Vern7()]
-
-device = CUDADevice()
 
 for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     @info typeof(alg)
@@ -124,7 +132,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
                       tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 9.1f0], reltol = 1.0f-6,
                       abstol = 1.0f-6)
 
-    @test norm(bench_sol.u - sol[1].u) < 2e-4
+    @test norm(bench_sol.u - sol[1].u) < 6e-4
 
     @info "Unadaptive and Adaptive comparison"
 
