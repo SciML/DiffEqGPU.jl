@@ -340,7 +340,6 @@ struct EnsembleGPUArray{Dev} <: EnsembleArrayAlgorithm
     cpu_offload::Float64
 end
 
-
 ##Solvers for EnsembleGPUKernel
 abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
 abstract type GPUSDEAlgorithm <: DiffEqBase.AbstractSDEAlgorithm end
@@ -688,10 +687,8 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
                             convert.(DiffEqGPU.GPUContinuousCallback,
                                      _callback.continuous_callbacks)...)
 
-    if ensemblealg isa EnsembleGPUArray
-        dev = ensemblealg.device
-        probs = adapt(dev, probs)
-    end
+    dev = ensemblealg.dev
+    probs = adapt(dev, probs)
 
     #Adaptive version only works with saveat
     if adaptive
@@ -721,7 +718,7 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
             jac_prototype = allocate(dev, Float32, (len, len, length(I)))
             fill!(jac_prototype, 0.0)
         else
-            jac_prototype =  zeros(Float32, len, len, length(I))
+            jac_prototype = zeros(Float32, len, len, length(I))
         end
 
         if probs[1].f.colorvec !== nothing

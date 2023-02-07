@@ -47,13 +47,13 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = allocate(dev, typeof(dt), (saveat,))
+        saveat = adapt(dev, saveat)
         ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
-    tstops = adapt(ArrayT, tstops)
+    tstops = adapt(dev, tstops)
 
     if alg isa GPUTsit5
         kernel = tsit5_kernel(dev)
@@ -92,14 +92,11 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = allocate(dev, typeof(dt), (saveat,))
+        saveat = adapt(dev, saveat)
         ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
-
-    us = adapt(ArrayT, us)
-    ts = adapt(ArrayT, ts)
 
     if alg isa GPUEM
         kernel = em_kernel(dev)
