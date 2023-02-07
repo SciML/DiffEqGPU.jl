@@ -1,8 +1,6 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 @info "Callbacks"
 
-const GROUP = get(ENV, "GROUP", "CUDA")
-
 device = if GROUP == "CUDA"
     using CUDA, CUDAKernels
     CUDADevice()
@@ -42,9 +40,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     @info "Unadaptive version"
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
@@ -55,9 +53,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     cb = CallbackSet(cb, cb)
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
@@ -66,10 +64,10 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     @info "saveat and callbacks"
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                saveat = [0.0f0, 9.1f0])
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      saveat = [0.0f0, 9.1f0])
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
@@ -79,10 +77,10 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     @info "save_everystep and callbacks"
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                save_everystep = false)
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      save_everystep = false)
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
@@ -94,10 +92,10 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     cb = ContinuousCallback(condition, affect!; save_positions = (false, false))
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                reltol = 1.0f-7, abstol = 1.0f-7)
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      reltol = 1.0f-7, abstol = 1.0f-7)
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = true, save_everystep = false, dt = 0.1f0, callback = cb,
@@ -109,9 +107,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     cb = CallbackSet(cb, cb)
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true)
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true)
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = true, dt = 1.0f0, save_everystep = false, callback = cb,
@@ -121,10 +119,10 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     @info "saveat and callbacks"
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                saveat = [0.0f0, 9.1f0], reltol = 1.0f-6, abstol = 1.0f-6)
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      saveat = [0.0f0, 9.1f0], reltol = 1.0f-6, abstol = 1.0f-6)
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = true, save_everystep = false, dt = 1.0f0, callback = cb,
@@ -136,10 +134,10 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     @info "Unadaptive and Adaptive comparison"
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device),
-                trajectories = 2,
-                adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                saveat = [0.0f0, 9.1f0])
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+                      trajectories = 2,
+                      adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      saveat = [0.0f0, 9.1f0])
 
     asol = solve(monteprob, alg, EnsembleGPUKernel(device),
                  trajectories = 2,

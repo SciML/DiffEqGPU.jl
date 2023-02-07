@@ -15,7 +15,7 @@ end
 
 using SafeTestsets, Test
 
-const GROUP = get(ENV, "GROUP", "AMDGPU")
+const GROUP = get(ENV, "GROUP", "CUDA")
 
 if GROUP == "CUDA"
     @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
