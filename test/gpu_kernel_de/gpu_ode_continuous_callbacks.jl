@@ -94,12 +94,11 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
                       trajectories = 2,
-                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-                      reltol = 1.0f-7, abstol = 1.0f-7)
+                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true)
 
     bench_sol = solve(prob, diffeq_alg,
                       adaptive = true, save_everystep = false, dt = 0.1f0, callback = cb,
-                      merge_callbacks = true, reltol = 1.0f-7, abstol = 1.0f-7)
+                      merge_callbacks = true)
 
     @test norm(bench_sol.u - sol[1].u) < 2e-3
 
