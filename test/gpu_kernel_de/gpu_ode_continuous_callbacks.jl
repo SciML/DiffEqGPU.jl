@@ -97,7 +97,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
                       adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true)
 
     bench_sol = solve(prob, diffeq_alg,
-                      adaptive = true, save_everystep = false, dt = 0.1f0, callback = cb,
+                      adaptive = true, save_everystep = false, dt = 1.0f0, callback = cb,
                       merge_callbacks = true)
 
     @test norm(bench_sol.u - sol[1].u) < 2e-3
