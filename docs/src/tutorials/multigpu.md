@@ -1,7 +1,7 @@
 # [Setting Up Multi-GPU Parallel Parameter Sweeps](@id multigpu)
 
 !!! note
-
+    
     This tutorial assumes one already has familiarity with EnsembleGPUArray and
     EnsembleGPUKernel. Please see [the Lorenz equation tutorial](@ref lorenz) before
     reading this tutorial!
@@ -23,8 +23,9 @@ addprocs(numgpus)
 import CUDA
 
 let gpuworkers = asyncmap(collect(zip(workers(), CUDA.devices()))) do (p, d)
-  remotecall_wait(CUDA.device!, p, d)
-  p
+        remotecall_wait(CUDA.device!, p, d)
+        p
+    end
 end
 ```
 
@@ -34,18 +35,18 @@ Then set up the calls to work with distributed processes:
 @everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
 
 @everywhere begin
-    function lorenz_distributed(du,u,p,t)
-        du[1] = p[1]*(u[2]-u[1])
-        du[2] = u[1]*(p[2]-u[3]) - u[2]
-        du[3] = u[1]*u[2] - p[3]*u[3]
+    function lorenz_distributed(du, u, p, t)
+        du[1] = p[1] * (u[2] - u[1])
+        du[2] = u[1] * (p[2] - u[3]) - u[2]
+        du[3] = u[1] * u[2] - p[3] * u[3]
     end
     CUDA.allowscalar(false)
-    u0 = Float32[1.0;0.0;0.0]
-    tspan = (0.0f0,100.0f0)
-    p = [10.0f0,28.0f0,8/3f0]
+    u0 = Float32[1.0; 0.0; 0.0]
+    tspan = (0.0f0, 100.0f0)
+    p = [10.0f0, 28.0f0, 8 / 3.0f0]
     Random.seed!(1)
-    function prob_func_distributed(prob,i,repeat)
-        remake(prob,p=rand(3).*p)
+    function prob_func_distributed(prob, i, repeat)
+        remake(prob, p = rand(3) .* p)
     end
 end
 ```
@@ -55,11 +56,11 @@ keyword argument from the Ensemble interface to ensure there are multiple batche
 Let's solve 40,000 trajectories, batching 10,000 trajectories at a time:
 
 ```julia
-prob = ODEProblem(lorenz_distributed,u0,tspan,p)
+prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
-@time sol2 = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=40_000,
-                                                 batch_size=10_000,saveat=1.0f0)
+@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 40_000,
+                   batch_size = 10_000, saveat = 1.0f0)
 ```
 
 This will `pmap` over the batches, and thus if you have 4 processes each with
@@ -80,19 +81,19 @@ addprocs(2)
 @everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
 
 @everywhere begin
-    function lorenz_distributed(du,u,p,t)
-        du[1] = p[1]*(u[2]-u[1])
-        du[2] = u[1]*(p[2]-u[3]) - u[2]
-        du[3] = u[1]*u[2] - p[3]*u[3]
+    function lorenz_distributed(du, u, p, t)
+        du[1] = p[1] * (u[2] - u[1])
+        du[2] = u[1] * (p[2] - u[3]) - u[2]
+        du[3] = u[1] * u[2] - p[3] * u[3]
     end
     CUDA.allowscalar(false)
-    u0 = Float32[1.0;0.0;0.0]
-    tspan = (0.0f0,100.0f0)
-    p = [10.0f0,28.0f0,8/3f0]
+    u0 = Float32[1.0; 0.0; 0.0]
+    tspan = (0.0f0, 100.0f0)
+    p = [10.0f0, 28.0f0, 8 / 3.0f0]
     Random.seed!(1)
-    pre_p_distributed = [rand(Float32,3) for i in 1:100_000]
-    function prob_func_distributed(prob,i,repeat)
-        remake(prob,p=pre_p_distributed[i].*p)
+    pre_p_distributed = [rand(Float32, 3) for i in 1:100_000]
+    function prob_func_distributed(prob, i, repeat)
+        remake(prob, p = pre_p_distributed[i] .* p)
     end
 end
 
@@ -108,9 +109,9 @@ end
 end
 
 CUDA.allowscalar(false)
-prob = ODEProblem(lorenz_distributed,u0,tspan,p)
+prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
-@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=100_000,
-                                             batch_size=50_000,saveat=1.0f0)
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 100_000,
+                  batch_size = 50_000, saveat = 1.0f0)
 ```

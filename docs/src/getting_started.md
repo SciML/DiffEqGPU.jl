@@ -10,7 +10,7 @@ of said `f`. The other use case is where `u` is very small, but you want to solv
 use GPUs to parallelize over different parameters and initial conditions. In other words:
 
 | Type of Problem                           | SciML Solution                                                                                           |
-|-------------------------------------------|----------------------------------------------------------------------------------------------------------|
+|:----------------------------------------- |:-------------------------------------------------------------------------------------------------------- |
 | Accelerate a big ODE                      | Use [CUDA.jl's](https://cuda.juliagpu.org/stable/) CuArray as `u0`                                       |
 | Solve the same ODE with many `u0` and `p` | Use [DiffEqGPU.jl's](https://docs.sciml.ai/DiffEqGPU/stable/) `EnsembleGPUArray` and `EnsembleGPUKernel` |
 
@@ -23,10 +23,10 @@ operations:
 ```julia
 using OrdinaryDiffEq, LinearAlgebra
 u0 = rand(1000)
-A  = randn(1000,1000)
-f(du,u,p,t)  = mul!(du,A,u)
-prob = ODEProblem(f,u0,(0.0,1.0))
-sol = solve(prob,Tsit5())
+A = randn(1000, 1000)
+f(du, u, p, t) = mul!(du, A, u)
+prob = ODEProblem(f, u0, (0.0, 1.0))
+sol = solve(prob, Tsit5())
 ```
 
 Translating this to a GPU-based solve of the ODE simply requires moving the arrays for
@@ -35,10 +35,10 @@ the initial condition, parameters, and caches to the GPU. This looks like:
 ```julia
 using OrdinaryDiffEq, CUDA, LinearAlgebra
 u0 = cu(rand(1000))
-A  = cu(randn(1000,1000))
-f(du,u,p,t)  = mul!(du,A,u)
-prob = ODEProblem(f,u0,(0.0f0,1.0f0)) # Float32 is better on GPUs!
-sol = solve(prob,Tsit5())
+A = cu(randn(1000, 1000))
+f(du, u, p, t) = mul!(du, A, u)
+prob = ODEProblem(f, u0, (0.0f0, 1.0f0)) # Float32 is better on GPUs!
+sol = solve(prob, Tsit5())
 ```
 
 Notice that the solution values `sol[i]` are CUDA-based arrays, which can be moved back
@@ -70,7 +70,7 @@ u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
 tspan = (0.0f0, 10.0f0)
 p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
+prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000)
