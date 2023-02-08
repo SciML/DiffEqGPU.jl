@@ -22,9 +22,9 @@ prob = SDEProblem(f, g, u₀, tspan, p; seed = 1234)
 
 monteprob = EnsembleProblem(prob)
 
-sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(0.0), dt =  Float32(1//2^8),
+sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(0.0), dt = Float32(1 // 2^8),
             trajectories = num_trajectories, adaptive = false)
-        
+
 sol_array = Array(sol)
 
 ts = sol[1].t
@@ -34,8 +34,8 @@ us_calc = reshape(mean(sol_array, dims = 3), size(sol_array, 2))
 us_expect = u₀ .* exp.(p[1] * ts)
 
 using Plots
-plot(ts, us_expect,lw=5,
-     xaxis="Time (t)",yaxis="y(t)",label="True Expected value")
+plot(ts, us_expect, lw = 5,
+     xaxis = "Time (t)", yaxis = "y(t)", label = "True Expected value")
 
-plot!(ts,us_calc,lw=3,ls=:dash,label="Caculated Expected value")
+plot!(ts, us_calc, lw = 3, ls = :dash, label = "Caculated Expected value")
 ```

@@ -6,26 +6,26 @@ over randomized parameters:
 
 ```julia
 using DiffEqGPU, OrdinaryDiffEq
-function lorenz(du,u,p,t)
-    du[1] = p[1]*(u[2]-u[1])
-    du[2] = u[1]*(p[2]-u[3]) - u[2]
-    du[3] = u[1]*u[2] - p[3]*u[3]
+function lorenz(du, u, p, t)
+    du[1] = p[1] * (u[2] - u[1])
+    du[2] = u[1] * (p[2] - u[3]) - u[2]
+    du[3] = u[1] * u[2] - p[3] * u[3]
 end
 
-u0 = Float32[1.0;0.0;0.0]
-tspan = (0.0f0,100.0f0)
-p = [10.0f0,28.0f0,8/3f0]
-prob = ODEProblem(lorenz,u0,tspan,p)
-prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
-sol = solve(monteprob,Tsit5(),EnsembleThreads(),trajectories=10_000,saveat=1.0f0);
+u0 = Float32[1.0; 0.0; 0.0]
+tspan = (0.0f0, 100.0f0)
+p = [10.0f0, 28.0f0, 8 / 3.0f0]
+prob = ODEProblem(lorenz, u0, tspan, p)
+prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
+sol = solve(monteprob, Tsit5(), EnsembleThreads(), trajectories = 10_000, saveat = 1.0f0);
 ```
 
 Changing this to being GPU-parallelized is as simple as changing the ensemble method to
 `EnsembleGPUArray`:
 
 ```julia
-sol = solve(monteprob,Tsit5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0);
+sol = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 10_000, saveat = 1.0f0);
 ```
 
 and voilà, the method is re-compiled to parallelize the solves over a GPU!
@@ -52,9 +52,10 @@ u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
 tspan = (0.0f0, 10.0f0)
 p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
+prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-sol = solve(monteprob,GPUTsit5(),EnsembleGPUKernel(),trajectories=10_000,saveat=1.0f0)
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000,
+            saveat = 1.0f0)
 ```
 
 Note that this form is also compatible with `EnsembleThreads()`, and `EnsembleGPUArray()`,
@@ -71,31 +72,31 @@ stiff ODE solver. Note that, as explained in the docstring, analytical derivativ
 (Jacobian and time gradient) must be supplied. For the Lorenz equation, this looks like:
 
 ```julia
-function lorenz_jac(J,u,p,t)
+function lorenz_jac(J, u, p, t)
     σ = p[1]
     ρ = p[2]
     β = p[3]
     x = u[1]
     y = u[2]
     z = u[3]
-    J[1,1] = -σ
-    J[2,1] = ρ - z
-    J[3,1] = y
-    J[1,2] = σ
-    J[2,2] = -1
-    J[3,2] = x
-    J[1,3] = 0
-    J[2,3] = -x
-    J[3,3] = -β
+    J[1, 1] = -σ
+    J[2, 1] = ρ - z
+    J[3, 1] = y
+    J[1, 2] = σ
+    J[2, 2] = -1
+    J[3, 2] = x
+    J[1, 3] = 0
+    J[2, 3] = -x
+    J[3, 3] = -β
 end
 
-function lorenz_tgrad(J,u,p,t)
+function lorenz_tgrad(J, u, p, t)
     nothing
 end
 
-func = ODEFunction(lorenz,jac=lorenz_jac,tgrad=lorenz_tgrad)
-prob_jac = ODEProblem(func,u0,tspan,p)
+func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
+prob_jac = ODEProblem(func, u0, tspan, p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
-solve(monteprob_jac,Rodas5(),EnsembleGPUArray(),trajectories=10_000,saveat=1.0f0)
+solve(monteprob_jac, Rodas5(), EnsembleGPUArray(), trajectories = 10_000, saveat = 1.0f0)
 ```

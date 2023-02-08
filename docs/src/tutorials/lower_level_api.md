@@ -11,7 +11,7 @@ The example below provides a way to generate solves using the lower level API wi
 ```julia
 using DiffEqGPU, StaticArrays, CUDA, DiffEqBase
 
-trajectories =  10_000 
+trajectories = 10_000
 
 function lorenz(u, p, t)
     σ = p[1]
@@ -30,25 +30,28 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
 ## Building different problems for different parameters
 probs = map(1:trajectories) do i
-    remake(prob, p = (@SVector rand(Float32, 3)).*p)
+    remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 end
-    
+
 ## Move the arrays to the GPU
 probs = cu(probs)
 
 ## Finally use the lower API for faster solves! (Fixed time-stepping)
 
 # Run once for compilation
-@time @CUDA.sync ts,us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+@time CUDA.@sync ts, us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5();
+                                                     save_everystep = false, dt = 0.1f0)
 
-@time @CUDA.sync ts,us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
-
+@time CUDA.@sync ts, us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5();
+                                                     save_everystep = false, dt = 0.1f0)
 
 ## Adaptive time-stepping
 # Run once for compilation
-@time @CUDA.sync ts,us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+@time CUDA.@sync ts, us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5();
+                                                      save_everystep = false, dt = 0.1f0)
 
-@time @CUDA.sync ts,us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5(); save_everystep = false, dt = 0.1f0)
+@time CUDA.@sync ts, us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5();
+                                                      save_everystep = false, dt = 0.1f0)
 ```
 
 Note that the core is the function `DiffEqGPU.vectorized_solve` which is the solver for the CUDA-based `probs`
