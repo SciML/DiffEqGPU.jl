@@ -1175,24 +1175,6 @@ end
     naivesolve!(_W, _u, len)
 end
 
-# function __printjac(A, ii)
-#     @cuprintf "[%d, %d]\n" ii.offset1 ii.stride2
-#     @cuprintf "%d %d %d\n%d %d %d\n%d %d %d\n" ii[1, 1] ii[1, 2] ii[1, 3] ii[2, 1] ii[2, 2] ii[2,
-#                                                                                                3] ii[3,
-#                                                                                                      1] ii[3,
-#                                                                                                            2] ii[3,
-#                                                                                                                  3]
-#     @cuprintf "%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f" A[ii[1, 1]] A[ii[1,
-#                                                                                          2]] A[ii[1,
-#                                                                                                   3]] A[ii[2,
-#                                                                                                            1]] A[ii[2,
-#                                                                                                                     2]] A[ii[2,
-#                                                                                                                              3]] A[ii[3,
-#                                                                                                                                       1]] A[ii[3,
-#                                                                                                                                                2]] A[ii[3,
-#                                                                                                                                                         3]]
-# end
-
 function generic_lufact!(A::AbstractMatrix{T}, minmn) where {T}
     m = n = minmn
     #@cuprintf "\n\nbefore lufact!\n"
