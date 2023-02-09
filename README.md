@@ -6,7 +6,7 @@
 
 [![codecov](https://codecov.io/gh/SciML/DiffEqGPU.jl/branch/master/graph/badge.svg)](https://codecov.io/gh/SciML/DiffEqGPU.jl)
 
-[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor's%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
+[![ColPrac: Contributor's Guide on Collaborative Practices for Community Packages](https://img.shields.io/badge/ColPrac-Contributor%27s%20Guide-blueviolet)](https://github.com/SciML/ColPrac)
 [![SciML Code Style](https://img.shields.io/static/v1?label=code%20style&message=SciML&color=9558b2&labelColor=389826)](https://github.com/SciML/SciMLStyle)
 
 This library is a component package of the DifferentialEquations.jl ecosystem. It includes
@@ -22,7 +22,7 @@ of said `f`. The other use case is where `u` is very small but you want to solve
 use GPUs to parallelize over different parameters and initial conditions. In other words:
 
 | Type of Problem                           | SciML Solution                                                                                           |
-|-------------------------------------------|----------------------------------------------------------------------------------------------------------|
+|:----------------------------------------- |:-------------------------------------------------------------------------------------------------------- |
 | Accelerate a big ODE                      | Use [CUDA.jl's](https://cuda.juliagpu.org/stable/) CuArray as `u0`                                       |
 | Solve the same ODE with many `u0` and `p` | Use [DiffEqGPU.jl's](https://docs.sciml.ai/DiffEqGPU/stable/) `EnsembleGPUArray` and `EnsembleGPUKernel` |
 
@@ -31,10 +31,10 @@ use GPUs to parallelize over different parameters and initial conditions. In oth
 ```julia
 using OrdinaryDiffEq, CUDA, LinearAlgebra
 u0 = cu(rand(1000))
-A  = cu(randn(1000,1000))
-f(du,u,p,t)  = mul!(du,A,u)
-prob = ODEProblem(f,u0,(0.0f0,1.0f0)) # Float32 is better on GPUs!
-sol = solve(prob,Tsit5())
+A = cu(randn(1000, 1000))
+f(du, u, p, t) = mul!(du, A, u)
+prob = ODEProblem(f, u0, (0.0f0, 1.0f0)) # Float32 is better on GPUs!
+sol = solve(prob, Tsit5())
 ```
 
 ## Example of Parameter-Parallelism with GPU Ensemble Methods
@@ -56,8 +56,9 @@ u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
 tspan = (0.0f0, 10.0f0)
 p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)).*p)
+prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000, adaptive = false, dt = 0.1f0)
+@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000,
+                  adaptive = false, dt = 0.1f0)
 ```

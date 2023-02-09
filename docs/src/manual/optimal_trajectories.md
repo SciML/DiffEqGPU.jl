@@ -2,10 +2,10 @@
 
 There is a balance between two things for choosing the number of trajectories:
 
-- The number of trajectories needs to be high enough that the work per kernel
-  is sufficient to overcome the kernel call cost.
-- More trajectories means that every trajectory will need more time steps, since
-  the adaptivity syncs all solves.
+  - The number of trajectories needs to be high enough that the work per kernel
+    is sufficient to overcome the kernel call cost.
+  - More trajectories means that every trajectory will need more time steps, since
+    the adaptivity syncs all solves.
 
 From our testing, the balance is found at around 10,000 trajectories being optimal for
 EnsembleGPUArray, since it has higher kernel call costs because every internal operation
