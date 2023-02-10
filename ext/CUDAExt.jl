@@ -3,7 +3,6 @@ using KernelAbstractions
 using CUDA, CUDAKernels, Adapt
 import DiffEqGPU
 
-using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
 using CUDA: CUBLAS
 
 function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
