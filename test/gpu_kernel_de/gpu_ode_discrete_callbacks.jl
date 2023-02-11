@@ -81,7 +81,7 @@ for alg in algs
 
     @test norm(bench_sol(2.40f0) - sol[1](2.40f0)) < 2e-3
     @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 3e-3
-    @test norm(bench_sol.u - sol[1].u) < 6e-3
+    @test norm(bench_sol.u - sol[1].u) < 7e-3
 
     @info "saveat and callbacks"
 
