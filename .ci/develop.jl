@@ -5,6 +5,7 @@ Pkg.activate(".")
 
 @info "Add oneAPIKernels"
 
+Pkg.develop("oneAPI")
 Pkg.add(PackageSpec(url = "https://github.com/utkarsh530/KernelAbstractions.jl.git",
                     rev = "patch-1", subdir = "lib/oneAPIKernels"))
 
