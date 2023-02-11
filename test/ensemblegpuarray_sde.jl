@@ -1,4 +1,4 @@
-using DiffEqGPU, CUDA, StochasticDiffEq, Test
+using DiffEqGPU, CUDA, StochasticDiffEq, Test, CUDAKernels
 
 function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
@@ -25,4 +25,5 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time sol = solve(monteprob, SOSRI(), EnsembleGPUArray(), trajectories = 10, saveat = 1.0f0)
+@time sol = solve(monteprob, SOSRI(), EnsembleGPUArray(CUDADevice()), trajectories = 10,
+                  saveat = 1.0f0)

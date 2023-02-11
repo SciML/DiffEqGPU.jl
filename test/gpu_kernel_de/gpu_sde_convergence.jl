@@ -1,4 +1,4 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, Statistics
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, Statistics, CUDAKernels
 using DiffEqDevTools
 
 u₀ = SA[0.1f0]
@@ -9,6 +9,8 @@ p = SA[1.5f0, 0.01f0]
 
 prob = SDEProblem(f, g, u₀, tspan, p; seed = 1234)
 
+device = CUDADevice()
+
 dts = 1 .// 2 .^ (5:-1:2)
 
 ensemble_prob = EnsembleProblem(prob;
@@ -16,7 +18,8 @@ ensemble_prob = EnsembleProblem(prob;
 
 @info "EM"
 dts = 1 .// 2 .^ (12:-1:8)
-sim = test_convergence(Float32.(dts), ensemble_prob, GPUEM(), EnsembleGPUKernel(0.0),
+sim = test_convergence(Float32.(dts), ensemble_prob, GPUEM(),
+                       EnsembleGPUKernel(device, 0.0),
                        save_everystep = false, trajectories = Int(1e5),
                        weak_timeseries_errors = false,
                        expected_value = SA[u₀ * exp((p[1]))])
@@ -28,7 +31,8 @@ sim = test_convergence(Float32.(dts), ensemble_prob, GPUEM(), EnsembleGPUKernel(
 
 dts = 1 .// 2 .^ (6:-1:4)
 
-sim = test_convergence(Float32.(dts), ensemble_prob, GPUSIEA(), EnsembleGPUKernel(0.0),
+sim = test_convergence(Float32.(dts), ensemble_prob, GPUSIEA(),
+                       EnsembleGPUKernel(device, 0.0),
                        save_everystep = false, trajectories = Int(5e4),
                        expected_value = SA[u₀ * exp((p[1]))])
 

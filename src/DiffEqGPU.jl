@@ -4,10 +4,9 @@ $(DocStringExtensions.README)
 module DiffEqGPU
 
 using DocStringExtensions
-using KernelAbstractions, CUDA, SciMLBase, DiffEqBase, LinearAlgebra, Distributed
-using CUDAKernels
-using CUDA: CuPtr, CU_NULL, Mem, CuDefaultStream
-using CUDA: CUBLAS
+using KernelAbstractions
+import KernelAbstractions: get_device
+using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
@@ -72,7 +71,12 @@ end
 end
 
 maxthreads(::CPU) = 1024
-maxthreads(::CUDADevice) = 256
+maybe_prefer_blocks(::CPU) = CPU()
+
+# move to KA
+Adapt.adapt_storage(::CPU, a::Array) = a
+allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
+allocate(dev, T, dims) = allocate(dev, T, undef, dims)
 
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
@@ -132,12 +136,7 @@ end
     end
 end
 
-function cuda_lufact!(W)
-    CUBLAS.getrf_strided_batched!(W, false)
-    return nothing
-end
-
-function cpu_lufact!(W)
+function lufact!(::CPU, W)
     len = size(W, 1)
     for i in 1:size(W, 3)
         _W = @inbounds @view(W[:, :, i])
@@ -331,17 +330,17 @@ function lorenz(du, u, p, t)
     du[3] = u[1] * u[2] - p[3] * u[3]
 end
 
-u0 = Float32[1.0; 0.0; 0.0]
-tspan = (0.0f0, 100.0f0)
-p = [10.0f0, 28.0f0, 8 / 3.0f0]
-prob = ODEProblem(lorenz, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 10_000,
-                  saveat = 1.0f0)
+u0 = Float32[1.0;0.0;0.0]
+tspan = (0.0f0,100.0f0)
+p = [10.0f0,28.0f0,8/3f0]
+prob = ODEProblem(lorenz,u0,tspan,p)
+prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
+@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(CUDADevice()),trajectories=10_000,saveat=1.0f0)
 ```
 """
-struct EnsembleGPUArray <: EnsembleArrayAlgorithm
+struct EnsembleGPUArray{Dev} <: EnsembleArrayAlgorithm
+    device::Dev
     cpu_offload::Float64
 end
 
@@ -451,7 +450,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
                   adaptive = false, dt = 0.1f0)
 ```
 """
-struct EnsembleGPUKernel <: EnsembleKernelAlgorithm
+struct EnsembleGPUKernel{Dev} <: EnsembleKernelAlgorithm
+    dev::Dev
     cpu_offload::Float64
 end
 
@@ -461,20 +461,20 @@ cpu_alg = Dict(GPUTsit5 => (GPUSimpleTsit5(), GPUSimpleATsit5()),
 
 # Work around the fact that Zygote cannot handle the task system
 # Work around the fact that Zygote isderiving fails with constants?
-function EnsembleGPUArray()
-    EnsembleGPUArray(0.2)
+function EnsembleGPUArray(dev)
+    EnsembleGPUArray(dev, 0.2)
 end
 
-function EnsembleGPUKernel()
-    EnsembleGPUKernel(0.2)
+function EnsembleGPUKernel(dev)
+    EnsembleGPUKernel(dev, 0.2)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
     EnsembleGPUArray(0.0), _ -> NoTangent()
 end
 
-ZygoteRules.@adjoint function EnsembleGPUArray()
-    EnsembleGPUArray(0.0), _ -> nothing
+ZygoteRules.@adjoint function EnsembleGPUArray(dev)
+    EnsembleGPUArray(dev, 0.0), _ -> nothing
 end
 
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
@@ -695,12 +695,15 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
                             convert.(DiffEqGPU.GPUContinuousCallback,
                                      _callback.continuous_callbacks)...)
 
+    dev = ensemblealg.dev
+    probs = adapt(dev, probs)
+
     #Adaptive version only works with saveat
     if adaptive
-        ts, us = vectorized_asolve(cu(probs), ensembleprob.prob, alg;
+        ts, us = vectorized_asolve(probs, ensembleprob.prob, alg;
                                    kwargs..., callback = _callback)
     else
-        ts, us = vectorized_solve(cu(probs), ensembleprob.prob, alg;
+        ts, us = vectorized_solve(probs, ensembleprob.prob, alg;
                                   kwargs..., callback = _callback)
     end
     solus = Array(us)
@@ -710,16 +713,22 @@ end
 
 function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
     if ensemblealg isa EnsembleGPUArray
-        u0 = CuArray(u0)
-        p = CuArray(p)
+        dev = ensemblealg.device
+        u0 = adapt(dev, u0)
+        p = adapt(dev, p)
     end
 
     len = length(probs[1].u0)
 
     if SciMLBase.has_jac(probs[1].f)
-        jac_prototype = ensemblealg isa EnsembleGPUArray ?
-                        cu(zeros(Float32, len, len, length(I))) :
-                        zeros(Float32, len, len, length(I))
+        if ensemblealg isa EnsembleGPUArray
+            dev = ensemblealg.device
+            jac_prototype = allocate(dev, Float32, (len, len, length(I)))
+            fill!(jac_prototype, 0.0)
+        else
+            jac_prototype = zeros(Float32, len, len, length(I))
+        end
+
         if probs[1].f.colorvec !== nothing
             colorvec = repeat(probs[1].f.colorvec, length(I))
         else
@@ -778,16 +787,21 @@ function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg
     u0 = convert.(eltype(pdual), u0)
 
     if ensemblealg isa EnsembleGPUArray
-        u0 = CuArray(u0)
-        pdual = CuArray(pdual)
+        dev = ensemblealg.device
+        u0 = adapt(dev, u0)
+        pdual = adapt(dev, pdual)
     end
 
     len = length(probs[1].u0)
 
     if SciMLBase.has_jac(probs[1].f)
-        jac_prototype = ensemblealg isa EnsembleGPUArray ?
-                        cu(zeros(Float32, len, len, length(I))) :
-                        zeros(Float32, len, len, length(I))
+        if ensemblealg isa EnsembleGPUArray
+            dev = ensemblealg.device
+            jac_prototype = allocate(dev, Float32, (len, len, length(I)))
+            fill!(jac_prototype, 0.0)
+        else
+            jac_prototype = zeros(Float32, len, len, length(I))
+        end
         if probs[1].f.colorvec !== nothing
             colorvec = repeat(probs[1].f.colorvec, length(I))
         else
@@ -836,7 +850,7 @@ end
 function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = u isa CuArray ? CUDADevice() : CPU()
+            version = get_device(u)
             wgs = workgroupsize(version, size(u, 2))
             wait(version,
                  kernel(version)(f, du, u, p, t; ndrange = size(u, 2),
@@ -850,30 +864,28 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
         _Wfact!_t = let jac = prob.f.jac,
             kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
     else
@@ -886,7 +898,7 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
 
             function (J, u, p, t)
-                version = u isa CuArray ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(tgrad, J, u, p, t;
@@ -911,7 +923,7 @@ end
 function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = u isa CuArray ? CUDADevice() : CPU()
+            version = get_device(u)
             wgs = workgroupsize(version, size(u, 2))
             wait(version,
                  kernel(version)(f, du, u, p, t;
@@ -923,7 +935,7 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
 
     _g = let f = prob.f.g, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = u isa CuArray ? CUDADevice() : CPU()
+            version = get_device(u)
             wgs = workgroupsize(version, size(u, 2))
             wait(version,
                  kernel(version)(f, du, u, p, t;
@@ -938,30 +950,28 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
         _Wfact!_t = let jac = prob.f.jac,
             kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
 
             function (W, u, p, gamma, t)
-                iscuda = u isa CuArray
-                version = iscuda ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(jac, W, u, p, gamma, t;
                                      ndrange = size(u, 2),
                                      dependencies = Event(version),
                                      workgroupsize = wgs))
-                iscuda ? cuda_lufact!(W) : cpu_lufact!(W)
+                lufact!(version, W)
             end
         end
     else
@@ -974,7 +984,7 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
 
             function (J, u, p, t)
-                version = u isa CuArray ? CUDADevice() : CPU()
+                version = get_device(u)
                 wgs = workgroupsize(version, size(u, 2))
                 wait(version,
                      kernel(version)(tgrad, J, u, p, t;
@@ -999,7 +1009,8 @@ end
 function generate_callback(callback::DiscreteCallback, I,
                            ensemblealg)
     if ensemblealg isa EnsembleGPUArray
-        cur = CuArray([false for i in 1:I])
+        dev = ensemblealg.device
+        cur = adapt(dev, [false for i in 1:I])
     elseif ensemblealg isa EnsembleGPUKernel
         return callback
     else
@@ -1009,7 +1020,7 @@ function generate_callback(callback::DiscreteCallback, I,
     _affect! = callback.affect!
 
     condition = function (u, t, integrator)
-        version = u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(u)
         wgs = workgroupsize(version, size(u, 2))
         wait(version,
              discrete_condition_kernel(version)(_condition, cur, u, t, integrator.p;
@@ -1020,7 +1031,7 @@ function generate_callback(callback::DiscreteCallback, I,
     end
 
     affect! = function (integrator)
-        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         wait(version,
              discrete_affect!_kernel(version)(_affect!, cur, integrator.u, integrator.t,
@@ -1041,7 +1052,7 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     _affect_neg! = callback.affect_neg!
 
     condition = function (out, u, t, integrator)
-        version = u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(u)
         wgs = workgroupsize(version, size(u, 2))
         wait(version,
              continuous_condition_kernel(version)(_condition, out, u, t, integrator.p;
@@ -1052,7 +1063,7 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     end
 
     affect! = function (integrator, event_idx)
-        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         wait(version,
              continuous_affect!_kernel(version)(_affect!, event_idx, integrator.u,
@@ -1063,7 +1074,7 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     end
 
     affect_neg! = function (integrator, event_idx)
-        version = integrator.u isa CuArray ? CUDADevice() : CPU()
+        version = get_device(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         wait(version,
              continuous_affect!_kernel(version)(_affect_neg!, event_idx, integrator.u,
@@ -1127,7 +1138,7 @@ function SciMLBase.solve(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFa
     A = cache.A
     b = cache.b
     x = cache.u
-    version = b isa CuArray ? CUDADevice() : CPU()
+    version = get_device(b)
     copyto!(x, b)
     wgs = workgroupsize(version, p.nfacts)
     # Note that the matrix is already factorized, only ldiv is needed.
@@ -1141,7 +1152,7 @@ end
 
 # Old stuff
 function (p::LinSolveGPUSplitFactorize)(x, A, b, update_matrix = false; kwargs...)
-    version = b isa CuArray ? CUDADevice() : CPU()
+    version = get_device(b)
     copyto!(x, b)
     wgs = workgroupsize(version, p.nfacts)
     wait(version,
@@ -1162,24 +1173,6 @@ end
     _W = @inbounds @view(W[:, :, i])
     _u = @inbounds @view u[section]
     naivesolve!(_W, _u, len)
-end
-
-function __printjac(A, ii)
-    @cuprintf "[%d, %d]\n" ii.offset1 ii.stride2
-    @cuprintf "%d %d %d\n%d %d %d\n%d %d %d\n" ii[1, 1] ii[1, 2] ii[1, 3] ii[2, 1] ii[2, 2] ii[2,
-                                                                                               3] ii[3,
-                                                                                                     1] ii[3,
-                                                                                                           2] ii[3,
-                                                                                                                 3]
-    @cuprintf "%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f\n%2.2f %2.2f %2.2f" A[ii[1, 1]] A[ii[1,
-                                                                                         2]] A[ii[1,
-                                                                                                  3]] A[ii[2,
-                                                                                                           1]] A[ii[2,
-                                                                                                                    2]] A[ii[2,
-                                                                                                                             3]] A[ii[3,
-                                                                                                                                      1]] A[ii[3,
-                                                                                                                                               2]] A[ii[3,
-                                                                                                                                                        3]]
 end
 
 function generic_lufact!(A::AbstractMatrix{T}, minmn) where {T}
@@ -1294,5 +1287,9 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 export terminate!
+
+if !isdefined(Base, :get_extension)
+    include("../ext/CUDAExt.jl")
+end
 
 end # module

@@ -26,10 +26,13 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
                           save_everystep = true,
                           debug = false, callback = CallbackSet(nothing), tstops = nothing,
                           kwargs...)
+    dev = get_device(probs)
+    dev = maybe_prefer_blocks(dev)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
     nsteps = length(timeseries)
+
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
@@ -40,19 +43,18 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         else
             len = 2
         end
-        ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        ts = allocate(dev, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
+        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = CuArray{typeof(dt)}(saveat)
-        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        saveat = adapt(dev, saveat)
+        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
-    # Handle tstops
-    tstops = cu(tstops)
-    dev = CUDADevice{true}() #=prefer_blocks=#
+    tstops = adapt(dev, tstops)
+
     if alg isa GPUTsit5
         kernel = tsit5_kernel(dev)
     elseif alg isa GPUVern7
@@ -78,23 +80,23 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
                           save_everystep = true,
                           debug = false,
                           kwargs...)
+    dev = get_device(probs)
+    dev = maybe_prefer_blocks(dev)
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
         else
             len = 2
         end
-        ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        ts = allocate(dev, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
+        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = CuArray{typeof(dt)}(saveat)
-        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        saveat = adapt(dev, saveat)
+        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
-
-    dev = CUDADevice{true}() #=prefer_blocks=#
 
     if alg isa GPUEM
         kernel = em_kernel(dev)
@@ -117,6 +119,8 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
                            abstol = 1.0f-6, reltol = 1.0f-3,
                            debug = false, callback = CallbackSet(nothing), tstops = nothing,
                            kwargs...)
+    dev = get_device(probs)
+    dev = maybe_prefer_blocks(dev)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
@@ -128,18 +132,20 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         # if tstops !== nothing
         #     len += length(tstops)
         # end
-        ts = CuMatrix{typeof(dt)}(undef, (len, length(probs)))
+        ts = allocate(dev, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = CuMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
+        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = CuArray{typeof(dt)}(saveat)
-        ts = CuMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
+        saveat = adapt(dev, saveat)
+        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = CuMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
+        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
-    tstops = cu(tstops)
-    dev = CUDADevice{true}() #=prefer_blocks=#
+    us = adapt(dev, us)
+    ts = adapt(dev, ts)
+    tstops = adapt(dev, tstops)
+
     if alg isa GPUTsit5
         kernel = atsit5_kernel(dev)
     elseif alg isa GPUVern7
