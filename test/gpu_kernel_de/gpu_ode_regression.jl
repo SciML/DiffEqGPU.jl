@@ -6,6 +6,9 @@ device = if GROUP == "CUDA"
 elseif GROUP == "AMDGPU"
     using AMDGPU, ROCKernels
     ROCDevice()
+elseif GROUP == "oneAPI"
+    using oneAPI, oneAPIKernels
+    oneAPIDevice()
 end
 
 function lorenz(u, p, t)
