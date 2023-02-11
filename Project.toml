@@ -29,6 +29,7 @@ TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [compat]
+AMDGPU = "0.4"
 Adapt = "3"
 ArrayInterfaceGPUArrays = "0.1, 0.2"
 CUDA = "3.1, 4"
