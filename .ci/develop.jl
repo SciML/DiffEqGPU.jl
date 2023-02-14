@@ -3,7 +3,7 @@ using Pkg
 @show pwd()
 Pkg.activate(".")
 
-@info "Add oneAPIKernels"
+@info "Add oneAPIKernels "
 
 Pkg.develop("oneAPI")
 Pkg.add(PackageSpec(url = "https://github.com/utkarsh530/KernelAbstractions.jl.git",
