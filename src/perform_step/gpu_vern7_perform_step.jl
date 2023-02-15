@@ -17,7 +17,7 @@
     adv_integ = true
     ## Check if tstops are within the range of time-series
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-       (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(integ.t) < 0)
+       (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
         integ.t = integ.tstops[integ.tstops_idx]
         dt = integ.t - integ.tprev
         integ.tstops_idx += 1
@@ -155,10 +155,10 @@ end
         @inbounds k1 = integ.k1
     end
 
-    EEst = Inf
+    EEst = convert(T, Inf)
 
-    while EEst > 1.0
-        dt < 1e-14 && error("dt<dtmin")
+    while EEst > convert(T, 1.0)
+        dt < convert(T, 1.0f-14) && error("dt<dtmin")
 
         k1 = f(uprev, p, t)
         a = dt * a021
@@ -226,12 +226,12 @@ end
             integ.tprev = t
             integ.u = u
 
-            if (tf - t - dt) < 1e-14
+            if (tf - t - dt) < convert(T, 1.0f-14)
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
                    integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
-                   100 * eps(integ.t) < 0
+                   100 * eps(T) < 0
                     integ.t = integ.tstops[integ.tstops_idx]
                     integ.u = integ(integ.t)
                     dt = integ.t - integ.tprev
