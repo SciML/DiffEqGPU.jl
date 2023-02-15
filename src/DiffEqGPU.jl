@@ -1289,6 +1289,8 @@ export terminate!
 
 if !isdefined(Base, :get_extension)
     include("../ext/CUDAExt.jl")
+    include("../ext/AMDGPUExt.jl")
+    include("../ext/oneAPIExt.jl")
 end
 
 end # module
