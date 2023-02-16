@@ -72,7 +72,7 @@ for alg in algs
     @test length(sol[1].u) == length(saveat)
     @test length(asol[1].u) == length(saveat)
 
-    saveat = 0.0f0:0.1f0:10.0f0
+    saveat = collect(0.0f0:0.1f0:10.0f0)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 2,
                       adaptive = false, dt = 0.01f0, saveat = saveat)
