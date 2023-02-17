@@ -17,6 +17,8 @@ ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
 KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
 LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+MetalKernels = "fc3527f7-49a6-4297-80e3-91cc46c94af5"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
 ROCKernels = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
@@ -53,11 +55,13 @@ ZygoteRules = "0.2"
 julia = "1.6"
 oneAPI = "1"
 oneAPIKernels = "0.1"
+MetalKernels =  "0.1.0"
 
 [extensions]
 AMDGPUExt = ["AMDGPU", "ROCKernels"]
 CUDAExt = ["CUDA", "CUDAKernels"]
 oneAPIExt = ["oneAPI", "oneAPIKernels"]
+MetalExt = ["Metal", "MetalKernels"]
 
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
@@ -79,9 +83,11 @@ StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 oneAPIKernels = "3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+MetalKernels = "fc3527f7-49a6-4297-80e3-91cc46c94af5"
 
 [targets]
-test = ["BenchmarkTools", "DiffEqDevTools", "ForwardDiff", "Flux", "OrdinaryDiffEq", "SafeTestsets", "StaticArrays", "Statistics", "StochasticDiffEq", "Test", "Random", "SciMLSensitivity", "CUDA", "CUDAKernels", "AMDGPU", "ROCKernels", "oneAPI", "oneAPIKernels"]
+test = ["BenchmarkTools", "DiffEqDevTools", "ForwardDiff", "Flux", "OrdinaryDiffEq", "SafeTestsets", "StaticArrays", "Statistics", "StochasticDiffEq", "Test", "Random", "SciMLSensitivity", "CUDA", "CUDAKernels", "AMDGPU", "ROCKernels", "oneAPI", "oneAPIKernels" ,"Metal", "MetalKernels"]
 
 [weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"

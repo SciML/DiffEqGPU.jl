@@ -19,6 +19,7 @@ using LinearSolve
 using Adapt, SimpleDiffEq, StaticArrays
 using Parameters, MuladdMacro
 using Random
+using Metal
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
@@ -1290,7 +1291,8 @@ export terminate!
 if !isdefined(Base, :get_extension)
     include("../ext/CUDAExt.jl")
     include("../ext/AMDGPUExt.jl")
-    include("../ext/oneAPIExt.jl")
+    # include("../ext/oneAPIExt.jl")
+    include("../ext/MetalExt.jl")
 end
 
 end # module

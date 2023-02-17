@@ -56,15 +56,28 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     tstops = adapt(dev, tstops)
 
     if alg isa GPUTsit5
-        kernel = tsit5_kernel(dev)
+        kernel = @metal launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
+                                                  nsteps, saveat, Val(save_everystep))
     elseif alg isa GPUVern7
-        kernel = vern7_kernel(dev)
+        kernel = @metal launch=false vern7_kernel(probs, us, ts, dt, callback, tstops,
+                                                  nsteps, saveat, Val(save_everystep))
     elseif alg isa GPUVern9
-        kernel = vern9_kernel(dev)
+        kernel = @metal launch=false vern9_kernel(probs, us, ts, dt, callback, tstops,
+                                                  nsteps, saveat, Val(save_everystep))
     end
-    event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
-                   ndrange = length(probs), dependencies = Event(dev))
-    wait(dev, event)
+    threads = min(length(probs), kernel.pipeline_state.maxTotalThreadsPerThreadgroup)
+    blocks = cld(length(probs), threads)
+
+    threads = min(length(probs), threads)
+    # XXX: this kernel performs much better with all blocks active
+    grid = max(cld(length(probs), threads), blocks)
+    threads = cld(length(probs), grid)
+
+    kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat; threads, grid)
+
+    # event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
+    #                ndrange = length(probs), dependencies = Event(dev))
+    # wait(dev, event)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -147,16 +160,31 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     tstops = adapt(dev, tstops)
 
     if alg isa GPUTsit5
-        kernel = atsit5_kernel(dev)
+        kernel = @metal launch=false atsit5_kernel(probs, us, ts, dt, callback, tstops,
+                                                   abstol, reltol, saveat,
+                                                   Val(save_everystep))
     elseif alg isa GPUVern7
-        kernel = avern7_kernel(dev)
+        kernel = @metal launch=false avern7_kernel(probs, us, ts, dt, callback, tstops,
+                                                   abstol, reltol, saveat,
+                                                   Val(save_everystep))
     elseif alg isa GPUVern9
-        kernel = avern9_kernel(dev)
+        kernel = @metal launch=false avern9_kernel(probs, us, ts, dt, callback, tstops,
+                                                   abstol, reltol, saveat,
+                                                   Val(save_everystep))
     end
-    event = kernel(probs, us, ts, dt, callback, tstops,
-                   abstol, reltol, saveat, Val(save_everystep);
-                   ndrange = length(probs), dependencies = Event(dev))
-    wait(dev, event)
+    threads = min(length(probs), kernel.pipeline_state.maxTotalThreadsPerThreadgroup)
+    blocks = cld(length(probs), threads)
+
+    threads = min(length(probs), threads)
+    # XXX: this kernel performs much better with all blocks active
+    grid = max(cld(length(probs), threads), blocks)
+    threads = cld(length(probs), grid)
+
+    kernel(probs, us, ts, dt, callback, tstops, abstol, reltol, saveat; threads, grid)
+
+    # event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
+    #                ndrange = length(probs), dependencies = Event(dev))
+    # wait(dev, event)
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,

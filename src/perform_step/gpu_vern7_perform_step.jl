@@ -74,9 +74,9 @@
     return saved_in_cb
 end
 
-@kernel function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
-                              saveat, ::Val{save_everystep}) where {save_everystep}
-    i = @index(Global, Linear)
+function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
+                      saveat, ::Val{save_everystep}) where {save_everystep}
+    i = thread_position_in_grid_1d()
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -122,6 +122,7 @@ end
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
+    return nothing
 end
 
 #############################Adaptive Version#####################################
@@ -247,9 +248,9 @@ end
     return saved_in_cb
 end
 
-@kernel function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
-                               saveat, ::Val{save_everystep}) where {save_everystep}
-    i = @index(Global, Linear)
+function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
+                       saveat, ::Val{save_everystep}) where {save_everystep}
+    i = thread_position_in_grid_1d()
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -301,4 +302,5 @@ end
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
     end
+    return nothing
 end

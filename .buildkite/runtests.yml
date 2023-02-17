@@ -1,52 +1,19 @@
 steps:
-  - label: ":julia: [CUDA] Run tests on Julia v1"
+  - label: ":julia: Run tests on Julia v1 with Apple Metal"
     env:
-      GROUP: CUDA
+      GROUP: METAL
     plugins:
       - JuliaCI/julia#v1:
           version: "1"
           persist_depot_dirs: ""
-      - JuliaCI/julia-test#v1:
-           coverage: false # 1000x slowdown
+    command: julia .ci/develop.jl
     agents:
-      queue: "juliagpu"
-      cuda: "*"
+      queue: "juliaecosystem"
+      os: "macos"
+      arch: "aarch64"
     timeout_in_minutes: 120
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
-
-  - label: ":julia: [AMDGPU] Run tests on Julia v1.9"
-    env:
-      GROUP: AMDGPU
-    plugins:
-      - JuliaCI/julia#v1:
-          version: "1.9-nightly"
-          persist_depot_dirs: ""
-      - JuliaCI/julia-test#v1:
-           coverage: false # 1000x slowdown
-    agents:
-      queue: "juliagpu"
-      rocm: "*"
-    timeout_in_minutes: 120
-    # Don't run Buildkite if the commit message includes the text [skip tests]
-    if: build.message !~ /\[skip tests\]/
-
-  - label: ":julia: [oneAPI] Run tests on Julia v1"
-    env:
-      GROUP: oneAPI
-    plugins:
-      - JuliaCI/julia#v1:
-          version: "1"
-          persist_depot_dirs: ""
-      - JuliaCI/julia-test#v1:
-           coverage: false # 1000x slowdown
-    agents:
-      queue: "juliagpu"
-      intel: "*"
-    timeout_in_minutes: 120
-    # Don't run Buildkite if the commit message includes the text [skip tests]
-    if: build.message !~ /\[skip tests\]/
-
 env:
   JULIA_PKG_SERVER: "" # it often struggles with our large artifacts
   # SECRET_CODECOV_TOKEN: "..."

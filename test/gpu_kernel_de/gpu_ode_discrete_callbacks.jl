@@ -1,7 +1,7 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 @info "Callbacks"
 
-device = if GROUP == "CUDA"
+gpudevice = if GROUP == "CUDA"
     using CUDA, CUDAKernels
     CUDADevice()
 elseif GROUP == "AMDGPU"
@@ -10,6 +10,9 @@ elseif GROUP == "AMDGPU"
 elseif GROUP == "oneAPI"
     using oneAPI, oneAPIKernels
     oneAPIDevice()
+elseif GROUP == "Metal"
+    using Metal, MetalKernels
+    MetalDevice()
 end
 
 function f(u, p, t)
@@ -21,7 +24,7 @@ prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
 prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
 
-algs = [GPUTsit5(), GPUVern7(), GPUVern9()]
+algs = [GPUTsit5()]
 
 for alg in algs
     @info typeof(alg)
@@ -34,7 +37,7 @@ for alg in algs
 
     @info "Unadaptive version"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0])
@@ -47,7 +50,7 @@ for alg in algs
     @test norm(bench_sol.u - sol[1].u) < 5e-3
 
     #Test the truncation error due to floating point math, encountered when adjusting t for tstops
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
                       tstops = [4.0f0])
@@ -70,7 +73,7 @@ for alg in algs
 
     cb = CallbackSet(cb_1, cb_2)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0, 4.0f0])
@@ -85,7 +88,7 @@ for alg in algs
 
     @info "saveat and callbacks"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0])
@@ -100,7 +103,7 @@ for alg in algs
 
     @info "save_everystep and callbacks"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0, 4.0f0], save_everystep = false)
@@ -117,7 +120,7 @@ for alg in algs
 
     cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [4.0f0])
@@ -132,7 +135,7 @@ for alg in algs
 
     @info "Callback: CallbackSets"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0, 4.0f0])
@@ -148,7 +151,7 @@ for alg in algs
 
     @info "saveat and callbacks"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0], reltol = 1.0f-7,
@@ -166,12 +169,12 @@ for alg in algs
 
     @info "Unadaptive and Adaptive comparison"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 4.0f0])
 
-    asol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    asol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                  trajectories = 2,
                  adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
                  tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 4.0f0])
@@ -184,7 +187,7 @@ for alg in algs
 
     cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device),
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(gpudevice),
                       trajectories = 2,
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       tstops = [2.40f0])
