@@ -26,8 +26,6 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
                           save_everystep = true,
                           debug = false, callback = CallbackSet(nothing), tstops = nothing,
                           kwargs...)
-    dev = get_device(probs)
-    dev = maybe_prefer_blocks(dev)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
@@ -43,17 +41,17 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         else
             len = 2
         end
-        ts = allocate(dev, typeof(dt), (len, length(probs)))
+        ts = MtlMatrix{typeof(dt)}(undef, (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
+        us = MtlMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        saveat = adapt(dev, saveat)
-        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
+        saveat = MtlArray{typeof(dt)}(saveat)
+        ts = MtlMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
+        us = MtlMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
-    tstops = adapt(dev, tstops)
+    tstops = adapt(MtlArray, tstops)
 
     if alg isa GPUTsit5
         kernel = @metal launch=false tsit5_kernel(probs, us, ts, dt, callback, tstops,
@@ -132,8 +130,6 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
                            abstol = 1.0f-6, reltol = 1.0f-3,
                            debug = false, callback = CallbackSet(nothing), tstops = nothing,
                            kwargs...)
-    dev = get_device(probs)
-    dev = maybe_prefer_blocks(dev)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
@@ -145,19 +141,17 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         # if tstops !== nothing
         #     len += length(tstops)
         # end
-        ts = allocate(dev, typeof(dt), (len, length(probs)))
+        ts = MtlMatrix{typeof(dt)}(undef, (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
+        us = MtlMatrix{typeof(prob.u0)}(undef, (len, length(probs)))
     else
-        saveat = adapt(dev, saveat)
-        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
+        saveat = MtlArray{typeof(dt)}(saveat)
+        ts = MtlMatrix{typeof(dt)}(undef, (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
+        us = MtlMatrix{typeof(prob.u0)}(undef, (length(saveat), length(probs)))
     end
 
-    us = adapt(dev, us)
-    ts = adapt(dev, ts)
-    tstops = adapt(dev, tstops)
+    tstops = adapt(MtlArray, tstops)
 
     if alg isa GPUTsit5
         kernel = @metal launch=false atsit5_kernel(probs, us, ts, dt, callback, tstops,

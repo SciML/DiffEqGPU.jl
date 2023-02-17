@@ -1,7 +1,7 @@
 steps:
   - label: ":julia: Run tests on Julia v1 with Apple Metal"
     env:
-      GROUP: METAL
+      GROUP: Metal
     plugins:
       - JuliaCI/julia#v1:
           version: "1"

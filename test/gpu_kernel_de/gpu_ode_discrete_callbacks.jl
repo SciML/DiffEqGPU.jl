@@ -1,19 +1,23 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 @info "Callbacks"
 
-gpudevice = if GROUP == "CUDA"
-    using CUDA, CUDAKernels
-    CUDADevice()
-elseif GROUP == "AMDGPU"
-    using AMDGPU, ROCKernels
-    ROCDevice()
-elseif GROUP == "oneAPI"
-    using oneAPI, oneAPIKernels
-    oneAPIDevice()
-elseif GROUP == "Metal"
-    using Metal, MetalKernels
-    MetalDevice()
-end
+# gpudevice = if GROUP == "CUDA"
+#     using CUDA, CUDAKernels
+#     CUDADevice()
+# elseif GROUP == "AMDGPU"
+#     using AMDGPU, ROCKernels
+#     ROCDevice()
+# elseif GROUP == "oneAPI"
+#     using oneAPI, oneAPIKernels
+#     oneAPIDevice()
+# elseif GROUP == "Metal"
+#     using Metal, MetalKernels
+#     MetalDevice()
+# end
+
+using Metal
+#Fake GPU device
+gpudevice = MtlDevice(1)
 
 function f(u, p, t)
     du1 = -u[1]

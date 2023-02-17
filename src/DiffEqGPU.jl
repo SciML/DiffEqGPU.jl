@@ -696,7 +696,7 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
                                      _callback.continuous_callbacks)...)
 
     dev = ensemblealg.dev
-    probs = adapt(dev, probs)
+    probs = probs |> MtlArray
 
     #Adaptive version only works with saveat
     if adaptive
@@ -1292,7 +1292,7 @@ if !isdefined(Base, :get_extension)
     include("../ext/CUDAExt.jl")
     include("../ext/AMDGPUExt.jl")
     # include("../ext/oneAPIExt.jl")
-    include("../ext/MetalExt.jl")
+    # include("../ext/MetalExt.jl")
 end
 
 end # module
