@@ -10,7 +10,6 @@ using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
-import ArrayInterfaceGPUArrays
 using RecursiveArrayTools
 import ZygoteRules
 import Base.Threads
