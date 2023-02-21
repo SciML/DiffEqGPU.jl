@@ -62,6 +62,11 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     elseif alg isa GPUVern9
         kernel = vern9_kernel(dev)
     end
+
+    if dev isa CPU
+        @warn "Running the kernel on CPU"
+    end
+
     event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
                    ndrange = length(probs), dependencies = Event(dev))
     wait(dev, event)
@@ -104,6 +109,10 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         SciMLBase.is_diagonal_noise(prob) ? nothing :
         error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
         kernel = siea_kernel(dev)
+    end
+
+    if dev isa CPU
+        @warn "Running the kernel on CPU"
     end
 
     event = kernel(probs, us, ts, dt, saveat, Val(save_everystep);
@@ -153,6 +162,11 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     elseif alg isa GPUVern9
         kernel = avern9_kernel(dev)
     end
+
+    if dev isa CPU
+        @warn "Running the kernel on CPU"
+    end
+
     event = kernel(probs, us, ts, dt, callback, tstops,
                    abstol, reltol, saveat, Val(save_everystep);
                    ndrange = length(probs), dependencies = Event(dev))
