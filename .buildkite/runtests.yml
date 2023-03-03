@@ -1,13 +1,26 @@
 steps:
-  - label: ":julia: [CUDA] Run tests on Julia v1"
+  - label: ":julia: [CUDA] Run tests on Julia v{{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1"
+          - "1.9-nightly"
     env:
       GROUP: CUDA
     plugins:
       - JuliaCI/julia#v1:
-          version: "1"
+          version: "{{matrix.version}}"
           persist_depot_dirs: ""
-      - JuliaCI/julia-test#v1:
-           coverage: false # 1000x slowdown
+    commands:
+      - |
+        julia --project=test -e '
+            using Pkg
+            Pkg.add(; name = "CUDA")
+            Pkg.add(; name = "CUDAKernels")
+        '
+        julia -e '
+            println("+++ :julia: Running tests")
+            Pkg.test(; coverage=false)'
     agents:
       queue: "juliagpu"
       cuda: "*"
@@ -22,8 +35,16 @@ steps:
       - JuliaCI/julia#v1:
           version: "1.9-nightly"
           persist_depot_dirs: ""
-      - JuliaCI/julia-test#v1:
-           coverage: false # 1000x slowdown
+    commands:
+      - |
+        julia --project=test -e '
+            using Pkg
+            Pkg.add(; name = "AMDGPU")
+            Pkg.add(; name = "ROCKernels")
+        '
+        julia -e '
+            println("+++ :julia: Running tests")
+            Pkg.test(; coverage=false)'
     agents:
       queue: "juliagpu"
       rocm: "*"
@@ -38,11 +59,43 @@ steps:
       - JuliaCI/julia#v1:
           version: "1"
           persist_depot_dirs: ""
-      - JuliaCI/julia-test#v1:
-           coverage: false # 1000x slowdown
+    commands:
+      - |
+        julia --project=test -e '
+            using Pkg
+            Pkg.add(; name = "oneAPI")
+            Pkg.add(; name = "oneAPIKernels")
+        '
+        julia -e '
+            println("+++ :julia: Running tests")
+            Pkg.test(; coverage=false)'
     agents:
       queue: "juliagpu"
       intel: "*"
+    timeout_in_minutes: 120
+    # Don't run Buildkite if the commit message includes the text [skip tests]
+    if: build.message !~ /\[skip tests\]/
+
+  - label: ":julia: [Metal] Run tests on Julia v1"
+    env:
+      GROUP: Metal
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "1"
+          persist_depot_dirs: ""
+      - |
+        julia --project=test -e '
+            using Pkg
+            Pkg.add(; name = "Metal")
+            Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
+                      rev="metal", subdir= "lib/MetalKernels")'
+        julia -e '
+            println("+++ :julia: Running tests")
+            Pkg.test(; coverage=false)'
+    agents:
+      queue: "juliaecosystem"
+      os: "macos"
+      arch: "aarch64"
     timeout_in_minutes: 120
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/

@@ -4,10 +4,7 @@ authors = ["Chris Rackauckas", "SciML"]
 version = "1.26.0"
 
 [deps]
-AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 DiffEqBase = "2b5f629d-d688-5b77-993f-72d75c75574e"
 Distributed = "8ba89e20-285c-5b6f-9357-94700520ee1b"
@@ -18,16 +15,30 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
-ROCKernels = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
+Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
 SimpleDiffEq = "05bca326-078c-5bf0-a5bf-ce7c7982d7fd"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
+
+[weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+MetalKernels = "fc3527f7-49a6-4297-80e3-91cc46c94af5"
+ROCKernels = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 oneAPIKernels = "3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62"
+
+[extensions]
+AMDGPUExt = ["AMDGPU", "ROCKernels"]
+CUDAExt = ["CUDA", "CUDAKernels"]
+MetalAPIExt = ["Metal", "MetalKernels"]
+oneAPIExt = ["oneAPI", "oneAPIKernels"]
 
 [compat]
 AMDGPU = "0.4"
@@ -40,6 +51,8 @@ DocStringExtensions = "0.8, 0.9"
 ForwardDiff = "0.10"
 KernelAbstractions = "0.8"
 LinearSolve = "1.15"
+Metal = "0.2"
+MetalKernels = "0.1"
 MuladdMacro = "0.2"
 Parameters = "0.12"
 ROCKernels = "0.3"
@@ -52,39 +65,12 @@ julia = "1.6"
 oneAPI = "1"
 oneAPIKernels = "0.1"
 
-[extensions]
-AMDGPUExt = ["AMDGPU", "ROCKernels"]
-CUDAExt = ["CUDA", "CUDAKernels"]
-oneAPIExt = ["oneAPI", "oneAPIKernels"]
-
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
-DiffEqDevTools = "f3b72e0c-5b89-59e1-b016-84e28bfd966d"
-DiffEqSensitivity = "41bf760c-e81c-5289-8e54-58b1f1f8abe2"
-Flux = "587475ba-b771-5e3f-ad9e-33799f191a9c"
-ForwardDiff = "f6369f11-7733-5829-9624-2563aa707210"
-OrdinaryDiffEq = "1dea7af3-3e70-54e6-95c3-0bf5283fa5ed"
-ROCKernels = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
-Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
-SafeTestsets = "1bc83da4-3b8d-516f-aca4-4fe02f6d838f"
-SciMLSensitivity = "1ed8b502-d754-442c-8d5d-10ac956f44a1"
-StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
-Statistics = "10745b16-79ce-11e8-11f9-7d13ad32a3b2"
-StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
-Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
-oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
-oneAPIKernels = "3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62"
-
-[targets]
-test = ["BenchmarkTools", "DiffEqDevTools", "ForwardDiff", "Flux", "OrdinaryDiffEq", "SafeTestsets", "StaticArrays", "Statistics", "StochasticDiffEq", "Test", "Random", "SciMLSensitivity", "CUDA", "CUDAKernels", "AMDGPU", "ROCKernels", "oneAPI", "oneAPIKernels"]
-
-[weakdeps]
-AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+MetalKernels = "fc3527f7-49a6-4297-80e3-91cc46c94af5"
 ROCKernels = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 oneAPIKernels = "3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62"

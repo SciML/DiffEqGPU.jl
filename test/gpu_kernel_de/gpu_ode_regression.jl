@@ -1,15 +1,6 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
+include("../utils.jl")
 
-device = if GROUP == "CUDA"
-    using CUDA, CUDAKernels
-    CUDADevice()
-elseif GROUP == "AMDGPU"
-    using AMDGPU, ROCKernels
-    ROCDevice()
-elseif GROUP == "oneAPI"
-    using oneAPI, oneAPIKernels
-    oneAPIDevice()
-end
 
 function lorenz(u, p, t)
     σ = p[1]

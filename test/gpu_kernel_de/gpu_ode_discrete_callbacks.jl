@@ -1,16 +1,7 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 @info "Callbacks"
 
-gpudevice = if GROUP == "CUDA"
-    using CUDA, CUDAKernels
-    CUDADevice()
-elseif GROUP == "AMDGPU"
-    using AMDGPU, ROCKernels
-    ROCDevice()
-elseif GROUP == "oneAPI"
-    using oneAPI, oneAPIKernels
-    oneAPIDevice()
-end
+include("../utils.jl")
 
 function f(u, p, t)
     du1 = -u[1]

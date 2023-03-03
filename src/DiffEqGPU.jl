@@ -1286,10 +1286,18 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 export terminate!
 
+# This symbol is only defined on Julia versions that support extensions
 if !isdefined(Base, :get_extension)
-    include("../ext/CUDAExt.jl")
-    include("../ext/AMDGPUExt.jl")
-    include("../ext/oneAPIExt.jl")
+    using Requires
+end
+
+@static if !isdefined(Base, :get_extension)
+function __init__()
+    @require CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57" include("../ext/CUDAExt.jl")
+    @require ROCKernels  = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9" include("../ext/AMDGPUExt.jl")
+    @require oneAPIKernels = "3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62" include("../ext/oneAPIExt.jl")
+    @require MetalKernels = "fc3527f7-49a6-4297-80e3-91cc46c94af5" include("../ext/MetalExt.jl")
+end
 end
 
 end # module
