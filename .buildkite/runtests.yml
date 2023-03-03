@@ -14,13 +14,13 @@ steps:
     commands:
       - |
         julia --project=test -e '
-            using Pkg
-            Pkg.add(; name = "CUDA")
-            Pkg.add(; name = "CUDAKernels")
-        '
+          import Pkg
+          Pkg.add(; name = "CUDA")
+          Pkg.add(; name = "CUDAKernels")'
         julia -e '
-            println("+++ :julia: Running tests")
-            Pkg.test(; coverage=false)'
+          import Pkg
+          println("+++ :julia: Running tests")
+          Pkg.test(; coverage=false)'
     agents:
       queue: "juliagpu"
       cuda: "*"
@@ -38,13 +38,13 @@ steps:
     commands:
       - |
         julia --project=test -e '
-            using Pkg
-            Pkg.add(; name = "AMDGPU")
-            Pkg.add(; name = "ROCKernels")
-        '
+          import Pkg
+          Pkg.add(; name = "AMDGPU")
+          Pkg.add(; name = "ROCKernels")'
         julia -e '
-            println("+++ :julia: Running tests")
-            Pkg.test(; coverage=false)'
+          import Pkg
+          println("+++ :julia: Running tests")
+          Pkg.test(; coverage=false)'
     agents:
       queue: "juliagpu"
       rocm: "*"
@@ -62,13 +62,13 @@ steps:
     commands:
       - |
         julia --project=test -e '
-            using Pkg
-            Pkg.add(; name = "oneAPI")
-            Pkg.add(; name = "oneAPIKernels")
-        '
+          import Pkg
+          Pkg.add(; name = "oneAPI")
+          Pkg.add(; name = "oneAPIKernels")'
         julia -e '
-            println("+++ :julia: Running tests")
-            Pkg.test(; coverage=false)'
+          import Pkg
+          println("+++ :julia: Running tests")
+          Pkg.test(; coverage=false)'
     agents:
       queue: "juliagpu"
       intel: "*"
@@ -85,13 +85,14 @@ steps:
           persist_depot_dirs: ""
       - |
         julia --project=test -e '
-            using Pkg
-            Pkg.add(; name = "Metal")
-            Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
-                      rev="metal", subdir= "lib/MetalKernels")'
+          import Pkg
+          Pkg.add(; name = "Metal")
+          Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
+                    rev="metal", subdir= "lib/MetalKernels")'
         julia -e '
-            println("+++ :julia: Running tests")
-            Pkg.test(; coverage=false)'
+          import Pkg
+          println("+++ :julia: Running tests")
+          Pkg.test(; coverage=false)'
     agents:
       queue: "juliaecosystem"
       os: "macos"
