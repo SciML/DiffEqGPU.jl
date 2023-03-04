@@ -17,6 +17,9 @@ using SafeTestsets, Test
 
 const GROUP = get(ENV, "GROUP", "CUDA")
 
+@time @testset "GPU Kernelized ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
+@time @testset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
+
 if GROUP == "CUDA"
     using CUDA, CUDAKernels
     @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
@@ -35,6 +38,3 @@ if GROUP == "CUDA"
     @time @testset "GPU Kernelized SDE Convergence" begin include("gpu_kernel_de/gpu_sde_convergence.jl") end
     @time @testset "GPU Kernelized ODE ContinuousCallback" begin include("gpu_kernel_de/gpu_ode_continuous_callbacks.jl") end
 end
-
-@time @testset "GPU Kernelized ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
-@time @testset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
