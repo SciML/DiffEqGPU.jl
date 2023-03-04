@@ -16,6 +16,7 @@ steps:
           import Pkg
           Pkg.add(; name = "CUDA")
           Pkg.add(; name = "CUDAKernels")'
+        rm test/Manifest.toml
         julia --project -e '
           import Pkg
           println("+++ :julia: Running tests")
@@ -44,6 +45,7 @@ steps:
           import Pkg
           Pkg.add(; name = "AMDGPU")
           Pkg.add(; name = "ROCKernels")'
+        rm test/Manifest.toml
         julia --project -e '
           import Pkg
           println("+++ :julia: Running tests")
@@ -72,6 +74,7 @@ steps:
           import Pkg
           Pkg.add(; name = "oneAPI")
           Pkg.add(; name = "oneAPIKernels")'
+        rm test/Manifest.toml
         julia --project -e '
           import Pkg
           println("+++ :julia: Running tests")
@@ -101,6 +104,11 @@ steps:
           Pkg.add(; name = "Metal")
           Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
                     rev = "metal", subdir = "lib/MetalKernels")'
+        julia --project -e '
+          import Pkg
+          Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
+                    rev = "metal", subdir = "lib/MetalKernels")'
+        rm test/Manifest.toml
         julia --project -e '
           import Pkg
           println("+++ :julia: Running tests")
