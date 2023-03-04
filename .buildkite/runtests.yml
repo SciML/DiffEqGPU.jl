@@ -10,7 +10,6 @@ steps:
     plugins:
       - JuliaCI/julia#v1:
           version: "{{matrix.version}}"
-          persist_depot_dirs: ""
     commands:
       - |
         julia --project=test -e '
@@ -28,13 +27,17 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
-  - label: ":julia: [AMDGPU] Run tests on Julia v1.9"
+  - label: ":julia: [AMDGPU] Run tests on Julia v{{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1"
+          - "1.9-nightly"
     env:
       GROUP: AMDGPU
     plugins:
       - JuliaCI/julia#v1:
-          version: "1.9-nightly"
-          persist_depot_dirs: ""
+          version: "{{matrix.version}}"
     commands:
       - |
         julia --project=test -e '
@@ -52,13 +55,17 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
-  - label: ":julia: [oneAPI] Run tests on Julia v1"
+  - label: ":julia: [oneAPI] Run tests on Julia v{{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1"
+          - "1.9-nightly"
     env:
       GROUP: oneAPI
     plugins:
       - JuliaCI/julia#v1:
-          version: "1"
-          persist_depot_dirs: ""
+          version: "{{matrix.version}}"
     commands:
       - |
         julia --project=test -e '
@@ -77,12 +84,16 @@ steps:
     if: build.message !~ /\[skip tests\]/
 
   - label: ":julia: [Metal] Run tests on Julia v1"
+    matrix:
+      setup:
+        version:
+          - "1"
+          - "1.9-nightly"
     env:
       GROUP: Metal
     plugins:
       - JuliaCI/julia#v1:
-          version: "1"
-          persist_depot_dirs: ""
+          version: "{{matrix.version}}"
     commands:
       - |
         julia --project=test -e '

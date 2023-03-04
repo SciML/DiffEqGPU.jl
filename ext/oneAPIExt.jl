@@ -3,7 +3,8 @@ isdefined(Base, :get_extension) ? (using oneAPIKernels) : (using ..oneAPIKernels
 import DiffEqGPU
 
 # import via parent
-using ..oneAPIKernels: oneAPI, Adapt, KernelAbstractions
+using ..oneAPIKernels: oneAPI, KernelAbstractions
+using .KernelAbstractions: Adapt
 
 DiffEqGPU.maxthreads(::oneAPIDevice) = 256
 DiffEqGPU.maybe_prefer_blocks(::oneAPIDevice) = oneAPIDevice()
