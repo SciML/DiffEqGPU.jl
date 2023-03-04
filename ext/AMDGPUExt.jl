@@ -1,7 +1,9 @@
 module AMDGPUExt
-using KernelAbstractions
-using AMDGPU, ROCKernels, Adapt
+isdefined(Base, :get_extension) ? (using ROCKernels) : (using ..ROCKernels)
 import DiffEqGPU
+
+# import via parent
+using ..ROCKernels: AMDGPU, Adapt, KernelAbstractions
 
 DiffEqGPU.maxthreads(::ROCDevice) = 256
 DiffEqGPU.maybe_prefer_blocks(::ROCDevice) = ROCDevice()

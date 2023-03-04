@@ -1,7 +1,9 @@
 module CUDAExt
-using KernelAbstractions
-using CUDA, CUDAKernels, Adapt
+isdefined(Base, :get_extension) ? (using CUDAKernels) : (using ..CUDAKernels)
 import DiffEqGPU
+
+# import via parent
+using ..CUDAKernels: CUDA, Adapt, KernelAbstractions
 
 using CUDA: CUBLAS
 
