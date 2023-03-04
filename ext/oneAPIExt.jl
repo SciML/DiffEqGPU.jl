@@ -5,7 +5,7 @@ import DiffEqGPU
 # import via parent
 import ..oneAPIKernels: oneAPI, KernelAbstractions
 import .KernelAbstractions: Adapt
-using .oneAPI
+using .oneAPI, .Adapt
 
 
 DiffEqGPU.maxthreads(::oneAPIDevice) = 256

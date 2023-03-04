@@ -3,8 +3,9 @@ module MetalExt
     import DiffEqGPU
 
     # import via parent
-    using ..MetalKernels: Metal, Adapt, KernelAbstractions
-    using .Metal
+    using ..MetalKernels: Metal, KernelAbstractions
+    import .KernelAbstractions: Adapt
+    using .Metal, .Adapt
 
     DiffEqGPU.maxthreads(::MetalDevice) = 256
     DiffEqGPU.maybe_prefer_blocks(::MetalDevice) = MetalDevice()

@@ -4,7 +4,8 @@ import DiffEqGPU
 
 # import via parent
 import ..ROCKernels: AMDGPU, Adapt, KernelAbstractions
-using .AMDGPU
+import .KernelAbstractions: Adapt
+using .AMDGPU, .Adapt
 
 DiffEqGPU.maxthreads(::ROCDevice) = 256
 DiffEqGPU.maybe_prefer_blocks(::ROCDevice) = ROCDevice()

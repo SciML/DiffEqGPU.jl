@@ -3,8 +3,9 @@ isdefined(Base, :get_extension) ? (using CUDAKernels) : (using ..CUDAKernels)
 import DiffEqGPU
 
 # import via parent
-import ..CUDAKernels: CUDA, Adapt, KernelAbstractions
-using .CUDA
+import ..CUDAKernels: CUDA, KernelAbstractions
+import .KernelAbstractions: Adapt
+using .CUDA, .Adapt
 
 function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
     DiffEqGPU.EnsembleGPUArray(CUDADevice(), cpu_offload)
