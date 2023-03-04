@@ -102,12 +102,7 @@ steps:
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "Metal")
-          Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
-                    rev = "metal", subdir = "lib/MetalKernels")'
-        julia --project -e '
-          import Pkg
-          Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
-                    rev = "metal", subdir = "lib/MetalKernels")'
+          Pkg.add(; name = "MetalKernels")
         rm test/Manifest.toml
         julia --project -e '
           import Pkg
