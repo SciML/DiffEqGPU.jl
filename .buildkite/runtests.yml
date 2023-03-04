@@ -83,12 +83,13 @@ steps:
       - JuliaCI/julia#v1:
           version: "1"
           persist_depot_dirs: ""
+    commands:
       - |
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "Metal")
           Pkg.add(; url = "https://github.com/tgymnich/KernelAbstractions.jl",
-                    rev="metal", subdir= "lib/MetalKernels")'
+                    rev = "metal", subdir = "lib/MetalKernels")'
         julia --project -e '
           import Pkg
           println("+++ :julia: Running tests")
