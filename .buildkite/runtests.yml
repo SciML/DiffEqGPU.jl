@@ -102,7 +102,7 @@ steps:
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "Metal")
-          Pkg.add(; name = "MetalKernels")
+          Pkg.add(; name = "MetalKernels")'
         rm test/Manifest.toml
         julia --project -e '
           import Pkg
