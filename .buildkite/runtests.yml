@@ -83,7 +83,7 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
-  - label: ":julia: [Metal] Run tests on Julia v1"
+  - label: ":julia: [Metal] Run tests on Julia v{{matrix.version}}"
     matrix:
       setup:
         version:

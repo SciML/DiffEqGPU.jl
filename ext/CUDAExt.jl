@@ -5,7 +5,7 @@ import DiffEqGPU
 # import via parent
 using ..CUDAKernels: CUDA, Adapt, KernelAbstractions
 
-using CUDA: CUBLAS
+using .CUDA: CUBLAS
 
 function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
     DiffEqGPU.EnsembleGPUArray(CUDADevice(), cpu_offload)
