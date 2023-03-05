@@ -648,7 +648,11 @@ function batch_solve(ensembleprob, alg,
                  ts = @view solts[:, i]
                  us = @view solus[:, i]
                  sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
-                 @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
+                 if sol_idx === nothing
+                    @error "No solution found" tspan = probs[i].tspan[1] ts
+                    error("Batch solve failed")
+                 end
+                    @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
                                                                           alg,
                                                                           ts[1:sol_idx],
                                                                           us[1:sol_idx],
