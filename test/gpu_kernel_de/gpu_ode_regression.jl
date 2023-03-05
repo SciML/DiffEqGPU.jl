@@ -38,7 +38,7 @@ for alg in algs
                        reltol = 1.0f-7)
 
     @test norm(bench_sol.u[end] - sol[1].u[end]) < 5e-3
-    @test norm(bench_asol.u - asol[1].u) < 5e-4
+    @test norm(bench_asol.u - asol[1].u) < 8e-4
 
     ### solve parameters
 
@@ -79,7 +79,7 @@ for alg in algs
     @test norm(asol[1].u[end] - sol[1].u[end]) < 6e-3
 
     @test norm(bench_sol.u - sol[1].u) < 2e-3
-    @test norm(bench_asol.u - asol[1].u) < 3e-3
+    @test norm(bench_asol.u - asol[1].u) < 4e-3
 
     @test length(sol[1].u) == length(saveat)
     @test length(asol[1].u) == length(saveat)

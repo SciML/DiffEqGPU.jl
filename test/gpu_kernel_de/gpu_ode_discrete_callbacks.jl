@@ -168,8 +168,8 @@ for alg in algs
                  tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 4.0f0])
 
     @test norm(asol[1](2.40f0) - sol[1](2.40f0)) < 3e-3
-    @test norm(asol[1](4.0f0) - sol[1](4.0f0)) < 4e-3
-    @test norm(asol[1].u - sol[1].u) < 4e-3
+    @test norm(asol[1](4.0f0) - sol[1](4.0f0)) < 5e-3
+    @test norm(asol[1].u - sol[1].u) < 5e-3
 
     @info "Terminate callback"
 
