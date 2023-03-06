@@ -1,3 +1,4 @@
+const GROUP = get(ENV, "GROUP", "CUDA")
 const device = if GROUP == "CUDA"
     using CUDA, CUDAKernels
     CUDA.allowscalar(false)

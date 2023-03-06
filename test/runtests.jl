@@ -15,10 +15,8 @@ end
 
 using SafeTestsets, Test
 
-const GROUP = get(ENV, "GROUP", "CUDA")
-
-@time @testset "GPU Kernelized ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
-@time @testset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
+@time @safetestset "GPU Kernelized ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
+@time @safetestset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
 
 @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
 @time @safetestset "EnsembleGPUArray OOP" begin include("ensemblegpuarray_oop.jl") end
