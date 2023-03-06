@@ -1,10 +1,10 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, Statistics, CUDAKernels
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, Statistics
+
+include("../utils.jl")
 
 @info "Convergence Test"
 
 algs = [GPUEM(), GPUSIEA()]
-
-device = CUDADevice()
 
 for alg in algs
     @info alg

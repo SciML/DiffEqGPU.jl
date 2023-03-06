@@ -1,5 +1,6 @@
-device = if GROUP == "CUDA"
+const device = if GROUP == "CUDA"
     using CUDA, CUDAKernels
+    CUDA.allowscalar(false)
     CUDADevice()
 elseif GROUP == "AMDGPU"
     using AMDGPU, ROCKernels
@@ -11,3 +12,5 @@ elseif GROUP == "Metal"
     using Metal, MetalKernels
     MetalDevice()
 end
+
+@info "Testing on " device

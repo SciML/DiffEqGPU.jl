@@ -1,7 +1,7 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, CUDA, CUDAKernels
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 @info "Callbacks"
 
-device = CUDADevice()
+include("../utils.jl")
 
 function f(u, p, t)
     du1 = u[2]

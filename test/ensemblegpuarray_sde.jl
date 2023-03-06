@@ -1,4 +1,6 @@
-using DiffEqGPU, CUDA, StochasticDiffEq, Test, CUDAKernels
+using DiffEqGPU, CUDA, StochasticDiffEq, Test
+
+include("utils.jl")
 
 function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
@@ -12,7 +14,6 @@ function multiplicative_noise(du, u, p, t)
     du[3] = 0.1 * u[3]
 end
 
-CUDA.allowscalar(false)
 u0 = Float32[1.0; 0.0; 0.0]
 tspan = (0.0f0, 10.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
@@ -25,5 +26,5 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time sol = solve(monteprob, SOSRI(), EnsembleGPUArray(CUDADevice()), trajectories = 10,
+@time sol = solve(monteprob, SOSRI(), EnsembleGPUArray(device), trajectories = 10,
                   saveat = 1.0f0)
