@@ -37,7 +37,7 @@ oneAPIKernels = "3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62"
 [extensions]
 AMDGPUExt = ["AMDGPU", "ROCKernels"]
 CUDAExt = ["CUDA", "CUDAKernels"]
-MetalAPIExt = ["Metal", "MetalKernels"]
+MetalExt = ["Metal", "MetalKernels"]
 oneAPIExt = ["oneAPI", "oneAPIKernels"]
 
 [compat]
