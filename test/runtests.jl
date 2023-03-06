@@ -14,6 +14,7 @@ end
 @assert Base.JLOptions().check_bounds == 0
 
 const SUPPORTS_LUFACT = Set(["CUDA","AMDGPU"])
+const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
 
