@@ -1,5 +1,7 @@
 using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, Test
 
+include("utils.jl")
+
 function modelf(du, u, p, t)
     du[1] = 1.01 * u[1] * p[1] * p[2]
 end
