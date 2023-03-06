@@ -77,6 +77,8 @@ Adapt.adapt_storage(::CPU, a::Array) = a
 allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
 allocate(dev, T, dims) = allocate(dev, T, undef, dims)
 
+supports(::CPU, ::Type{Float64}) = true
+
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
 end

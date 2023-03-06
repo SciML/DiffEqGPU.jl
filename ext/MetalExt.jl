@@ -18,4 +18,6 @@ module MetalExt
     function DiffEqGPU.allocate(::MetalDevice, ::Type{T}, init, dims) where {T}
         MtlArray{T}(init, dims)
     end
+    DiffEqGPU.supports(::MetalDevice, ::Type{Float64}) = false
+
 end

@@ -19,5 +19,7 @@ Adapt.adapt_storage(::oneAPIDevice, a::Array) = adapt(oneArray, a)
 function DiffEqGPU.allocate(::oneAPIDevice, ::Type{T}, init, dims) where {T}
     oneArray{T}(init, dims)
 end
+DiffEqGPU.supports(::oneAPIDevice, ::Type{Float64}) = true
+
 
 end

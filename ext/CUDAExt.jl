@@ -19,6 +19,7 @@ Adapt.adapt_storage(::CUDADevice, a::CuArray) = a
 Adapt.adapt_storage(::CUDADevice, a::Array) = adapt(CuArray, a)
 
 DiffEqGPU.allocate(::CUDADevice, ::Type{T}, init, dims) where {T} = CuArray{T}(init, dims)
+DiffEqGPU.supports(::CUDADevice, ::Type{Float64}) = true
 
 function DiffEqGPU.lufact!(::CUDADevice, W)
     CUDA.CUBLAS.getrf_strided_batched!(W, false)

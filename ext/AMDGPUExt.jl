@@ -16,5 +16,6 @@ Adapt.adapt_storage(::ROCDevice, a::ROCArray) = a
 Adapt.adapt_storage(::ROCDevice, a::Array) = adapt(ROCArray, a)
 
 DiffEqGPU.allocate(::ROCDevice, ::Type{T}, init, dims) where {T} = ROCArray{T}(init, dims)
+DiffEqGPU.supports(::ROCDevice, ::Type{Float64}) = true
 
 end

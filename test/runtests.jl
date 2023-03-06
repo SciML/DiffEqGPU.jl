@@ -13,12 +13,16 @@ if Base.JLOptions().check_bounds == 1
 end
 @assert Base.JLOptions().check_bounds == 0
 
+const SUPPORTS_LUFACT = Set(["CUDA",])
+
 using SafeTestsets, Test
 
 @time @safetestset "GPU Kernelized ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
 @time @safetestset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
 
-@time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
+if GROUP in SUPPORTS_LUFACT
+  @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
+end
 @time @safetestset "EnsembleGPUArray OOP" begin include("ensemblegpuarray_oop.jl") end
 @time @safetestset "EnsembleGPUArray SDE" begin include("ensemblegpuarray_sde.jl") end
 @time @safetestset "EnsembleGPUArray Input Types" begin include("ensemblegpuarray_inputtypes.jl") end
