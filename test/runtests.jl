@@ -13,7 +13,7 @@ if Base.JLOptions().check_bounds == 1
 end
 @assert Base.JLOptions().check_bounds == 0
 
-const SUPPORTS_LUFACT = Set(["CUDA",])
+const SUPPORTS_LUFACT = Set(["CUDA","AMDGPU"])
 
 using SafeTestsets, Test
 

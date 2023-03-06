@@ -18,4 +18,9 @@ Adapt.adapt_storage(::ROCDevice, a::Array) = adapt(ROCArray, a)
 DiffEqGPU.allocate(::ROCDevice, ::Type{T}, init, dims) where {T} = ROCArray{T}(init, dims)
 DiffEqGPU.supports(::ROCDevice, ::Type{Float64}) = true
 
+function DiffEqGPU.lufact!(::ROCDevice, W)
+    AMDGPU.rocBLAS.getrf_strided_batched!(W, false)
+    return nothing
+end
+
 end
