@@ -653,7 +653,7 @@ function batch_solve(ensembleprob, alg,
                                                                           ts[1:sol_idx],
                                                                           us[1:sol_idx],
                                                                           k = nothing,
-                                                                          destats = nothing,
+                                                                          stats = nothing,
                                                                           calculate_error = false,
                                                                           retcode = sol_idx !=
                                                                                     length(ts) ?
@@ -678,7 +678,7 @@ function batch_solve(ensembleprob, alg,
         sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
                                     adaptive = adaptive, kwargs...)
         [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t, solus[i],
-                                                           destats = sol.destats,
+                                                           stats = sol.stats,
                                                            retcode = sol.retcode), i)[1]
          for i in 1:length(probs)]
     end
