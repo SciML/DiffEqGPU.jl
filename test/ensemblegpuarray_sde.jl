@@ -1,4 +1,4 @@
-using DiffEqGPU, CUDA, StochasticDiffEq, Test
+using DiffEqGPU, StochasticDiffEq, Test
 
 include("utils.jl")
 
