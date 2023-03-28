@@ -651,10 +651,10 @@ function batch_solve(ensembleprob, alg,
                  us = @view solus[:, i]
                  sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
                  if sol_idx === nothing
-                    @error "No solution found" tspan = probs[i].tspan[1] ts
-                    error("Batch solve failed")
+                     @error "No solution found" tspan=probs[i].tspan[1] ts
+                     error("Batch solve failed")
                  end
-                    @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
+                 @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
                                                                           alg,
                                                                           ts[1:sol_idx],
                                                                           us[1:sol_idx],
@@ -1298,12 +1298,12 @@ if !isdefined(Base, :get_extension)
 end
 
 @static if !isdefined(Base, :get_extension)
-function __init__()
-    @require CUDAKernels = "72cfdca4-0801-4ab0-bf6a-d52aa10adc57" include("../ext/CUDAExt.jl")
-    @require ROCKernels  = "7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9" include("../ext/AMDGPUExt.jl")
-    @require oneAPIKernels = "3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62" include("../ext/oneAPIExt.jl")
-    @require MetalKernels = "fc3527f7-49a6-4297-80e3-91cc46c94af5" include("../ext/MetalExt.jl")
-end
+    function __init__()
+        @require CUDAKernels="72cfdca4-0801-4ab0-bf6a-d52aa10adc57" include("../ext/CUDAExt.jl")
+        @require ROCKernels="7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9" include("../ext/AMDGPUExt.jl")
+        @require oneAPIKernels="3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62" include("../ext/oneAPIExt.jl")
+        @require MetalKernels="fc3527f7-49a6-4297-80e3-91cc46c94af5" include("../ext/MetalExt.jl")
+    end
 end
 
 end # module

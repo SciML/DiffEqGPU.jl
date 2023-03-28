@@ -1,7 +1,6 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 include("../utils.jl")
 
-
 function lorenz(u, p, t)
     σ = p[1]
     ρ = p[2]

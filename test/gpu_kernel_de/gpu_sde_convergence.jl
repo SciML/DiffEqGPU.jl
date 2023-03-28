@@ -11,8 +11,6 @@ p = SA[1.5f0, 0.01f0]
 
 prob = SDEProblem(f, g, u₀, tspan, p; seed = 1234)
 
-
-
 dts = 1 .// 2 .^ (5:-1:2)
 
 ensemble_prob = EnsembleProblem(prob;

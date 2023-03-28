@@ -13,7 +13,7 @@ if Base.JLOptions().check_bounds == 1
 end
 @assert Base.JLOptions().check_bounds == 0
 
-const SUPPORTS_LUFACT = Set(["CUDA","AMDGPU"])
+const SUPPORTS_LUFACT = Set(["CUDA", "AMDGPU"])
 const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
@@ -22,8 +22,8 @@ using SafeTestsets, Test
 @time @safetestset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
 
 if GROUP in SUPPORTS_LUFACT
-  @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
-  @time @safetestset "EnsembleGPUArray OOP" begin include("ensemblegpuarray_oop.jl") end
+    @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
+    @time @safetestset "EnsembleGPUArray OOP" begin include("ensemblegpuarray_oop.jl") end
 end
 @time @safetestset "EnsembleGPUArray SDE" begin include("ensemblegpuarray_sde.jl") end
 @time @safetestset "EnsembleGPUArray Input Types" begin include("ensemblegpuarray_inputtypes.jl") end

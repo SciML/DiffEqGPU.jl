@@ -7,7 +7,6 @@ import ..oneAPIKernels: oneAPI, KernelAbstractions
 import .KernelAbstractions: Adapt
 using .oneAPI, .Adapt
 
-
 DiffEqGPU.maxthreads(::oneAPIDevice) = 256
 DiffEqGPU.maybe_prefer_blocks(::oneAPIDevice) = oneAPIDevice()
 
@@ -20,6 +19,5 @@ function DiffEqGPU.allocate(::oneAPIDevice, ::Type{T}, init, dims) where {T}
     oneArray{T}(init, dims)
 end
 DiffEqGPU.supports(::oneAPIDevice, ::Type{Float64}) = true
-
 
 end
