@@ -62,3 +62,4 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 @time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000,
                   adaptive = false, dt = 0.1f0)
 ```
+
