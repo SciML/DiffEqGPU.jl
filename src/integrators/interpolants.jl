@@ -197,3 +197,9 @@ end
             b4θ * integ.k4 + b5θ * integ.k5 + b6θ * integ.k6 +
             b7θ * integ.k7)
 end
+
+@inline @muladd function _ode_interpolant(Θ, dt, y₀,
+                                          integ::T) where {T <:
+                                                           Union{GPURB23I}}
+    return y₀
+end

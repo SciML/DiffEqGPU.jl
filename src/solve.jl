@@ -60,7 +60,9 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     elseif alg isa GPUVern7
         kernel = vern7_kernel(backend)
     elseif alg isa GPUVern9
-        kernel = vern9_kernel(backend)
+        kernel = vern9_kernel(dev)
+    elseif alg isa GPURosenbrock23
+        kernel = rosenbrock23_kernel(dev)
     end
 
     if backend isa CPU

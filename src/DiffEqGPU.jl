@@ -368,6 +368,14 @@ generation with EnsembleGPUKernel.
 struct GPUVern9 <: GPUODEAlgorithm end
 
 """
+GPURobsenbrock23()
+
+A specialized implementation of the W-method `GPURosenbrock23` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPURosenbrock23 <: GPUODEAlgorithm end
+
+"""
 GPUEM()
 
 A specialized implementation of the Euler-Maruyama `GPUEM` method with weak order 1.0. Made specifically for kernel
@@ -1237,6 +1245,7 @@ function tmap(f, args...)
 end
 
 include("integrators/types.jl")
+include("integrators/stiff/types.jl")
 include("integrators/integrator_utils.jl")
 include("integrators/interpolants.jl")
 
@@ -1245,12 +1254,15 @@ include("perform_step/gpu_vern7_perform_step.jl")
 include("perform_step/gpu_vern9_perform_step.jl")
 include("perform_step/gpu_em_perform_step.jl")
 include("perform_step/gpu_siea_perform_step.jl")
+include("perform_step/gpu_rosenbrock23_perform_step.jl")
 include("tableaus/verner_tableaus.jl")
 include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
+## Stiff ODE solvers
+export GPURosenbrock23
 export terminate!
 
 # This symbol is only defined on Julia versions that support extensions
