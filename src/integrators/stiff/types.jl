@@ -1,5 +1,6 @@
-mutable struct GPURosenbrock23Integrator{IIP, S, T, ST, P, F, TS, CB} <:
-               DiffEqBase.AbstractODEIntegrator{GPUTsit5, IIP, S, T}
+mutable struct GPURosenbrock23Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <:
+               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
     u::S                  # current state
@@ -36,25 +37,28 @@ end
     integrator.u_modified = bool
 end
 
-@inline function gpurosenbrock23_init(f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function gpurosenbrock23_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, dt::T,
                                       p::P, tstops::TS,
                                       callback::CB,
                                       save_everystep::Bool,
-                                      saveat::ST) where {F, P, T, S <: AbstractArray{T},
+                                      saveat::ST) where {AlgType, F, P, T,
+                                                         S <: AbstractArray{T},
                                                          TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
-    integ = GPURB23I{IIP, S, T, ST, P, F, TS, CB}(f, copy(u0), copy(u0), copy(u0), t0, t0,
-                                                  t0,
-                                                  dt,
-                                                  sign(dt), p, true, tstops, 1, callback,
-                                                  save_everystep, saveat, 1, 1,
-                                                  event_last_time,
-                                                  vector_event_last_time,
-                                                  last_event_error,
-                                                  copy(u0), copy(u0),
-                                                  DiffEqBase.ReturnCode.Default)
+    integ = GPURB23I{IIP, S, T, ST, P, F, TS, CB, AlgType}(alg, f, copy(u0), copy(u0),
+                                                           copy(u0), t0, t0,
+                                                           t0,
+                                                           dt,
+                                                           sign(dt), p, true, tstops, 1,
+                                                           callback,
+                                                           save_everystep, saveat, 1, 1,
+                                                           event_last_time,
+                                                           vector_event_last_time,
+                                                           last_event_error,
+                                                           copy(u0), copy(u0),
+                                                           DiffEqBase.ReturnCode.Default)
 end

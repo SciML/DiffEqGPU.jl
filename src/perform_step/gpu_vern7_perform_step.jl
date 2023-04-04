@@ -74,8 +74,9 @@
     return saved_in_cb
 end
 
-@kernel function vern7_kernel(probs, _us, _ts, dt, callback, tstops, nsteps,
-                              saveat, ::Val{save_everystep}) where {save_everystep}
+@kernel function ode_solve_kernel(probs, alg::GPUVern7, _us, _ts, dt, callback, tstops,
+                                  nsteps,
+                                  saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -247,8 +248,9 @@ end
     return saved_in_cb
 end
 
-@kernel function avern7_kernel(probs, _us, _ts, dt, callback, tstops, abstol, reltol,
-                               saveat, ::Val{save_everystep}) where {save_everystep}
+@kernel function ode_asolve_kernel(probs, alg::GPUVern7, _us, _ts, dt, callback, tstops,
+                                   abstol, reltol,
+                                   saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread

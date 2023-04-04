@@ -66,8 +66,9 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-@kernel function rosenbrock23_kernel(@Const(probs), _us, _ts, dt, callback, tstops, nsteps,
-                                     saveat, ::Val{save_everystep}) where {save_everystep}
+@kernel function ode_solve_kernel(@Const(probs), alg::GPURosenbrock23, _us, _ts, dt,
+                                  callback, tstops, nsteps,
+                                  saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -81,7 +82,8 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = gpurosenbrock23_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
+    integ = gpurosenbrock23_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
+                                 tstops,
                                  callback, save_everystep, saveat)
 
     u0 = prob.u0
@@ -110,6 +112,8 @@ end
         @inbounds us[end] = integ(tspan[2])
         @inbounds ts[end] = tspan[2]
     end
+
+    # @print(typeof(integ))
 
     if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
