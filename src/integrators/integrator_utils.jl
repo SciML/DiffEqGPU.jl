@@ -1,3 +1,15 @@
+function build_adaptive_controller_cache(alg::A, ::Type{T}) where {A, T}
+    beta1 = T(7 / (10 * alg_order(alg)))
+    beta2 = T(2 / (5 * alg_order(alg)))
+    qmax = T(10.0)
+    qmin = T(1 / 5)
+    gamma = T(9 / 10)
+    qoldinit = T(1e-4)
+    qold = qoldinit
+
+    return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
+end
+
 function build_adaptive_tsit5_controller_cache(::Type{T}) where {T}
     beta1 = T(7 / 50)
     beta2 = T(2 / 25)

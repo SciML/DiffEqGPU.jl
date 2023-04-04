@@ -1244,6 +1244,7 @@ function tmap(f, args...)
     reduce(vcat, batch_data)
 end
 
+include("alg_utils.jl")
 include("integrators/types.jl")
 include("integrators/stiff/types.jl")
 include("integrators/integrator_utils.jl")

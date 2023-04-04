@@ -200,6 +200,6 @@ end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
                                           integ::T) where {T <:
-                                                           Union{GPURB23I}}
+                                                           Union{GPURB23I, GPUARB23I}}
     return y₀
 end
