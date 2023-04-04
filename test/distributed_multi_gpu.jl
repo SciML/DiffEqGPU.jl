@@ -1,6 +1,7 @@
 using Distributed
 addprocs(2)
-@everywhere using DiffEqGPU, OrdinaryDiffEq, Test, Random, @everywhere include("utils.jl")
+@everywhere using DiffEqGPU, OrdinaryDiffEq, Test, Random
+@everywhere include("utils.jl")
 
 @everywhere begin
     function lorenz_distributed(du, u, p, t)
