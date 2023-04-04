@@ -4,7 +4,6 @@ steps:
       setup:
         version:
           - "1"
-          - "1.9-nightly"
     env:
       GROUP: CUDA
     plugins:
@@ -32,7 +31,6 @@ steps:
     matrix:
       setup:
         version:
-          - "1.7"
           # Known issues on 1.8
           - "1.9-nightly"
     env:
