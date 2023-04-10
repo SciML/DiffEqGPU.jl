@@ -6,6 +6,7 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
+    d = integ.d
 
     integ.tprev = t
     saved_in_cb = false
@@ -28,8 +29,6 @@
     else
         @inbounds k1 = integ.k1
     end
-
-    d = T(1 / (2 + sqrt(2)))
 
     γ = dt * d
 
@@ -134,6 +133,7 @@ end
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
+    d = integ.d
 
     qold = integ.qold
     abstol = integ.abstol
@@ -150,8 +150,6 @@ end
 
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
-
-        d = T(1 / (2 + sqrt(2)))
 
         γ = dt * d
 
@@ -174,9 +172,9 @@ end
 
         u = uprev + dt * k2
 
-        e32 = T(1 / (6 + sqrt(2)))
+        e32 = T((6 + sqrt(2)))
         F₂ = f(u, p, t + dt)
-        k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + γ * dT)
+        k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
 
         tmp = dto6 * (k1 - 2 * k2 + k3)
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)

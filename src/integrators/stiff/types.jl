@@ -24,6 +24,7 @@ mutable struct GPURosenbrock23Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <
     last_event_error::T
     k1::S                 #intepolants
     k2::S
+    d::T
     retcode::DiffEqBase.ReturnCode.T
 end
 const GPURB23I = GPURosenbrock23Integrator
@@ -49,6 +50,8 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
+    d = T(1 / (2 + sqrt(2)))
+
     integ = GPURB23I{IIP, S, T, ST, P, F, TS, CB, AlgType}(alg, f, copy(u0), copy(u0),
                                                            copy(u0), t0, t0,
                                                            t0,
@@ -59,7 +62,7 @@ end
                                                            event_last_time,
                                                            vector_event_last_time,
                                                            last_event_error,
-                                                           copy(u0), copy(u0),
+                                                           copy(u0), copy(u0), d,
                                                            DiffEqBase.ReturnCode.Default)
 end
 
@@ -93,6 +96,7 @@ mutable struct GPUARosenbrock23Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB
     k1::S         # interpolants of the algorithm
     k2::S
     k3::S
+    d::T
     qold::Q
     abstol::TOL
     reltol::TOL
@@ -125,6 +129,8 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
 
+    d = T(1 / (2 + sqrt(2)))
+
     integ = GPUARB23I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, AlgType}(alg,
                                                                                       f,
                                                                                       copy(u0),
@@ -152,6 +158,7 @@ end
                                                                                       copy(u0),
                                                                                       copy(u0),
                                                                                       copy(u0),
+                                                                                      d,
                                                                                       qoldinit,
                                                                                       abstol,
                                                                                       reltol,
