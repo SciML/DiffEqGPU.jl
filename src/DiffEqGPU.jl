@@ -5,7 +5,7 @@ module DiffEqGPU
 
 using DocStringExtensions
 using KernelAbstractions
-import KernelAbstractions: get_device
+import KernelAbstractions: get_backend, allocate
 using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
 using ForwardDiff
 import ChainRulesCore
@@ -73,11 +73,11 @@ maxthreads(::CPU) = 1024
 maybe_prefer_blocks(::CPU) = CPU()
 
 # move to KA
-Adapt.adapt_storage(::CPU, a::Array) = a
-allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
-allocate(dev, T, dims) = allocate(dev, T, undef, dims)
+# Adapt.adapt_storage(::CPU, a::Array) = a
+# allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
+# allocate(dev, T, dims) = allocate(dev, T, undef, dims)
 
-supports(::CPU, ::Type{Float64}) = true
+# supports(::CPU, ::Type{Float64}) = true
 
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
@@ -1299,7 +1299,7 @@ end
 
 @static if !isdefined(Base, :get_extension)
     function __init__()
-        @require CUDAKernels="72cfdca4-0801-4ab0-bf6a-d52aa10adc57" include("../ext/CUDAExt.jl")
+        @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" include("../ext/CUDAExt.jl")
         @require ROCKernels="7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9" include("../ext/AMDGPUExt.jl")
         @require oneAPIKernels="3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62" include("../ext/oneAPIExt.jl")
         @require MetalKernels="fc3527f7-49a6-4297-80e3-91cc46c94af5" include("../ext/MetalExt.jl")

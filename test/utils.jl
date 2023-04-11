@@ -1,7 +1,7 @@
 const GROUP = get(ENV, "GROUP", "CUDA")
-const device = if GROUP == "CUDA"
-    using CUDA, CUDAKernels
-    CUDADevice()
+const backend = if GROUP == "CUDA"
+    using CUDA
+    CUDA.CUDABackend()
 elseif GROUP == "AMDGPU"
     using AMDGPU, ROCKernels
     ROCDevice()
@@ -16,4 +16,4 @@ end
 import GPUArraysCore
 GPUArraysCore.allowscalar(false)
 
-@info "Testing on " device
+@info "Testing on " backend

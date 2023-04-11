@@ -22,9 +22,9 @@ for alg in algs
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
     @info typeof(alg)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 10,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
                       adaptive = false, dt = 0.01f0)
-    asol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 10,
+    asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
                  adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
 
     @test sol.converged == true
@@ -43,10 +43,10 @@ for alg in algs
 
     saveat = [2.0f0, 4.0f0]
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 2,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
                       adaptive = false, dt = 0.01f0, saveat = saveat)
 
-    asol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 2,
+    asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
                  adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
                  saveat = saveat)
 
@@ -64,10 +64,10 @@ for alg in algs
 
     saveat = collect(0.0f0:0.1f0:10.0f0)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 2,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
                       adaptive = false, dt = 0.01f0, saveat = saveat)
 
-    asol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 2,
+    asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
                  adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
                  saveat = saveat)
 
@@ -83,7 +83,7 @@ for alg in algs
     @test length(sol[1].u) == length(saveat)
     @test length(asol[1].u) == length(saveat)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 2,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
                       adaptive = false, dt = 0.01f0, save_everystep = false)
 
     bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0, save_everystep = false)
@@ -93,10 +93,10 @@ for alg in algs
     @test length(sol[1].u) == length(bench_sol.u)
 
     ### Huge number of threads
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 10_000,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10_000,
                       adaptive = false, dt = 0.01f0, save_everystep = false)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 10_000,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10_000,
                       adaptive = true, dt = 0.01f0, save_everystep = false)
 
     ## With random parameters
@@ -104,8 +104,8 @@ for alg in algs
     prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 10,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
                       adaptive = false, dt = 0.1f0)
-    asol = solve(monteprob, alg, EnsembleGPUKernel(device), trajectories = 10,
+    asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
                  adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
 end
