@@ -44,3 +44,7 @@ if GROUP == "CUDA"
     @time @testset "GPU Kernelized SDE Regression" begin include("gpu_kernel_de/gpu_sde_regression.jl") end
     @time @testset "GPU Kernelized SDE Convergence" begin include("gpu_kernel_de/gpu_sde_convergence.jl") end
 end
+
+@time @testset "GPU Kernelized Non Stiff ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
+@time @testset "GPU Kernelized Stiff ODE Regression" begin include("gpu_kernel_de/stiff_ode/gpu_ode_regression.jl") end
+@time @testset "GPU Kernelized ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
