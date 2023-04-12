@@ -13,8 +13,7 @@ steps:
       - |
         julia --project=test -e '
           import Pkg
-          Pkg.add(; name = "CUDA")
-          Pkg.add(; name = "CUDAKernels")'
+          Pkg.add(; name = "CUDA")'
         rm test/Manifest.toml
         julia --project -e '
           import Pkg
@@ -42,8 +41,7 @@ steps:
       - |
         julia --project=test -e '
           import Pkg
-          Pkg.add(; name = "AMDGPU")
-          Pkg.add(; name = "ROCKernels")'
+          Pkg.add(; name = "AMDGPU")'
         rm test/Manifest.toml
         julia --project -e '
           import Pkg
@@ -71,8 +69,7 @@ steps:
       - |
         julia --project=test -e '
           import Pkg
-          Pkg.add(; name = "oneAPI")
-          Pkg.add(; name = "oneAPIKernels")'
+          Pkg.add(; name = "oneAPI")'
         rm test/Manifest.toml
         julia --project -e '
           import Pkg
@@ -100,8 +97,7 @@ steps:
       - |
         julia --project=test -e '
           import Pkg
-          Pkg.add(; name = "Metal")
-          Pkg.add(; name = "MetalKernels")'
+          Pkg.add(; name = "Metal")'
         rm test/Manifest.toml
         julia --project -e '
           import Pkg
