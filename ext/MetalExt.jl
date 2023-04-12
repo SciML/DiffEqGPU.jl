@@ -1,23 +1,11 @@
 module MetalExt
-isdefined(Base, :get_extension) ? (using MetalKernels) : (using ..MetalKernels)
+isdefined(Base, :get_extension) ? (using Metal) : (using ..Metal)
 import DiffEqGPU
 
-# import via parent
-using ..MetalKernels: Metal, KernelAbstractions
-import .KernelAbstractions: Adapt
-using .Metal, .Adapt
+using .Metal
+import .Metal: MetalBackend
 
-DiffEqGPU.maxthreads(::MetalDevice) = 256
-DiffEqGPU.maybe_prefer_blocks(::MetalDevice) = MetalDevice()
-
-# TODO move to KA
-Adapt.adapt_storage(::KernelAbstractions.CPU, a::MtlArray) = adapt(Array, a)
-Adapt.adapt_storage(::MetalDevice, a::MtlArray) = a
-Adapt.adapt_storage(::MetalDevice, a::Array) = adapt(MtlArray, a)
-
-function DiffEqGPU.allocate(::MetalDevice, ::Type{T}, init, dims) where {T}
-    MtlArray{T}(init, dims)
-end
-DiffEqGPU.supports(::MetalDevice, ::Type{Float64}) = false
+DiffEqGPU.maxthreads(::MetalBackend) = 256
+DiffEqGPU.maybe_prefer_blocks(::MetalBackend) = MetalBackend()
 
 end

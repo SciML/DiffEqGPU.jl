@@ -1,23 +1,11 @@
 module oneAPIExt
-isdefined(Base, :get_extension) ? (using oneAPIKernels) : (using ..oneAPIKernels)
+isdefined(Base, :get_extension) ? (using oneAPI) : (using ..oneAPI)
 import DiffEqGPU
 
-# import via parent
-import ..oneAPIKernels: oneAPI, KernelAbstractions
-import .KernelAbstractions: Adapt
-using .oneAPI, .Adapt
+using .oneAPI
+import .oneAPI: oneAPIBackend
 
-DiffEqGPU.maxthreads(::oneAPIDevice) = 256
-DiffEqGPU.maybe_prefer_blocks(::oneAPIDevice) = oneAPIDevice()
-
-# TODO move to KA
-Adapt.adapt_storage(::KernelAbstractions.CPU, a::oneArray) = adapt(Array, a)
-Adapt.adapt_storage(::oneAPIDevice, a::oneArray) = a
-Adapt.adapt_storage(::oneAPIDevice, a::Array) = adapt(oneArray, a)
-
-function DiffEqGPU.allocate(::oneAPIDevice, ::Type{T}, init, dims) where {T}
-    oneArray{T}(init, dims)
-end
-DiffEqGPU.supports(::oneAPIDevice, ::Type{Float64}) = true
+DiffEqGPU.maxthreads(::oneAPIBackend) = 256
+DiffEqGPU.maybe_prefer_blocks(::oneAPIBackend) = oneAPIBackend()
 
 end

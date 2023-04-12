@@ -72,13 +72,6 @@ end
 maxthreads(::CPU) = 1024
 maybe_prefer_blocks(::CPU) = CPU()
 
-# move to KA
-# Adapt.adapt_storage(::CPU, a::Array) = a
-# allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
-# allocate(dev, T, dims) = allocate(dev, T, undef, dims)
-
-# supports(::CPU, ::Type{Float64}) = true
-
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
 end
@@ -1300,9 +1293,9 @@ end
 @static if !isdefined(Base, :get_extension)
     function __init__()
         @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" include("../ext/CUDAExt.jl")
-        @require ROCKernels="7eb9e9f0-4bd3-4c4c-8bef-26bd9629d9b9" include("../ext/AMDGPUExt.jl")
-        @require oneAPIKernels="3b98bdbd-c5fb-40e4-a3b9-3b59ff234f62" include("../ext/oneAPIExt.jl")
-        @require MetalKernels="fc3527f7-49a6-4297-80e3-91cc46c94af5" include("../ext/MetalExt.jl")
+        @require AMDGPU="21141c5a-9bdb-4563-92ae-f87d6854732e" include("../ext/AMDGPUExt.jl")
+        @require oneAPI="8f75cd03-7ff8-4ecb-9b8f-daf728133b1b" include("../ext/oneAPIExt.jl")
+        @require Metal="dde4c033-4e86-420c-a63e-0dd931031962" include("../ext/MetalExt.jl")
     end
 end
 

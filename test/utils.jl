@@ -3,14 +3,14 @@ const backend = if GROUP == "CUDA"
     using CUDA
     CUDA.CUDABackend()
 elseif GROUP == "AMDGPU"
-    using AMDGPU, ROCKernels
-    ROCDevice()
+    using AMDGPU
+    AMDGPU.ROCBackend()
 elseif GROUP == "oneAPI"
-    using oneAPI, oneAPIKernels
-    oneAPIDevice()
+    using oneAPI
+    oneAPI.oneAPIBackend()
 elseif GROUP == "Metal"
-    using Metal, MetalKernels
-    MetalDevice()
+    using Metal
+    Metal.MetalBackend()
 end
 
 import GPUArraysCore
