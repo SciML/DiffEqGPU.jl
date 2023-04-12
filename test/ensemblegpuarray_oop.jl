@@ -32,11 +32,11 @@ p = SA[10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem(func, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(device), trajectories = 10_000,
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10_000,
                   saveat = 1.0f0)
-@time sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(device),
+@time sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend),
                   trajectories = 10_000,
                   saveat = 1.0f0)
-@time sol = solve(monteprob, TRBDF2(), EnsembleGPUArray(device),
+@time sol = solve(monteprob, TRBDF2(), EnsembleGPUArray(backend),
                   trajectories = 10_000,
                   saveat = 1.0f0)

@@ -26,5 +26,5 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time sol = solve(monteprob, SOSRI(), EnsembleGPUArray(device), trajectories = 10,
+@time sol = solve(monteprob, SOSRI(), EnsembleGPUArray(backend), trajectories = 10,
                   saveat = 1.0f0)

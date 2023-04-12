@@ -22,10 +22,10 @@ for alg in algs
     dt = Float32(1 // 2^(8))
 
     ## solve using off-loading on CPU
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device), dt = dt, trajectories = 1000,
+    sol = solve(monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
                 adaptive = false)
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device, 0.0), dt = dt,
+    sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt,
                 trajectories = 1000,
                 adaptive = false)
 
@@ -56,12 +56,12 @@ for alg in algs
     monteprob = EnsembleProblem(prob)
     dt = Float32(1 // 2^(8))
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device, 0.0), dt = dt, trajectories = 10,
+    sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
                 adaptive = false)
 
     @test sol.converged == true
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device, 0.0), dt = dt, trajectories = 10,
+    sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
                 adaptive = false, save_everystep = false)
 
     @test sol.converged == true
@@ -69,7 +69,7 @@ for alg in algs
 
     saveat = [0.3f0, 0.5f0]
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(device, 0.0), dt = dt, trajectories = 10,
+    sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
                 adaptive = false, saveat = saveat)
 end
 
@@ -97,12 +97,12 @@ noise_rate_prototype = @SMatrix zeros(Float32, 2, 4)
 prob = SDEProblem(f, g, u0, (0.0f0, 1.0f0), noise_rate_prototype = noise_rate_prototype)
 monteprob = EnsembleProblem(prob)
 
-sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(device, 0.0), dt = dt, trajectories = 10,
+sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
             adaptive = false)
 
 @test sol.converged == true
 
-sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(device, 0.0), dt = dt, trajectories = 10,
+sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
             adaptive = false, save_everystep = false)
 
 @test sol.converged == true
