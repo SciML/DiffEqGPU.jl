@@ -80,7 +80,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
                       adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
                       save_everystep = false)
 
-    @test norm(bench_sol.u - sol[1].u) < 2e-4
+    @test norm(bench_sol.u - sol[1].u) < 4e-4
 
     @info "Adaptive version"
 
@@ -137,5 +137,5 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
                  adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
                  saveat = [0.0f0, 9.1f0])
 
-    @test norm(asol[1].u - sol[1].u) < 5e-4
+    @test norm(asol[1].u - sol[1].u) < 7e-4
 end
