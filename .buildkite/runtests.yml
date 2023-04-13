@@ -15,7 +15,7 @@ steps:
           import Pkg
           Pkg.add(; name = "CUDA")'
         rm test/Manifest.toml
-        julia --project -e '
+        julia -g2 --project -e'
           import Pkg
           println("+++ :julia: Running tests")
           Pkg.test(; coverage=false)'
