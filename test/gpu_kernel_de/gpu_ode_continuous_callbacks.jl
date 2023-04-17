@@ -88,10 +88,10 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
                       trajectories = 2,
-                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true)
+                      adaptive = true, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
     bench_sol = solve(prob, diffeq_alg,
-                      adaptive = true, save_everystep = false, dt = 1.0f0, callback = cb,
+                      adaptive = true, save_everystep = false, dt = 0.1f0, callback = cb,
                       merge_callbacks = true)
 
     @test norm(bench_sol.u - sol[1].u) < 2e-3
@@ -102,10 +102,10 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
                       trajectories = 2,
-                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true)
+                      adaptive = true, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
     bench_sol = solve(prob, diffeq_alg,
-                      adaptive = true, dt = 1.0f0, save_everystep = false, callback = cb,
+                      adaptive = true, dt = 0.1f0, save_everystep = false, callback = cb,
                       merge_callbacks = true)
 
     @test norm(bench_sol.u - sol[1].u) < 2e-3
@@ -114,11 +114,11 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
                       trajectories = 2,
-                      adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      adaptive = true, dt = 0.1f0, callback = cb, merge_callbacks = true,
                       saveat = [0.0f0, 9.1f0], reltol = 1.0f-6, abstol = 1.0f-6)
 
     bench_sol = solve(prob, diffeq_alg,
-                      adaptive = true, save_everystep = false, dt = 1.0f0, callback = cb,
+                      adaptive = true, save_everystep = false, dt = 0.1f0, callback = cb,
                       merge_callbacks = true,
                       tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 9.1f0], reltol = 1.0f-6,
                       abstol = 1.0f-6)
@@ -129,12 +129,12 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
                       trajectories = 2,
-                      adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                      adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true,
                       saveat = [0.0f0, 9.1f0])
 
     asol = solve(monteprob, alg, EnsembleGPUKernel(backend),
                  trajectories = 2,
-                 adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
+                 adaptive = true, dt = 0.1f0, callback = cb, merge_callbacks = true,
                  saveat = [0.0f0, 9.1f0])
 
     @test norm(asol[1].u - sol[1].u) < 7e-4
