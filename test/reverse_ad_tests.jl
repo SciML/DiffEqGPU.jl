@@ -1,5 +1,6 @@
-using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA, CUDAKernels, Test
-CUDA.allowscalar(false)
+using OrdinaryDiffEq, Flux, DiffEqGPU, Test
+
+include("utils.jl")
 
 function modelf(du, u, p, t)
     du[1] = 1.01 * u[1] * p[1] * p[2]
@@ -13,7 +14,7 @@ function model()
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(CUDADevice()), saveat = 0.1,
+    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(backend), saveat = 0.1,
           trajectories = 10)
 end
 

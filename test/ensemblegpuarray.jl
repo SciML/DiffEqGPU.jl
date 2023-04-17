@@ -1,4 +1,6 @@
-using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, CUDAKernels
+using DiffEqGPU, OrdinaryDiffEq, Test
+
+include("utils.jl")
 
 function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
@@ -6,7 +8,6 @@ function lorenz(du, u, p, t)
     du[3] = u[1] * u[2] - p[3] * u[3]
 end
 
-CUDA.allowscalar(false)
 u0 = Float32[1.0; 0.0; 0.0]
 tspan = (0.0f0, 100.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
@@ -19,12 +20,12 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 10,
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
                   saveat = 1.0f0)
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
-@time sol = solve(monteprob, ROCK4(), EnsembleGPUArray(CUDADevice()), trajectories = 10,
+@time sol = solve(monteprob, ROCK4(), EnsembleGPUArray(backend), trajectories = 10,
                   saveat = 1.0f0)
-@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 10,
+@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
                    batch_size = 5, saveat = 1.0f0)
 
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
@@ -38,8 +39,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #=
 solve(monteprob,TRBDF2(),EnsembleCPUArray(),dt=0.1,trajectories=2,saveat=1.0f0)
-solve(monteprob,TRBDF2(),EnsembleGPUArray(CUDADevice()),dt=0.1,trajectories=2,saveat=1.0f0)
-@test_broken solve(monteprob,TRBDF2(),EnsembleGPUArray(CUDADevice()),dt=0.1,trajectories=2,saveat=1.0f0)
+solve(monteprob,TRBDF2(),EnsembleGPUArray(backend),dt=0.1,trajectories=2,saveat=1.0f0)
+@test_broken solve(monteprob,TRBDF2(),EnsembleGPUArray(backend),dt=0.1,trajectories=2,saveat=1.0f0)
 =#
 
 @info "Implicit Methods"
@@ -75,13 +76,13 @@ monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 @time solve(monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
             trajectories = 10,
             saveat = 1.0f0)
-@time solve(monteprob_jac, Rodas5(), EnsembleGPUArray(CUDADevice()), dt = 0.1,
+@time solve(monteprob_jac, Rodas5(), EnsembleGPUArray(backend), dt = 0.1,
             trajectories = 10,
             saveat = 1.0f0)
 @time solve(monteprob_jac, TRBDF2(), EnsembleCPUArray(), dt = 0.1,
             trajectories = 10,
             saveat = 1.0f0)
-@time solve(monteprob_jac, TRBDF2(), EnsembleGPUArray(CUDADevice()), dt = 0.1,
+@time solve(monteprob_jac, TRBDF2(), EnsembleGPUArray(backend), dt = 0.1,
             trajectories = 10,
             saveat = 1.0f0)
 
@@ -99,7 +100,7 @@ end
 discrete_callback = DiscreteCallback(condition, affect!, save_positions = (false, false))
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = discrete_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-@time solve(callback_monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 10,
+@time solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
             saveat = 1.0f0)
 
 c_condition = function (u, t, integrator)
@@ -115,20 +116,20 @@ continuous_callback = ContinuousCallback(c_condition, c_affect!,
                                          save_positions = (false, false))
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = continuous_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 2,
+solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
       saveat = 1.0f0)
 
 # test callback set
 callback_set = CallbackSet(discrete_callback, continuous_callback)
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = callback_set)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 2,
+solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
       saveat = 1.0f0)
 
 # test merge
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = discrete_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 2,
+solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
       saveat = 1.0f0,
       callback = continuous_callback)
 
@@ -187,12 +188,12 @@ rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 # TODO: Does not work with Linearsolve.jl v1.35.0 https://github.com/SciML/DiffEqGPU.jl/pull/229
 
 @time sol = solve(rober_monteprob, Rodas5(),
-                  EnsembleGPUArray(CUDADevice()), trajectories = 10,
+                  EnsembleGPUArray(backend), trajectories = 10,
                   saveat = 1.0f0,
                   abstol = 1.0f-8,
                   reltol = 1.0f-8)
 @time sol = solve(rober_monteprob, TRBDF2(),
-                  EnsembleGPUArray(CUDADevice()), trajectories = 10,
+                  EnsembleGPUArray(backend), trajectories = 10,
                   saveat = 1.0f0,
                   abstol = 1.0f-4,
                   reltol = 1.0f-1)

@@ -26,8 +26,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
                           save_everystep = true,
                           debug = false, callback = CallbackSet(nothing), tstops = nothing,
                           kwargs...)
-    dev = get_device(probs)
-    dev = maybe_prefer_blocks(dev)
+    backend = get_backend(probs)
+    backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
@@ -43,33 +43,32 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         else
             len = 2
         end
-        ts = allocate(dev, typeof(dt), (len, length(probs)))
+        ts = allocate(backend, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
+        us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = adapt(dev, saveat)
-        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
+        saveat = adapt(backend, saveat)
+        ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
+        us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
-    tstops = adapt(dev, tstops)
+    tstops = adapt(backend, tstops)
 
     if alg isa GPUTsit5
-        kernel = tsit5_kernel(dev)
+        kernel = tsit5_kernel(backend)
     elseif alg isa GPUVern7
-        kernel = vern7_kernel(dev)
+        kernel = vern7_kernel(backend)
     elseif alg isa GPUVern9
-        kernel = vern9_kernel(dev)
+        kernel = vern9_kernel(backend)
     end
 
-    if dev isa CPU
+    if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    event = kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
-                   ndrange = length(probs), dependencies = Event(dev))
-    wait(dev, event)
+    kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
+           ndrange = length(probs))
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -85,40 +84,38 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
                           save_everystep = true,
                           debug = false,
                           kwargs...)
-    dev = get_device(probs)
-    dev = maybe_prefer_blocks(dev)
+    backend = get_backend(probs)
+    backend = maybe_prefer_blocks(backend)
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
         else
             len = 2
         end
-        ts = allocate(dev, typeof(dt), (len, length(probs)))
+        ts = allocate(backend, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
+        us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = adapt(dev, saveat)
-        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
+        saveat = adapt(backend, saveat)
+        ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
+        us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
     if alg isa GPUEM
-        kernel = em_kernel(dev)
+        kernel = em_kernel(backend)
     elseif alg isa Union{GPUSIEA}
         SciMLBase.is_diagonal_noise(prob) ? nothing :
         error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
-        kernel = siea_kernel(dev)
+        kernel = siea_kernel(backend)
     end
 
-    if dev isa CPU
+    if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    event = kernel(probs, us, ts, dt, saveat, Val(save_everystep);
-                   ndrange = length(probs), dependencies = Event(dev))
-    wait(dev, event)
-
+    kernel(probs, us, ts, dt, saveat, Val(save_everystep);
+           ndrange = length(probs))
     ts, us
 end
 
@@ -128,8 +125,8 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
                            abstol = 1.0f-6, reltol = 1.0f-3,
                            debug = false, callback = CallbackSet(nothing), tstops = nothing,
                            kwargs...)
-    dev = get_device(probs)
-    dev = maybe_prefer_blocks(dev)
+    backend = get_backend(probs)
+    backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
@@ -141,36 +138,35 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         # if tstops !== nothing
         #     len += length(tstops)
         # end
-        ts = allocate(dev, typeof(dt), (len, length(probs)))
+        ts = allocate(backend, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (len, length(probs)))
+        us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = adapt(dev, saveat)
-        ts = allocate(dev, typeof(dt), (length(saveat), length(probs)))
+        saveat = adapt(backend, saveat)
+        ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(dev, typeof(prob.u0), (length(saveat), length(probs)))
+        us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
     end
 
-    us = adapt(dev, us)
-    ts = adapt(dev, ts)
-    tstops = adapt(dev, tstops)
+    us = adapt(backend, us)
+    ts = adapt(backend, ts)
+    tstops = adapt(backend, tstops)
 
     if alg isa GPUTsit5
-        kernel = atsit5_kernel(dev)
+        kernel = atsit5_kernel(backend)
     elseif alg isa GPUVern7
-        kernel = avern7_kernel(dev)
+        kernel = avern7_kernel(backend)
     elseif alg isa GPUVern9
-        kernel = avern9_kernel(dev)
+        kernel = avern9_kernel(backend)
     end
 
-    if dev isa CPU
+    if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    event = kernel(probs, us, ts, dt, callback, tstops,
-                   abstol, reltol, saveat, Val(save_everystep);
-                   ndrange = length(probs), dependencies = Event(dev))
-    wait(dev, event)
+    kernel(probs, us, ts, dt, callback, tstops,
+           abstol, reltol, saveat, Val(save_everystep);
+           ndrange = length(probs))
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,

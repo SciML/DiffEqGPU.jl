@@ -1,5 +1,6 @@
 # ode checks
-using OrdinaryDiffEq, DiffEqGPU, Test, CUDAKernels
+using OrdinaryDiffEq, DiffEqGPU, Test
+include("utils.jl")
 
 seed = 100
 using Random;
@@ -35,7 +36,7 @@ sim2 = @time solve(prob2, Tsit5(), trajectories = 100, batch_size = 20)
 
 # EnsembleCPUArray() and EnsembleGPUArray()
 sim3 = @time solve(prob2, Tsit5(), EnsembleCPUArray(), trajectories = 100, batch_size = 20)
-sim4 = @time solve(prob2, Tsit5(), EnsembleGPUArray(CUDADevice()), trajectories = 100,
+sim4 = @time solve(prob2, Tsit5(), EnsembleGPUArray(backend), trajectories = 100,
                    batch_size = 20)
 
 @info sim2[1]

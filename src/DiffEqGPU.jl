@@ -5,7 +5,7 @@ module DiffEqGPU
 
 using DocStringExtensions
 using KernelAbstractions
-import KernelAbstractions: get_device
+import KernelAbstractions: get_backend, allocate
 using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
 using ForwardDiff
 import ChainRulesCore
@@ -71,11 +71,6 @@ end
 
 maxthreads(::CPU) = 1024
 maybe_prefer_blocks(::CPU) = CPU()
-
-# move to KA
-Adapt.adapt_storage(::CPU, a::Array) = a
-allocate(::CPU, ::Type{T}, init, dims) where {T} = Array{T}(init, dims)
-allocate(dev, T, dims) = allocate(dev, T, undef, dims)
 
 function workgroupsize(backend, n)
     min(maxthreads(backend), n)
@@ -338,8 +333,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
 @time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(CUDADevice()),trajectories=10_000,saveat=1.0f0)
 ```
 """
-struct EnsembleGPUArray{Dev} <: EnsembleArrayAlgorithm
-    device::Dev
+struct EnsembleGPUArray{Backend} <: EnsembleArrayAlgorithm
+    backend::Backend
     cpu_offload::Float64
 end
 
@@ -648,6 +643,10 @@ function batch_solve(ensembleprob, alg,
                  ts = @view solts[:, i]
                  us = @view solus[:, i]
                  sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
+                 if sol_idx === nothing
+                     @error "No solution found" tspan=probs[i].tspan[1] ts
+                     error("Batch solve failed")
+                 end
                  @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
                                                                           alg,
                                                                           ts[1:sol_idx],
@@ -711,17 +710,17 @@ end
 
 function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
     if ensemblealg isa EnsembleGPUArray
-        dev = ensemblealg.device
-        u0 = adapt(dev, u0)
-        p = adapt(dev, p)
+        backend = ensemblealg.backend
+        u0 = adapt(backend, u0)
+        p = adapt(backend, p)
     end
 
     len = length(probs[1].u0)
 
     if SciMLBase.has_jac(probs[1].f)
         if ensemblealg isa EnsembleGPUArray
-            dev = ensemblealg.device
-            jac_prototype = allocate(dev, Float32, (len, len, length(I)))
+            backend = ensemblealg.backend
+            jac_prototype = allocate(backend, Float32, (len, len, length(I)))
             fill!(jac_prototype, 0.0)
         else
             jac_prototype = zeros(Float32, len, len, length(I))
@@ -785,17 +784,17 @@ function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg
     u0 = convert.(eltype(pdual), u0)
 
     if ensemblealg isa EnsembleGPUArray
-        dev = ensemblealg.device
-        u0 = adapt(dev, u0)
-        pdual = adapt(dev, pdual)
+        backend = ensemblealg.backend
+        u0 = adapt(backend, u0)
+        pdual = adapt(backend, pdual)
     end
 
     len = length(probs[1].u0)
 
     if SciMLBase.has_jac(probs[1].f)
         if ensemblealg isa EnsembleGPUArray
-            dev = ensemblealg.device
-            jac_prototype = allocate(dev, Float32, (len, len, length(I)))
+            backend = ensemblealg.backend
+            jac_prototype = allocate(backend, Float32, (len, len, length(I)))
             fill!(jac_prototype, 0.0)
         else
             jac_prototype = zeros(Float32, len, len, length(I))
@@ -848,12 +847,10 @@ end
 function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = get_device(u)
+            version = get_backend(u)
             wgs = workgroupsize(version, size(u, 2))
-            wait(version,
-                 kernel(version)(f, du, u, p, t; ndrange = size(u, 2),
-                                 dependencies = Event(version),
-                                 workgroupsize = wgs))
+            kernel(version)(f, du, u, p, t; ndrange = size(u, 2),
+                            workgroupsize = wgs)
         end
     end
 
@@ -862,13 +859,11 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
 
             function (W, u, p, gamma, t)
-                version = get_device(u)
+                version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
-                wait(version,
-                     kernel(version)(jac, W, u, p, gamma, t;
-                                     ndrange = size(u, 2),
-                                     dependencies = Event(version),
-                                     workgroupsize = wgs))
+                kernel(version)(jac, W, u, p, gamma, t;
+                                ndrange = size(u, 2),
+                                workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -876,13 +871,11 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
 
             function (W, u, p, gamma, t)
-                version = get_device(u)
+                version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
-                wait(version,
-                     kernel(version)(jac, W, u, p, gamma, t;
-                                     ndrange = size(u, 2),
-                                     dependencies = Event(version),
-                                     workgroupsize = wgs))
+                kernel(version)(jac, W, u, p, gamma, t;
+                                ndrange = size(u, 2),
+                                workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -896,13 +889,11 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
 
             function (J, u, p, t)
-                version = get_device(u)
+                version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
-                wait(version,
-                     kernel(version)(tgrad, J, u, p, t;
-                                     ndrange = size(u, 2),
-                                     dependencies = Event(version),
-                                     workgroupsize = wgs))
+                kernel(version)(tgrad, J, u, p, t;
+                                ndrange = size(u, 2),
+                                workgroupsize = wgs)
             end
         end
     else
@@ -921,25 +912,21 @@ end
 function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = get_device(u)
+            version = get_backend(u)
             wgs = workgroupsize(version, size(u, 2))
-            wait(version,
-                 kernel(version)(f, du, u, p, t;
-                                 ndrange = size(u, 2),
-                                 dependencies = Event(version),
-                                 workgroupsize = wgs))
+            kernel(version)(f, du, u, p, t;
+                            ndrange = size(u, 2),
+                            workgroupsize = wgs)
         end
     end
 
     _g = let f = prob.f.g, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
-            version = get_device(u)
+            version = get_backend(u)
             wgs = workgroupsize(version, size(u, 2))
-            wait(version,
-                 kernel(version)(f, du, u, p, t;
-                                 ndrange = size(u, 2),
-                                 dependencies = Event(version),
-                                 workgroupsize = wgs))
+            kernel(version)(f, du, u, p, t;
+                            ndrange = size(u, 2),
+                            workgroupsize = wgs)
         end
     end
 
@@ -948,13 +935,11 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? W_kernel : W_kernel_oop
 
             function (W, u, p, gamma, t)
-                version = get_device(u)
+                version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
-                wait(version,
-                     kernel(version)(jac, W, u, p, gamma, t;
-                                     ndrange = size(u, 2),
-                                     dependencies = Event(version),
-                                     workgroupsize = wgs))
+                kernel(version)(jac, W, u, p, gamma, t;
+                                ndrange = size(u, 2),
+                                workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -962,13 +947,11 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? Wt_kernel : Wt_kernel_oop
 
             function (W, u, p, gamma, t)
-                version = get_device(u)
+                version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
-                wait(version,
-                     kernel(version)(jac, W, u, p, gamma, t;
-                                     ndrange = size(u, 2),
-                                     dependencies = Event(version),
-                                     workgroupsize = wgs))
+                kernel(version)(jac, W, u, p, gamma, t;
+                                ndrange = size(u, 2),
+                                workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -982,13 +965,11 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
 
             function (J, u, p, t)
-                version = get_device(u)
+                version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
-                wait(version,
-                     kernel(version)(tgrad, J, u, p, t;
-                                     ndrange = size(u, 2),
-                                     dependencies = Event(version),
-                                     workgroupsize = wgs))
+                kernel(version)(tgrad, J, u, p, t;
+                                ndrange = size(u, 2),
+                                workgroupsize = wgs)
             end
         end
     else
@@ -1007,8 +988,8 @@ end
 function generate_callback(callback::DiscreteCallback, I,
                            ensemblealg)
     if ensemblealg isa EnsembleGPUArray
-        dev = ensemblealg.device
-        cur = adapt(dev, [false for i in 1:I])
+        backend = ensemblealg.backend
+        cur = adapt(backend, [false for i in 1:I])
     elseif ensemblealg isa EnsembleGPUKernel
         return callback
     else
@@ -1018,25 +999,21 @@ function generate_callback(callback::DiscreteCallback, I,
     _affect! = callback.affect!
 
     condition = function (u, t, integrator)
-        version = get_device(u)
+        version = get_backend(u)
         wgs = workgroupsize(version, size(u, 2))
-        wait(version,
-             discrete_condition_kernel(version)(_condition, cur, u, t, integrator.p;
-                                                ndrange = size(u, 2),
-                                                dependencies = Event(version),
-                                                workgroupsize = wgs))
+        discrete_condition_kernel(version)(_condition, cur, u, t, integrator.p;
+                                           ndrange = size(u, 2),
+                                           workgroupsize = wgs)
         any(cur)
     end
 
     affect! = function (integrator)
-        version = get_device(integrator.u)
+        version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
-        wait(version,
-             discrete_affect!_kernel(version)(_affect!, cur, integrator.u, integrator.t,
-                                              integrator.p;
-                                              ndrange = size(integrator.u, 2),
-                                              dependencies = Event(version),
-                                              workgroupsize = wgs))
+        discrete_affect!_kernel(version)(_affect!, cur, integrator.u, integrator.t,
+                                         integrator.p;
+                                         ndrange = size(integrator.u, 2),
+                                         workgroupsize = wgs)
     end
     return DiscreteCallback(condition, affect!, save_positions = callback.save_positions)
 end
@@ -1050,36 +1027,30 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     _affect_neg! = callback.affect_neg!
 
     condition = function (out, u, t, integrator)
-        version = get_device(u)
+        version = get_backend(u)
         wgs = workgroupsize(version, size(u, 2))
-        wait(version,
-             continuous_condition_kernel(version)(_condition, out, u, t, integrator.p;
-                                                  ndrange = size(u, 2),
-                                                  dependencies = Event(version),
-                                                  workgroupsize = wgs))
+        continuous_condition_kernel(version)(_condition, out, u, t, integrator.p;
+                                             ndrange = size(u, 2),
+                                             workgroupsize = wgs)
         nothing
     end
 
     affect! = function (integrator, event_idx)
-        version = get_device(integrator.u)
+        version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
-        wait(version,
-             continuous_affect!_kernel(version)(_affect!, event_idx, integrator.u,
-                                                integrator.t, integrator.p;
-                                                ndrange = size(integrator.u, 2),
-                                                dependencies = Event(version),
-                                                workgroupsize = wgs))
+        continuous_affect!_kernel(version)(_affect!, event_idx, integrator.u,
+                                           integrator.t, integrator.p;
+                                           ndrange = size(integrator.u, 2),
+                                           workgroupsize = wgs)
     end
 
     affect_neg! = function (integrator, event_idx)
-        version = get_device(integrator.u)
+        version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
-        wait(version,
-             continuous_affect!_kernel(version)(_affect_neg!, event_idx, integrator.u,
-                                                integrator.t, integrator.p;
-                                                ndrange = size(integrator.u, 2),
-                                                dependencies = Event(version),
-                                                workgroupsize = wgs))
+        continuous_affect!_kernel(version)(_affect_neg!, event_idx, integrator.u,
+                                           integrator.t, integrator.p;
+                                           ndrange = size(integrator.u, 2),
+                                           workgroupsize = wgs)
     end
 
     return VectorContinuousCallback(condition, affect!, affect_neg!, I,
@@ -1136,28 +1107,24 @@ function SciMLBase.solve(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFa
     A = cache.A
     b = cache.b
     x = cache.u
-    version = get_device(b)
+    version = get_backend(b)
     copyto!(x, b)
     wgs = workgroupsize(version, p.nfacts)
     # Note that the matrix is already factorized, only ldiv is needed.
-    wait(version,
-         ldiv!_kernel(version)(A, x, p.len, p.nfacts;
-                               ndrange = p.nfacts,
-                               dependencies = Event(version),
-                               workgroupsize = wgs))
+    ldiv!_kernel(version)(A, x, p.len, p.nfacts;
+                          ndrange = p.nfacts,
+                          workgroupsize = wgs)
     SciMLBase.build_linear_solution(alg, x, nothing, cache)
 end
 
 # Old stuff
 function (p::LinSolveGPUSplitFactorize)(x, A, b, update_matrix = false; kwargs...)
-    version = get_device(b)
+    version = get_backend(b)
     copyto!(x, b)
     wgs = workgroupsize(version, p.nfacts)
-    wait(version,
-         ldiv!_kernel(version)(A, x, p.len, p.nfacts;
-                               ndrange = p.nfacts,
-                               dependencies = Event(version),
-                               workgroupsize = wgs))
+    ldiv!_kernel(version)(A, x, p.len, p.nfacts;
+                          ndrange = p.nfacts,
+                          workgroupsize = wgs)
     return nothing
 end
 
@@ -1286,10 +1253,18 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 export terminate!
 
+# This symbol is only defined on Julia versions that support extensions
 if !isdefined(Base, :get_extension)
-    include("../ext/CUDAExt.jl")
-    include("../ext/AMDGPUExt.jl")
-    include("../ext/oneAPIExt.jl")
+    using Requires
+end
+
+@static if !isdefined(Base, :get_extension)
+    function __init__()
+        @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" include("../ext/CUDAExt.jl")
+        @require AMDGPU="21141c5a-9bdb-4563-92ae-f87d6854732e" include("../ext/AMDGPUExt.jl")
+        @require oneAPI="8f75cd03-7ff8-4ecb-9b8f-daf728133b1b" include("../ext/oneAPIExt.jl")
+        @require Metal="dde4c033-4e86-420c-a63e-0dd931031962" include("../ext/MetalExt.jl")
+    end
 end
 
 end # module

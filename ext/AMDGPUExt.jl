@@ -1,16 +1,17 @@
 module AMDGPUExt
-using KernelAbstractions
-using AMDGPU, ROCKernels, Adapt
+isdefined(Base, :get_extension) ? (using AMDGPU) : (using ..AMDGPU)
 import DiffEqGPU
 
-DiffEqGPU.maxthreads(::ROCDevice) = 256
-DiffEqGPU.maybe_prefer_blocks(::ROCDevice) = ROCDevice()
+using .AMDGPU
+import .AMDGPU: ROCBackend
 
-# TODO move to KA
-Adapt.adapt_storage(::CPU, a::ROCArray) = adapt(Array, a)
-Adapt.adapt_storage(::ROCDevice, a::ROCArray) = a
-Adapt.adapt_storage(::ROCDevice, a::Array) = adapt(ROCArray, a)
+DiffEqGPU.maxthreads(::ROCBackend) = 256
+DiffEqGPU.maybe_prefer_blocks(::ROCBackend) = ROCBackend()
 
-DiffEqGPU.allocate(::ROCDevice, ::Type{T}, init, dims) where {T} = ROCArray{T}(init, dims)
+# Not yet implemented in AMDGPU
+# function DiffEqGPU.lufact!(::ROCBackend, W)
+#     AMDGPU.rocBLAS.getrf_strided_batched!(W, false)
+#     return nothing
+# end
 
 end

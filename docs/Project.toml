@@ -3,5 +3,5 @@ DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 Documenter = "e30172f5-a6a5-5a46-863b-614d45cd2de4"
 
 [compat]
-DiffEqGPU = "1"
+DiffEqGPU = "1,2"
 Documenter = "0.27"
