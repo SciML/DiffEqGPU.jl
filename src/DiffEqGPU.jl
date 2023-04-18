@@ -354,7 +354,7 @@ struct GPUTsit5 <: GPUODEAlgorithm end
 """
 GPUVern7()
 
-A specialized implementation of the 7th order `GPUVern7` method specifically for kernel
+A specialized implementation of the 7th order `Vern7` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
 struct GPUVern7 <: GPUODEAlgorithm end
@@ -362,15 +362,15 @@ struct GPUVern7 <: GPUODEAlgorithm end
 """
 GPUVern9()
 
-A specialized implementation of the 9th order `GPUVern9` method specifically for kernel
+A specialized implementation of the 9th order `Vern9` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
 struct GPUVern9 <: GPUODEAlgorithm end
 
 """
-GPURobsenbrock23()
+GPURosenbrock23()
 
-A specialized implementation of the W-method `GPURosenbrock23` method specifically for kernel
+A specialized implementation of the W-method `Rosenbrock23` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
 struct GPURosenbrock23 <: GPUODEAlgorithm end
