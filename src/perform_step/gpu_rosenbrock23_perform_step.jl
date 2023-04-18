@@ -39,15 +39,15 @@
     dT = f.tgrad(uprev, p, t)
 
     W = I - γ * J
-    W_fact  = lu(W)
+    W_fact = lu(W)
 
     # F = lu(W)
     F₀ = f(uprev, p, t)
-    k1 =  W_fact  \ (F₀ + γ * dT)
+    k1 = W_fact \ (F₀ + γ * dT)
 
     F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
-    k2 =  W_fact  \ (F₁ - k1) + k1
+    k2 = W_fact \ (F₁ - k1) + k1
 
     integ.u = uprev + dt * k2
 

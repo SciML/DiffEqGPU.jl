@@ -1264,6 +1264,7 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 ## Stiff ODE solvers
 export GPURosenbrock23
+
 export terminate!
 
 # This symbol is only defined on Julia versions that support extensions
