@@ -594,6 +594,9 @@ function diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual}, t)
 end
 diffeqgpunorm(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
 
+"""
+A lower level API for EnsembleGPUArray. Avoid converting the GPUArrays back to CPU.
+"""
 function vectorized_map_solve(probs, alg,
                               ensemblealg::Union{EnsembleArrayAlgorithm}, I,
                               adaptive;
