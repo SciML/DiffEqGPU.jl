@@ -594,6 +594,25 @@ function diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual}, t)
 end
 diffeqgpunorm(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
 
+function vectorized_map_solve(probs, alg,
+                              ensemblealg::Union{EnsembleArrayAlgorithm}, I,
+                              adaptive;
+                              kwargs...)
+
+    #    @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),probs[1]),probs)
+    # u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
+    # p = reduce(hcat,
+    #             probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)
+    #             for i in 1:length(I))
+
+    u0 = hcat([Array(probs[i].u0) for i in 1:length(I)]...)
+    p = hcat([Array(probs[i].p) for i in 1:length(I)]...)
+
+    prob = probs[1]
+    sol = vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p;
+                                  adaptive = adaptive, kwargs...)
+end
+
 function batch_solve(ensembleprob, alg,
                      ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
                      adaptive;
@@ -706,6 +725,47 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
     solus = Array(us)
     solts = Array(ts)
     (solts, solus)
+end
+
+function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
+    if ensemblealg isa EnsembleGPUArray
+        backend = ensemblealg.backend
+        u0 = adapt(backend, u0)
+        p = adapt(backend, p)
+    end
+
+    len = length(prob.u0)
+
+    if SciMLBase.has_jac(prob.f)
+        if ensemblealg isa EnsembleGPUArray
+            backend = ensemblealg.backend
+            jac_prototype = allocate(backend, Float32, (len, len, length(I)))
+            fill!(jac_prototype, 0.0)
+        else
+            jac_prototype = zeros(Float32, len, len, length(I))
+        end
+
+        if prob.f.colorvec !== nothing
+            colorvec = repeat(prob.f.colorvec, length(I))
+        else
+            colorvec = repeat(1:length(prob.u0), length(I))
+        end
+    else
+        jac_prototype = nothing
+        colorvec = nothing
+    end
+
+    _callback = generate_callback(prob, length(I), ensemblealg; kwargs...)
+    prob = generate_problem(prob, u0, p, jac_prototype, colorvec)
+
+    if hasproperty(alg, :linsolve)
+        _alg = remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
+    else
+        _alg = alg
+    end
+
+    sol = solve(prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
+                internalnorm = diffeqgpunorm)
 end
 
 function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
