@@ -35,6 +35,7 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     @time @safetestset "Reverse Mode AD" begin include("reverse_ad_tests.jl") end
     # Not safe because distributed doesn't play nicely with modules.
     @time @testset "Distributed Multi-GPU" begin include("distributed_multi_gpu.jl") end
+    @time @testset "Lower level API" begin include("lower_level_api.jl") end
 end
 
 if GROUP == "CUDA"
