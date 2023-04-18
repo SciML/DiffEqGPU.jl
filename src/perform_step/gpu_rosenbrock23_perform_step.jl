@@ -172,7 +172,7 @@ end
 
         u = uprev + dt * k2
 
-        e32 = T((6 + sqrt(2)))
+        e32 = T(6) + sqrt(T(2))
         F₂ = f(u, p, t + dt)
         k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
 
