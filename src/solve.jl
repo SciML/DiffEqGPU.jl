@@ -55,7 +55,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
 
     tstops = adapt(backend, tstops)
 
-    kernel = ode_solve_kernel(dev)
+    kernel = ode_solve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
@@ -147,7 +147,7 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     ts = adapt(backend, ts)
     tstops = adapt(backend, tstops)
 
-    kernel = ode_asolve_kernel(dev)
+    kernel = ode_asolve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
