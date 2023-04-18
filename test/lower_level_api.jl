@@ -1,4 +1,4 @@
-using DiffEqGPU, StaticArrays, CUDA, DiffEqBase, KernelAbstractions, Adapt, OrdinaryDiffEq
+using DiffEqGPU, StaticArrays, CUDA, Adapt, OrdinaryDiffEq
 
 include("utils.jl")
 
