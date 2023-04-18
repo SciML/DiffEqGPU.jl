@@ -50,7 +50,7 @@ end
     vector_event_last_time = 0
     last_event_error = zero(eltype(S))
     d = T(2)
-    d = 1/(d + sqrt(d))
+    d = 1 / (d + sqrt(d))
 
     integ = GPURB23I{IIP, S, T, ST, P, F, TS, CB, AlgType}(alg, f, copy(u0), copy(u0),
                                                            copy(u0), t0, t0,
@@ -130,7 +130,7 @@ end
     last_event_error = zero(eltype(S))
 
     d = T(2)
-    d = 1/(d + sqrt(d))
+    d = 1 / (d + sqrt(d))
 
     integ = GPUARB23I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, AlgType}(alg,
                                                                                       f,
