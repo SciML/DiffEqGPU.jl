@@ -354,7 +354,7 @@ struct GPUTsit5 <: GPUODEAlgorithm end
 """
 GPUVern7()
 
-A specialized implementation of the 7th order `GPUVern7` method specifically for kernel
+A specialized implementation of the 7th order `Vern7` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
 struct GPUVern7 <: GPUODEAlgorithm end
@@ -362,10 +362,18 @@ struct GPUVern7 <: GPUODEAlgorithm end
 """
 GPUVern9()
 
-A specialized implementation of the 9th order `GPUVern9` method specifically for kernel
+A specialized implementation of the 9th order `Vern9` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
 struct GPUVern9 <: GPUODEAlgorithm end
+
+"""
+GPURosenbrock23()
+
+A specialized implementation of the W-method `Rosenbrock23` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPURosenbrock23 <: GPUODEAlgorithm end
 
 """
 GPUEM()
@@ -1299,7 +1307,9 @@ function tmap(f, args...)
     reduce(vcat, batch_data)
 end
 
+include("alg_utils.jl")
 include("integrators/types.jl")
+include("integrators/stiff/types.jl")
 include("integrators/integrator_utils.jl")
 include("integrators/interpolants.jl")
 
@@ -1308,12 +1318,16 @@ include("perform_step/gpu_vern7_perform_step.jl")
 include("perform_step/gpu_vern9_perform_step.jl")
 include("perform_step/gpu_em_perform_step.jl")
 include("perform_step/gpu_siea_perform_step.jl")
+include("perform_step/gpu_rosenbrock23_perform_step.jl")
 include("tableaus/verner_tableaus.jl")
 include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
+## Stiff ODE solvers
+export GPURosenbrock23
+
 export terminate!
 
 # This symbol is only defined on Julia versions that support extensions

@@ -55,19 +55,14 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
 
     tstops = adapt(backend, tstops)
 
-    if alg isa GPUTsit5
-        kernel = tsit5_kernel(backend)
-    elseif alg isa GPUVern7
-        kernel = vern7_kernel(backend)
-    elseif alg isa GPUVern9
-        kernel = vern9_kernel(backend)
-    end
+    kernel = ode_solve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    kernel(probs, us, ts, dt, callback, tstops, nsteps, saveat, Val(save_everystep);
+    kernel(probs, alg, us, ts, dt, callback, tstops, nsteps, saveat,
+           Val(save_everystep);
            ndrange = length(probs))
 
     # we build the actual solution object on the CPU because the GPU would create one
@@ -152,19 +147,13 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     ts = adapt(backend, ts)
     tstops = adapt(backend, tstops)
 
-    if alg isa GPUTsit5
-        kernel = atsit5_kernel(backend)
-    elseif alg isa GPUVern7
-        kernel = avern7_kernel(backend)
-    elseif alg isa GPUVern9
-        kernel = avern9_kernel(backend)
-    end
+    kernel = ode_asolve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    kernel(probs, us, ts, dt, callback, tstops,
+    kernel(probs, alg, us, ts, dt, callback, tstops,
            abstol, reltol, saveat, Val(save_everystep);
            ndrange = length(probs))
 
