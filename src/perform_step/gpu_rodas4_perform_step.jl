@@ -8,7 +8,6 @@
     uprev = integ.u
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3, d4 = integ.tab
 
-
     integ.tprev = t
     saved_in_cb = false
     adv_integ = true
@@ -82,8 +81,8 @@ end
     saveat = _saveat === nothing ? saveat : _saveat
 
     integ = gpurodas4_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
-                                 tstops,
-                                 callback, save_everystep, saveat)
+                           tstops,
+                           callback, save_everystep, saveat)
 
     # u0 = prob.u0
     # tspan = prob.tspan
@@ -119,4 +118,3 @@ end
     #     @inbounds ts[2] = integ.t
     # end
 end
-
