@@ -200,3 +200,32 @@ rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 @time sol = solve(rober_monteprob, TRBDF2(), EnsembleThreads(),
                   trajectories = 10,
                   abstol = 1e-4, reltol = 1e-1, saveat = 1.0f0)
+
+@info "Struct parameters"
+
+struct LorenzParameters
+    σ::Float32
+    ρ::Float32
+    β::Float32
+end
+function lorenzp(du, u, p::LorenzParameters, t)
+    du[1] = p.σ * (u[2] - u[1])
+    du[2] = u[1] * (p.ρ - u[3]) - u[2]
+    du[3] = u[1] * u[2] - p.β * u[3]
+end
+
+u0 = Float32[1.0; 0.0; 0.0]
+tspan = (0.0f0, 100.0f0)
+p = LorenzParameters(10.0f0, 28.0f0, 8 / 3.0f0)
+prob = ODEProblem(lorenzp, u0, tspan, p)
+function param_prob_func(prob, i, repeat)
+    p = LorenzParameters(pre_p[i][1] .* 10.0f0,
+                         pre_p[i][2] .* 28.0f0,
+                         pre_p[i][3] .* 8 / 3.0f0)
+    remake(prob; p)
+end
+monteprob = EnsembleProblem(prob, prob_func = param_prob_func)
+
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
+                  saveat = 1.0f0)
+@test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
