@@ -8,7 +8,7 @@ of EnsembleGPUKernel.
 
 The example below provides a way to generate solves using the lower level API with lower overheads:
 
-```julia
+```@example lower_level
 using DiffEqGPU, StaticArrays, CUDA, DiffEqBase
 
 trajectories = 10_000
@@ -61,7 +61,7 @@ Similarily, there exists a lower-level API for `EnsembleGPUArray` as well, prima
 returned for state (`sol.u`) is a matrix having columns as different parameter-parallel solutions for the ensemble problem.
 An example is shown below:
 
-```julia
+```@example lower_level
 using DiffEqGPU, StaticArrays, CUDA, DiffEqBase
 
 trajectories = 10_000

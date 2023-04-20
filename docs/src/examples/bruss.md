@@ -3,7 +3,7 @@
 The following is a demonstration of a GPU-accelerated implicit solve of a stiff
 nonlinear partial differential equation (the Brusselator model):
 
-```julia
+```@example bruss
 using OrdinaryDiffEq, LinearAlgebra
 
 const N = 32

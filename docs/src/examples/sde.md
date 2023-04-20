@@ -4,7 +4,7 @@ One major application of DiffEqGPU is for computing ensemble statistics of SDE s
 using `EnsembleGPUArray`. The following demonstrates using this technique to generate
 large ensembles of solutions for a diagonal noise SDE with a high order adaptive method:
 
-```julia
+```@example sde
 using DiffEqGPU, CUDA, StochasticDiffEq, Test
 
 function lorenz(du, u, p, t)

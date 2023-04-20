@@ -4,7 +4,7 @@
 and thus can be thrown into deep learning training loops. The following is an example
 of this use:
 
-```julia
+```@example ad
 using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA, Test
 CUDA.allowscalar(false)
 
@@ -45,7 +45,7 @@ Flux.@epochs 10 Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
 Forward-mode automatic differentiation works as well, as demonstrated by its capability
 to recompile for Dual number arithmetic:
 
-```julia
+```@example ad
 using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test
 
 function lorenz(du, u, p, t)

@@ -1,6 +1,6 @@
 # [Massively Parallel ODE Solving with Event Handling and Callbacks](@id events)
 
-```julia
+```@example parallel_callbacks
 using DiffEqGPU, StaticArrays, OrdinaryDiffEq
 function f(u, p, t)
     du1 = -u[1]

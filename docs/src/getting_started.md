@@ -20,7 +20,7 @@ The following is a quick and dirty example of doing within-method GPU parallelis
 Let's say we had a simple but large ODE with many linear algebra or map/broadcast
 operations:
 
-```julia
+```@example basic
 using OrdinaryDiffEq, LinearAlgebra
 u0 = rand(1000)
 A = randn(1000, 1000)
@@ -32,7 +32,7 @@ sol = solve(prob, Tsit5())
 Translating this to a GPU-based solve of the ODE simply requires moving the arrays for
 the initial condition, parameters, and caches to the GPU. This looks like:
 
-```julia
+```@example basic
 using OrdinaryDiffEq, CUDA, LinearAlgebra
 u0 = cu(rand(1000))
 A = cu(randn(1000, 1000))
@@ -53,7 +53,7 @@ On the other side of the spectrum, what if we want to solve tons of small ODEs? 
 use case, we would use the ensemble methods to solve the same ODE many times with
 different parameters. This looks like:
 
-```julia
+```@example basic
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays
 
 function lorenz(u, p, t)

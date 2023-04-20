@@ -8,7 +8,7 @@ the values. This then allows for only saving the sum of the previous batches, bo
 the trajectory count to an amount that is higher than would fit in memory, and only saving
 the summed values.
 
-```julia
+```@example reductions
 using OrdinaryDiffEq, DiffEqGPU, Test
 
 seed = 100

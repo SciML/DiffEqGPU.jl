@@ -1,7 +1,7 @@
 # [Setting Up Multi-GPU Parallel Parameter Sweeps](@id multigpu)
 
 !!! note
-    
+
     This tutorial assumes one already has familiarity with EnsembleGPUArray and
     EnsembleGPUKernel. Please see [the Lorenz equation tutorial](@ref lorenz) before
     reading this tutorial!
@@ -16,7 +16,7 @@ parallelize the system across all of our GPUs. Let's dig in.
 To set up a multi-GPU environment, first set up processes such that each process
 has a different GPU. For example:
 
-```julia
+```@example multi
 # Setup processes with different CUDA devices
 using Distributed
 addprocs(numgpus)
@@ -31,7 +31,7 @@ end
 
 Then set up the calls to work with distributed processes:
 
-```julia
+```@example multi
 @everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
 
 @everywhere begin
@@ -55,7 +55,7 @@ Now each batch will run on separate GPUs. Thus, we need to use the `batch_size`
 keyword argument from the Ensemble interface to ensure there are multiple batches.
 Let's solve 40,000 trajectories, batching 10,000 trajectories at a time:
 
-```julia
+```@example multi
 prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 

@@ -4,7 +4,7 @@ For example, the following solves the Lorenz equation with 10,000 separate rando
 [`EnsembleProblem` as per DifferentialEquations.jl](https://docs.sciml.ai/DiffEqDocs/stable/features/ensemble/). Here's a perfectly good multithreaded CPU parallelized Lorenz solve
 over randomized parameters:
 
-```julia
+```@example lorenz
 using DiffEqGPU, OrdinaryDiffEq
 function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
@@ -24,7 +24,7 @@ sol = solve(monteprob, Tsit5(), EnsembleThreads(), trajectories = 10_000, saveat
 Changing this to being GPU-parallelized is as simple as changing the ensemble method to
 `EnsembleGPUArray`:
 
-```julia
+```@example lorenz
 sol = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 10_000, saveat = 1.0f0);
 ```
 
@@ -35,7 +35,7 @@ While `EnsembleGPUArray` has a bit of overhead due to its form of GPU code const
 overhead in kernel launching costs. However, it requires this problem to be written in
 out-of-place form and use [special solvers](@ref specialsolvers). This looks like:
 
-```julia
+```@example lorenz
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays
 
 function lorenz(u, p, t)
@@ -71,7 +71,7 @@ equations. For example, one can handle stiff ODEs with `EnsembleGPUArray` simply
 stiff ODE solver. Note that, as explained in the docstring, analytical derivatives
 (Jacobian and time gradient) must be supplied. For the Lorenz equation, this looks like:
 
-```julia
+```@example lorenz
 function lorenz_jac(J, u, p, t)
     σ = p[1]
     ρ = p[2]
