@@ -15,7 +15,7 @@ A = cu(-rand(3, 3))
 u0 = cu([1.0; 0.0; 0.0])
 tspan = (0.0f0, 100.0f0)
 
-prob = ODEProblem(ff, u0, tspan)
+prob = ODEProblem(f, u0, tspan)
 sol = solve(prob, Tsit5())
 sol = solve(prob, Rosenbrock23())
 ```

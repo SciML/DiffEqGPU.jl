@@ -19,6 +19,7 @@ has a different GPU. For example:
 ```@example multi
 # Setup processes with different CUDA devices
 using Distributed
+numgpus = 1
 addprocs(numgpus)
 import CUDA
 

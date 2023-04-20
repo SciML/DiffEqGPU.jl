@@ -9,7 +9,7 @@ of EnsembleGPUKernel.
 The example below provides a way to generate solves using the lower level API with lower overheads:
 
 ```@example lower_level
-using DiffEqGPU, StaticArrays, CUDA, DiffEqBase
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, CUDA, DiffEqBase
 
 trajectories = 10_000
 
@@ -62,7 +62,7 @@ returned for state (`sol.u`) is a matrix having columns as different parameter-p
 An example is shown below:
 
 ```@example lower_level
-using DiffEqGPU, StaticArrays, CUDA, DiffEqBase
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, CUDA, DiffEqBase
 
 trajectories = 10_000
 
