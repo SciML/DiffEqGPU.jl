@@ -94,6 +94,9 @@ function lorenz_tgrad(J, u, p, t)
     nothing
 end
 
+u0 = Float32[1.0; 0.0; 0.0]
+tspan = (0.0f0, 100.0f0)
+p = [10.0f0, 28.0f0, 8 / 3.0f0]
 func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
 prob_jac = ODEProblem(func, u0, tspan, p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
