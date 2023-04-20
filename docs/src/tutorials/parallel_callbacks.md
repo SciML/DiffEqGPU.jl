@@ -1,7 +1,7 @@
 # [Massively Parallel ODE Solving with Event Handling and Callbacks](@id events)
 
 ```@example parallel_callbacks
-using DiffEqGPU, StaticArrays, OrdinaryDiffEq
+using DiffEqGPU, StaticArrays, OrdinaryDiffEq, CUDA
 function f(u, p, t)
     du1 = -u[1]
     return SVector{1}(du1)
@@ -17,7 +17,7 @@ affect!(integrator) = integrator.u += @SVector[10.0f0]
 
 gpu_cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(),
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
             trajectories = 10,
             adaptive = false, dt = 0.01f0, callback = gpu_cb, merge_callbacks = true,
             tstops = [4.0f0])

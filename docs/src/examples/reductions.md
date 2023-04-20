@@ -9,7 +9,7 @@ the trajectory count to an amount that is higher than would fit in memory, and o
 the summed values.
 
 ```@example reductions
-using OrdinaryDiffEq, DiffEqGPU, Test
+using OrdinaryDiffEq, DiffEqGPU, CUDA
 
 seed = 100
 using Random;
@@ -36,5 +36,5 @@ end
 
 prob2 = EnsembleProblem(prob, prob_func = prob_func, output_func = output_func,
                         reduction = reduction, u_init = Vector{eltype(prob.u0)}([0.0]))
-sim4 = solve(prob2, Tsit5(), EnsembleGPUArray(), trajectories = 100, batch_size = 20)
+sim4 = solve(prob2, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 100, batch_size = 20)
 ```
