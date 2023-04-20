@@ -376,6 +376,14 @@ generation with EnsembleGPUKernel.
 struct GPURosenbrock23 <: GPUODEAlgorithm end
 
 """
+GPURodas4()
+
+A specialized implementation of the `Rodas4` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPURodas4<: GPUODEAlgorithm end
+
+"""
 GPUEM()
 
 A specialized implementation of the Euler-Maruyama `GPUEM` method with weak order 1.0. Made specifically for kernel
@@ -1319,14 +1327,16 @@ include("perform_step/gpu_vern9_perform_step.jl")
 include("perform_step/gpu_em_perform_step.jl")
 include("perform_step/gpu_siea_perform_step.jl")
 include("perform_step/gpu_rosenbrock23_perform_step.jl")
+include("perform_step/gpu_rodas4_perform_step.jl")
 include("tableaus/verner_tableaus.jl")
+include("tableaus/rodas_tableaus.jl")
 include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 ## Stiff ODE solvers
-export GPURosenbrock23
+export GPURosenbrock23, GPURodas4
 
 export terminate!
 
