@@ -16,7 +16,7 @@ parallelize the system across all of our GPUs. Let's dig in.
 To set up a multi-GPU environment, first set up processes such that each process
 has a different GPU. For example:
 
-```@example multi
+```julia
 # Setup processes with different CUDA devices
 using Distributed
 numgpus = 1
@@ -56,7 +56,7 @@ Now each batch will run on separate GPUs. Thus, we need to use the `batch_size`
 keyword argument from the Ensemble interface to ensure there are multiple batches.
 Let's solve 40,000 trajectories, batching 10,000 trajectories at a time:
 
-```@example multi
+```julia
 prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
