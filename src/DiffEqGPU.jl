@@ -284,7 +284,7 @@ struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
 
 """
 ```julia
-EnsembleGPUArray(cpu_offload = 0.2)
+EnsembleGPUArray(backend,cpu_offload = 0.2)
 ```
 
 An `EnsembleArrayAlgorithm` which utilizes the GPU kernels to parallelize each ODE solve
@@ -292,6 +292,7 @@ with their separate ODE integrator on each kernel.
 
 ## Positional Arguments
 
+  - `backend`: the KernelAbstractions backend for performing the computation.
   - `cpu_offload`: the percentage of trajectories to offload to the CPU. Default is 0.2 or
     20% of trajectories.
 
@@ -409,7 +410,7 @@ struct GPUSIEA <: GPUSDEAlgorithm end
 
 """
 ```julia
-EnsembleGPUKernel(cpu_offload = 0.2)
+EnsembleGPUKernel(backend,cpu_offload = 0.2)
 ```
 
 A massively-parallel ensemble algorithm which generates a unique GPU kernel for the entire
@@ -418,6 +419,7 @@ imparts some extra limitations on the use.
 
 ## Positional Arguments
 
+  - `backend`: the KernelAbstractions backend for performing the computation.
   - `cpu_offload`: the percentage of trajectories to offload to the CPU. Default is 0.2 or
     20% of trajectories.
 

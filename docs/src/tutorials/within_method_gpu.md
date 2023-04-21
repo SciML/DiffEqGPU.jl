@@ -5,7 +5,7 @@ solves with regularity, i.e., only using array-based “vectorized” operations
 linear algebra, maps, and broadcast statements. In these cases, the solve can be GPU
 accelerated simply by placing the initial condition array on the GPU. As a quick example:
 
-```julia
+```@example within_gpu
 using OrdinaryDiffEq, CUDA, LinearAlgebra
 function f(du, u, p, t)
     mul!(du, A, u)
@@ -15,7 +15,7 @@ A = cu(-rand(3, 3))
 u0 = cu([1.0; 0.0; 0.0])
 tspan = (0.0f0, 100.0f0)
 
-prob = ODEProblem(ff, u0, tspan)
+prob = ODEProblem(f, u0, tspan)
 sol = solve(prob, Tsit5())
 sol = solve(prob, Rosenbrock23())
 ```

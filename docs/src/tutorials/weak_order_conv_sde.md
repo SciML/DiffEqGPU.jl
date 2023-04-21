@@ -5,7 +5,7 @@ With the lower overhead of `EnsembleGPUKernel` API, these calculations can be do
 
 The example below provides a way to calculate the expectation time-series of a linear SDE:
 
-```julia
+```@example kernel_sde
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, Statistics
 
 num_trajectories = 10_000
