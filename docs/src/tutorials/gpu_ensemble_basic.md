@@ -25,7 +25,8 @@ Changing this to being GPU-parallelized is as simple as changing the ensemble me
 `EnsembleGPUArray`:
 
 ```@example lorenz
-sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000, saveat = 1.0f0);
+sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,
+            saveat = 1.0f0);
 ```
 
 and voilà, the method is re-compiled to parallelize the solves over a GPU!
@@ -54,7 +55,8 @@ p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz2, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()), trajectories = 10_000,
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
+            trajectories = 10_000,
             saveat = 1.0f0)
 ```
 
@@ -101,5 +103,6 @@ func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
 prob_jac = ODEProblem(func, u0, tspan, p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
-solve(monteprob_jac, Rodas5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000, saveat = 1.0f0)
+solve(monteprob_jac, Rodas5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,
+      saveat = 1.0f0)
 ```

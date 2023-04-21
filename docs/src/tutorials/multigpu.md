@@ -1,7 +1,7 @@
 # [Setting Up Multi-GPU Parallel Parameter Sweeps](@id multigpu)
 
 !!! note
-
+    
     This tutorial assumes one already has familiarity with EnsembleGPUArray and
     EnsembleGPUKernel. Please see [the Lorenz equation tutorial](@ref lorenz) before
     reading this tutorial!
@@ -60,7 +60,8 @@ Let's solve 40,000 trajectories, batching 10,000 trajectories at a time:
 prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
-@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 40_000,
+@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+                   trajectories = 40_000,
                    batch_size = 10_000, saveat = 1.0f0)
 ```
 
@@ -113,6 +114,7 @@ CUDA.allowscalar(false)
 prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 100_000,
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+                  trajectories = 100_000,
                   batch_size = 50_000, saveat = 1.0f0)
 ```
