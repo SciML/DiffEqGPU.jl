@@ -32,7 +32,7 @@ end
 
 Then set up the calls to work with distributed processes:
 
-```@example multi
+```julia
 @everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
 
 @everywhere begin
