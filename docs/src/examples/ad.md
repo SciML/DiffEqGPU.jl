@@ -4,7 +4,7 @@
 and thus can be thrown into deep learning training loops. The following is an example
 of this use:
 
-```julia
+```@example ad
 using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA, Test
 CUDA.allowscalar(false)
 
@@ -20,7 +20,8 @@ function model()
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(), saveat = 0.1, trajectories = 10)
+    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), saveat = 0.1,
+          trajectories = 10)
 end
 
 # loss function
@@ -45,7 +46,7 @@ Flux.@epochs 10 Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
 Forward-mode automatic differentiation works as well, as demonstrated by its capability
 to recompile for Dual number arithmetic:
 
-```julia
+```@example ad
 using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test
 
 function lorenz(du, u, p, t)
@@ -61,6 +62,7 @@ p = (10.0f0, 28.0f0, 8 / 3.0f0)
 prob = ODEProblem{true, SciMLBase.FullSpecialize}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 10_000,
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+                  trajectories = 10_000,
                   saveat = 1.0f0)
 ```

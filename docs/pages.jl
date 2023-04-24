@@ -15,6 +15,7 @@ pages = ["index.md",
                                                  "examples/bruss.md"]],
     "Manual" => Any["manual/ensemblegpukernel.md",
                     "manual/ensemblegpuarray.md",
+                    "manual/backends.md",
                     "manual/optimal_trajectories.md",
                     "manual/choosing_ensembler.md"],
 ]

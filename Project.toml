@@ -1,7 +1,7 @@
 name = "DiffEqGPU"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 authors = ["Chris Rackauckas", "SciML"]
-version = "2.1.0"
+version = "2.1.1"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -27,12 +27,12 @@ ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 [compat]
 AMDGPU = "0.4.9"
 Adapt = "3"
-CUDA = "3.1, 4.1"
+CUDA = "4.1"
 ChainRulesCore = "1"
 DiffEqBase = "6.122"
 DocStringExtensions = "0.8, 0.9"
 ForwardDiff = "0.10"
-KernelAbstractions = "0.8, 0.9"
+KernelAbstractions = "0.9"
 LinearSolve = "1.15"
 Metal = "0.3"
 MuladdMacro = "0.2"

@@ -26,6 +26,20 @@ use GPUs to parallelize over different parameters and initial conditions. In oth
 | Accelerate a big ODE                      | Use [CUDA.jl's](https://cuda.juliagpu.org/stable/) CuArray as `u0`                                       |
 | Solve the same ODE with many `u0` and `p` | Use [DiffEqGPU.jl's](https://docs.sciml.ai/DiffEqGPU/stable/) `EnsembleGPUArray` and `EnsembleGPUKernel` |
 
+## Supported GPUs
+
+SciML's GPU support extends to a wide array of hardware, including:
+
+| GPU Manufacturer | GPU Kernel Language | Julia Support Package                              | Backend Type             |
+|:---------------- |:------------------- |:-------------------------------------------------- |:------------------------ |
+| NVIDIA           | CUDA                | [CUDA.jl](https://github.com/JuliaGPU/CUDA.jl)     | `CUDA.CUDABackend()`     |
+| AMD              | ROCm                | [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl) | `AMDGPU.ROCBackend()`    |
+| Intel            | OneAPI              | [OneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) | `oneAPI.oneAPIBackend()` |
+| Apple (M-Series) | Metal               | [Metal.jl](https://github.com/JuliaGPU/Metal.jl)   | `Metal.MetalBackend()`   |
+
+For this tutorial we will demonstrate the CUDA backend for NVIDIA GPUs, though any of the other GPUs can be
+used by simply swapping out the `backend` choice.
+
 ## Example of Within-Method GPU Parallelism
 
 ```julia
@@ -40,7 +54,7 @@ sol = solve(prob, Tsit5())
 ## Example of Parameter-Parallelism with GPU Ensemble Methods
 
 ```julia
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays
+using DiffEqGPU, CUDA, OrdinaryDiffEq, StaticArrays
 
 function lorenz(u, p, t)
     σ = p[1]
@@ -59,6 +73,6 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000,
-                  adaptive = false, dt = 0.1f0)
+@time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
+                  trajectories = 10_000, adaptive = false, dt = 0.1f0)
 ```
