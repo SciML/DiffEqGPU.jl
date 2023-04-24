@@ -21,12 +21,20 @@ using Random
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
-    @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
+    if eltype(p) <: Number
+        @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
+    else
+        @views @inbounds f(du[:, i], u[:, i], p[i], t)
+    end
 end
 
 @kernel function gpu_kernel_oop(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
-    @views @inbounds x = f(u[:, i], p[:, i], t)
+    if eltype(p) <: Number
+        @views @inbounds x = f(u[:, i], p[:, i], t)
+    else
+        @views @inbounds x = f(u[:, i], p[i], t)
+    end
     @inbounds for j in 1:size(du, 1)
         du[j, i] = x[j]
     end
@@ -35,13 +43,21 @@ end
 @kernel function jac_kernel(f, J, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
-    @views @inbounds f(J[section, section], u[:, i + 1], p[:, i + 1], t)
+    if eltype(p) <: Number
+        @views @inbounds f(J[section, section], u[:, i + 1], p[:, i + 1], t)
+    else
+        @views @inbounds f(J[section, section], u[:, i + 1], p[i + 1], t)
+    end
 end
 
 @kernel function jac_kernel_oop(f, J, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
-    @views @inbounds x = f(u[:, i + 1], p[:, i + 1], t)
+    if eltype(p) <: Number
+        @views @inbounds x = f(u[:, i + 1], p[:, i + 1], t)
+    else
+        @views @inbounds x = f(u[:, i + 1], p[i + 1], t)
+    end
     @inbounds for j in section, k in section
         J[k, j] = x[k, j]
     end
@@ -268,7 +284,7 @@ struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
 
 """
 ```julia
-EnsembleGPUArray(cpu_offload = 0.2)
+EnsembleGPUArray(backend,cpu_offload = 0.2)
 ```
 
 An `EnsembleArrayAlgorithm` which utilizes the GPU kernels to parallelize each ODE solve
@@ -276,6 +292,7 @@ with their separate ODE integrator on each kernel.
 
 ## Positional Arguments
 
+  - `backend`: the KernelAbstractions backend for performing the computation.
   - `cpu_offload`: the percentage of trajectories to offload to the CPU. Default is 0.2 or
     20% of trajectories.
 
@@ -401,7 +418,7 @@ struct GPUSIEA <: GPUSDEAlgorithm end
 
 """
 ```julia
-EnsembleGPUKernel(cpu_offload = 0.2)
+EnsembleGPUKernel(backend,cpu_offload = 0.2)
 ```
 
 A massively-parallel ensemble algorithm which generates a unique GPU kernel for the entire
@@ -410,6 +427,7 @@ imparts some extra limitations on the use.
 
 ## Positional Arguments
 
+  - `backend`: the KernelAbstractions backend for performing the computation.
   - `cpu_offload`: the percentage of trajectories to offload to the CPU. Default is 0.2 or
     20% of trajectories.
 
@@ -709,7 +727,7 @@ function batch_solve(ensembleprob, alg,
                     probs)
         u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
         p = reduce(hcat,
-                   probs[i].p isa SciMLBase.NullParameters ? probs[i].p : Array(probs[i].p)
+                   probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
                    for i in 1:length(I))
 
         sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;

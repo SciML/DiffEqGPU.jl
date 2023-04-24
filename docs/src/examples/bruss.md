@@ -3,8 +3,8 @@
 The following is a demonstration of a GPU-accelerated implicit solve of a stiff
 nonlinear partial differential equation (the Brusselator model):
 
-```julia
-using OrdinaryDiffEq, LinearAlgebra
+```@example bruss
+using OrdinaryDiffEq, CUDA, LinearAlgebra
 
 const N = 32
 const xyd_brusselator = range(0, stop = 1, length = N)
@@ -85,7 +85,7 @@ du2[2000] # -403.5817880634729
 du2[end] # 1431.1460373522068
 du2[521] # -318.1677459142322
 
-prob_ode_brusselator_2d_cuda = ODEProblem(brusselator_2d, cu(u0), (0.0f0, 11.5f0), p,
+prob_ode_brusselator_2d_cuda = ODEProblem(brusselator_2d, CuArray(u0), (0.0f0, 11.5f0), p,
                                           tstops = [1.1f0])
 solve(prob_ode_brusselator_2d_cuda, Rosenbrock23(), save_everystep = false);
 ```
