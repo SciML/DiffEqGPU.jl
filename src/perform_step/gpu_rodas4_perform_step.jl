@@ -30,7 +30,6 @@
         @inbounds k1 = integ.k1
     end
 
-
     # Jacobian
     J = f.jac(uprev, p, t)
     dT = f.tgrad(uprev, p, t)
@@ -59,7 +58,7 @@
     dtgamma = dt * gamma
 
     du = f(uprev, p, t)
-    W =  J-I* inv(dtgamma)
+    W = J - I * inv(dtgamma)
 
     linsolve_tmp = du + dtd1 * dT
     k1 = W \ -linsolve_tmp
