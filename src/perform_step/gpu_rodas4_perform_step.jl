@@ -23,12 +23,17 @@
         integ.t += dt
     end
 
-    # if integ.u_modified
-    #     k1 = f(uprev, p, t)
-    #     integ.u_modified = false
-    # else
-    #     @inbounds k1 = integ.k1
-    # end
+    if integ.u_modified
+        k1 = f(uprev, p, t)
+        integ.u_modified = false
+    else
+        @inbounds k1 = integ.k1
+    end
+
+
+    # Jacobian
+    J = f.jac(uprev, p, t)
+    dT = f.tgrad(uprev, p, t)
 
     # Precalculations
     dtC21 = C21 / dt
@@ -54,7 +59,41 @@
     dtgamma = dt * gamma
 
     du = f(uprev, p, t)
+    W =  J-I* inv(dtgamma)
+
     linsolve_tmp = du + dtd1 * dT
+    k1 = W \ -linsolve_tmp
+    u = uprev + a21 * k1
+    du = f(u, p, t + c2 * dt)
+
+    linsolve_tmp = du + dtd2 * dT + dtC21 * k1
+    k2 = W \ -linsolve_tmp
+    u = uprev + a31 * k1 + a32 * k2
+    du = f(u, p, t + c3 * dt)
+
+    linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
+    k3 = W \ -linsolve_tmp
+    u = uprev + a41 * k1 + a42 * k2 + a43 * k3
+    du = f(u, p, t + c4 * dt)
+
+    linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
+    k4 = W \ -linsolve_tmp
+    u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
+    du = f(u, p, t + dt)
+
+    linsolve_tmp = du + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
+    k5 = W \ -linsolve_tmp
+    u = u + k5
+    du = f(u, p, t + dt)
+
+    linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
+    k6 = W \ -linsolve_tmp
+    integ.u = u + k6
+
+    @inbounds begin # Necessary for interpolation
+        integ.k1 = k1
+        integ.k2 = k2
+    end
 
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
 
@@ -84,37 +123,37 @@ end
                            tstops,
                            callback, save_everystep, saveat)
 
-    # u0 = prob.u0
-    # tspan = prob.tspan
+    u0 = prob.u0
+    tspan = prob.tspan
 
-    # integ.cur_t = 0
-    # if saveat !== nothing
-    #     integ.cur_t = 1
-    #     if prob.tspan[1] == saveat[1]
-    #         integ.cur_t += 1
-    #         @inbounds us[1] = u0
-    #     end
-    # else
-    #     @inbounds ts[integ.step_idx] = prob.tspan[1]
-    #     @inbounds us[integ.step_idx] = prob.u0
-    # end
+    integ.cur_t = 0
+    if saveat !== nothing
+        integ.cur_t = 1
+        if prob.tspan[1] == saveat[1]
+            integ.cur_t += 1
+            @inbounds us[1] = u0
+        end
+    else
+        @inbounds ts[integ.step_idx] = prob.tspan[1]
+        @inbounds us[integ.step_idx] = prob.u0
+    end
 
-    # integ.step_idx += 1
-    # # FSAL
-    # while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
-    #     saved_in_cb = step!(integ, ts, us)
-    #     !saved_in_cb && savevalues!(integ, ts, us)
-    # end
-    # if integ.t > tspan[2] && saveat === nothing
-    #     ## Intepolate to tf
-    #     @inbounds us[end] = integ(tspan[2])
-    #     @inbounds ts[end] = tspan[2]
-    # end
+    integ.step_idx += 1
+    # FSAL
+    while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
+        saved_in_cb = step!(integ, ts, us)
+        !saved_in_cb && savevalues!(integ, ts, us)
+    end
+    if integ.t > tspan[2] && saveat === nothing
+        ## Intepolate to tf
+        @inbounds us[end] = integ(tspan[2])
+        @inbounds ts[end] = tspan[2]
+    end
 
-    # # @print(typeof(integ))
+    # @print(typeof(integ))
 
-    # if saveat === nothing && !save_everystep
-    #     @inbounds us[2] = integ.u
-    #     @inbounds ts[2] = integ.t
-    # end
+    if saveat === nothing && !save_everystep
+        @inbounds us[2] = integ.u
+        @inbounds ts[2] = integ.t
+    end
 end
