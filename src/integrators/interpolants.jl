@@ -207,7 +207,8 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::T) where {T <:
+                                          integ::T) where {
+                                                           T <:
                                                            Union{GPURodas4I, GPUARodas4I}}
     Θ1 = 1 - Θ
     y₁ = integ.u

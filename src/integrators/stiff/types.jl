@@ -244,7 +244,8 @@ end
 end
 
 # Adaptive Step
-mutable struct GPUARodas4Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType} <:
+mutable struct GPUARodas4Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType
+                                    } <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
@@ -292,13 +293,12 @@ end
 end
 
 @inline function gpuarodas4_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-                                dt::T, p::P,
-                                abstol::TOL, reltol::TOL,
-                                internalnorm::N, tstops::TS,
-                                callback::CB,
-                                saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
+                                 dt::T, p::P,
+                                 abstol::TOL, reltol::TOL,
+                                 internalnorm::N, tstops::TS,
+                                 callback::CB,
+                                 saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
                                                     CB, ST}
-    
     !IIP && @assert S <: SArray
     qoldinit = eltype(S)(1e-4)
     event_last_time = 1
@@ -307,36 +307,37 @@ end
 
     tab = Rodas4Tableau(T, T)
 
-    integ = GPUARodas4I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab), AlgType}(alg,
-                                                f,
-                                                copy(u0),
-                                                copy(u0),
-                                                copy(u0),
-                                                t0,
-                                                t0,
-                                                t0,
-                                                tf,
-                                                dt,
-                                                dt,
-                                                sign(tf -
-                                                     t0),
-                                                p,
-                                                true,
-                                                tstops,
-                                                1,
-                                                callback,
-                                                false,
-                                                saveat,
-                                                1, 1,
-                                                event_last_time,
-                                                vector_event_last_time,
-                                                last_event_error,
-                                                copy(u0),
-                                                copy(u0),
-                                                tab,
-                                                qoldinit,
-                                                abstol,
-                                                reltol,
-                                                internalnorm,
-                                                DiffEqBase.ReturnCode.Default)
+    integ = GPUARodas4I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
+                        AlgType}(alg,
+                                 f,
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 t0,
+                                 t0,
+                                 t0,
+                                 tf,
+                                 dt,
+                                 dt,
+                                 sign(tf -
+                                      t0),
+                                 p,
+                                 true,
+                                 tstops,
+                                 1,
+                                 callback,
+                                 false,
+                                 saveat,
+                                 1, 1,
+                                 event_last_time,
+                                 vector_event_last_time,
+                                 last_event_error,
+                                 copy(u0),
+                                 copy(u0),
+                                 tab,
+                                 qoldinit,
+                                 abstol,
+                                 reltol,
+                                 internalnorm,
+                                 DiffEqBase.ReturnCode.Default)
 end

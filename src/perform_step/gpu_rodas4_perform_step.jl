@@ -30,7 +30,6 @@
         @inbounds k1 = integ.k1
     end
 
-
     # Jacobian
     J = f.jac(uprev, p, t)
     dT = f.tgrad(uprev, p, t)
@@ -59,7 +58,7 @@
     dtgamma = dt * gamma
 
     # Starting
-    W =  J-I* inv(dtgamma)
+    W = J - I * inv(dtgamma)
     du = f(uprev, p, t)
 
     # Step 1
@@ -168,7 +167,6 @@ end
     end
 end
 
-
 @inline function step!(integ::GPUARodas4I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
                                                                                    eltype(integ.u))
@@ -189,7 +187,6 @@ end
 
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3, d4 = integ.tab
 
-
     if integ.u_modified
         k1 = f(uprev, p, t)
         integ.u_modified = false
@@ -201,7 +198,6 @@ end
 
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
-
 
         # Jacobian
         J = f.jac(uprev, p, t)
@@ -231,7 +227,7 @@ end
         dtgamma = dt * gamma
 
         # Starting
-        W =  J-I* inv(dtgamma)
+        W = J - I * inv(dtgamma)
         du = f(uprev, p, t)
 
         # Step 1
@@ -269,7 +265,6 @@ end
         k6 = W \ -linsolve_tmp
         u = u + k6
 
-
         tmp = k6 ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
@@ -279,7 +274,6 @@ end
             q11 = EEst^beta1
             q = q11 / (qold^beta2)
         end
-
 
         if EEst > 1
             dt = dt / min(inv(qmin), q11 / gamma)
@@ -317,13 +311,12 @@ end
                 end
             end
         end
-    end        
+    end
 
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
 
     return saved_in_cb
 end
-
 
 @kernel function ode_asolve_kernel(probs, alg::GPURodas4, _us, _ts, dt, callback,
                                    tstops,
