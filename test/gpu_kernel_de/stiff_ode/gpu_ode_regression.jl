@@ -2,8 +2,6 @@ using DiffEqGPU, StaticArrays, OrdinaryDiffEq, LinearAlgebra
 
 include("../../utils.jl")
 
-include("../../ode_problems.jl")
-
 function f(u, p, t)
     du1 = -u[1]
     return SVector{1}(du1)
