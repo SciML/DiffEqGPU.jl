@@ -45,7 +45,7 @@ struct Rodas4Tableau{T, T2}
 end
 
 function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
-    gamma = convert(T, 1 // 4)
+    gamma = convert(T, 0.25)
     #BET2P=0.0317D0
     #BET3P=0.0635D0
     #BET4P=0.3438D0
