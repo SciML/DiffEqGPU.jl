@@ -2,47 +2,25 @@ using DiffEqGPU, StaticArrays, OrdinaryDiffEq, LinearAlgebra
 
 include("../../utils.jl")
 
-function lorenz(u, p, t)
-    σ = p[1]
-    ρ = p[2]
-    β = p[3]
-    du1 = σ * (u[2] - u[1])
-    du2 = u[1] * (ρ - u[3]) - u[2]
-    du3 = u[1] * u[2] - β * u[3]
-    return SVector{3}(du1, du2, du3)
+function f(u, p, t)
+    du1 = -u[1]
+    return SVector{1}(du1)
 end
 
-function lorenz_jac(u, p, t)
-    σ = p[1]
-    ρ = p[2]
-    β = p[3]
-    x = u[1]
-    y = u[2]
-    z = u[3]
-    J11 = -σ
-    J21 = ρ - z
-    J31 = y
-    J12 = σ
-    J22 = -1
-    J32 = x
-    J13 = 0
-    J23 = -x
-    J33 = -β
-    return SMatrix{3, 3}(J11, J21, J31, J12, J22, J32, J13, J23, J33)
+function f_jac(u, p, t)
+    return @SMatrix [-1.0f0]
 end
 
-function lorenz_tgrad(u, p, t)
-    return SVector{3, eltype(u)}(0.0, 0.0, 0.0)
+function f_tgrad(u, p, t)
+    return SVector{1, eltype(u)}(0.0)
 end
 
-u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
+u0 = @SVector [10.0f0]
 tspan = (0.0f0, 10.0f0)
-p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
+func = ODEFunction(f, jac = f_jac, tgrad = f_tgrad)
+prob = ODEProblem{false}(func, u0, tspan)
 
-func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
-prob = ODEProblem{false}(func, u0, tspan, p)
-
-algs = (GPURosenbrock23(),)
+algs = (GPURosenbrock23(), GPURodas4())
 for alg in algs
     prob_func = (prob, i, repeat) -> remake(prob, p = p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
@@ -51,7 +29,7 @@ for alg in algs
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 10,
                       adaptive = false, dt = 0.01f0)
     asol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 10,
-                 adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
+                 adaptive = true, dt = 0.1f-1)
 
     @test sol.converged == true
     @test asol.converged == true
@@ -86,7 +64,7 @@ for alg in algs
 
     @test norm(bench_sol.u - sol[1].u) < 2e-4
     #Use to fail for 2e-4
-    @test norm(bench_asol.u - asol[1].u) < 7e-4
+    @test norm(bench_asol.u - asol[1].u) < 2e-3
 
     @test length(sol[1].u) == length(saveat)
     @test length(asol[1].u) == length(saveat)

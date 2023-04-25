@@ -1,4 +1,4 @@
-@inline function step!(integ::GPURB23I{false, S, T}, ts, us) where {T, S}
+@inline function step!(integ::GPURodas4I{false, S, T}, ts, us) where {T, S}
     dt = integ.dt
     t = integ.t
     p = integ.p
@@ -6,7 +6,9 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    d = integ.d
+    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
+    C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3,
+    d4 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
@@ -30,30 +32,78 @@
         @inbounds k1 = integ.k1
     end
 
-    γ = dt * d
-
-    dto2 = dt / 2
-    dto6 = dt / 6
-
+    # Jacobian
     J = f.jac(uprev, p, t)
     dT = f.tgrad(uprev, p, t)
 
-    W = I - γ * J
-    W_fact = W
+    # Precalculations
+    dtC21 = C21 / dt
+    dtC31 = C31 / dt
+    dtC32 = C32 / dt
+    dtC41 = C41 / dt
+    dtC42 = C42 / dt
+    dtC43 = C43 / dt
+    dtC51 = C51 / dt
+    dtC52 = C52 / dt
+    dtC53 = C53 / dt
+    dtC54 = C54 / dt
+    dtC61 = C61 / dt
+    dtC62 = C62 / dt
+    dtC63 = C63 / dt
+    dtC64 = C64 / dt
+    dtC65 = C65 / dt
 
-    # F = lu(W)
-    F₀ = f(uprev, p, t)
-    k1 = W_fact \ (F₀ + γ * dT)
+    dtd1 = dt * d1
+    dtd2 = dt * d2
+    dtd3 = dt * d3
+    dtd4 = dt * d4
+    dtgamma = dt * gamma
 
-    F₁ = f(uprev + dto2 * k1, p, t + dto2)
+    # Starting
+    W = J - I * inv(dtgamma)
+    du = f(uprev, p, t)
 
-    k2 = W_fact \ (F₁ - k1) + k1
+    # Step 1
+    linsolve_tmp = du + dtd1 * dT
+    k1 = W \ -linsolve_tmp
+    u = uprev + a21 * k1
+    du = f(u, p, t + c2 * dt)
 
-    integ.u = uprev + dt * k2
+    # Step 2
+    linsolve_tmp = du + dtd2 * dT + dtC21 * k1
+    k2 = W \ -linsolve_tmp
+    u = uprev + a31 * k1 + a32 * k2
+    du = f(u, p, t + c3 * dt)
+
+    # Step 3
+    linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
+    k3 = W \ -linsolve_tmp
+    u = uprev + a41 * k1 + a42 * k2 + a43 * k3
+    du = f(u, p, t + c4 * dt)
+
+    # Step 4
+    linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
+    k4 = W \ -linsolve_tmp
+    u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
+    du = f(u, p, t + dt)
+
+    # Step 5
+    linsolve_tmp = du + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
+    k5 = W \ -linsolve_tmp
+    u = u + k5
+    du = f(u, p, t + dt)
+
+    # Step 6
+    linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
+    k6 = W \ -linsolve_tmp
+    integ.u = u + k6
 
     @inbounds begin # Necessary for interpolation
-        integ.k1 = k1
-        integ.k2 = k2
+        @unpack h21, h22, h23, h24, h25, h31, h32, h33, h34, h35 = integ.tab
+        integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5
+        integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5
+        # integ.k1 = k1
+        # integ.k2 = k2
     end
 
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
@@ -64,7 +114,7 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-@kernel function ode_solve_kernel(@Const(probs), alg::GPURosenbrock23, _us, _ts, dt,
+@kernel function ode_solve_kernel(@Const(probs), alg::GPURodas4, _us, _ts, dt,
                                   callback, tstops, nsteps,
                                   saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
@@ -80,9 +130,9 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = gpurosenbrock23_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
-                                 tstops,
-                                 callback, save_everystep, saveat)
+    integ = gpurodas4_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
+                           tstops,
+                           callback, save_everystep, saveat)
 
     u0 = prob.u0
     tspan = prob.tspan
@@ -119,11 +169,10 @@ end
     end
 end
 
-#############################Adaptive Version#####################################
-
-@inline function step!(integ::GPUARB23I{false, S, T}, ts, us) where {S, T}
+@inline function step!(integ::GPUARodas4I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
                                                                                    eltype(integ.u))
+
     dt = integ.dtnew
     t = integ.t
     p = integ.p
@@ -133,11 +182,14 @@ end
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    d = integ.d
 
     qold = integ.qold
     abstol = integ.abstol
     reltol = integ.reltol
+
+    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
+    C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3,
+    d4 = integ.tab
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -151,33 +203,73 @@ end
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
 
-        γ = dt * d
-
-        dto2 = dt / 2
-        dto6 = dt / 6
-
+        # Jacobian
         J = f.jac(uprev, p, t)
         dT = f.tgrad(uprev, p, t)
 
-        W = I - γ * J
-        W_fact = W
+        # Precalculations
+        dtC21 = C21 / dt
+        dtC31 = C31 / dt
+        dtC32 = C32 / dt
+        dtC41 = C41 / dt
+        dtC42 = C42 / dt
+        dtC43 = C43 / dt
+        dtC51 = C51 / dt
+        dtC52 = C52 / dt
+        dtC53 = C53 / dt
+        dtC54 = C54 / dt
+        dtC61 = C61 / dt
+        dtC62 = C62 / dt
+        dtC63 = C63 / dt
+        dtC64 = C64 / dt
+        dtC65 = C65 / dt
 
-        # F = lu(W)
-        F₀ = f(uprev, p, t)
-        k1 = W_fact \ (F₀ + γ * dT)
+        dtd1 = dt * d1
+        dtd2 = dt * d2
+        dtd3 = dt * d3
+        dtd4 = dt * d4
+        dtgamma = dt * gamma
 
-        F₁ = f(uprev + dto2 * k1, p, t + dto2)
+        # Starting
+        W = J - I * inv(dtgamma)
+        du = f(uprev, p, t)
 
-        k2 = W_fact \ (F₁ - k1) + k1
+        # Step 1
+        linsolve_tmp = du + dtd1 * dT
+        k1 = W \ -linsolve_tmp
+        u = uprev + a21 * k1
+        du = f(u, p, t + c2 * dt)
 
-        u = uprev + dt * k2
+        # Step 2
+        linsolve_tmp = du + dtd2 * dT + dtC21 * k1
+        k2 = W \ -linsolve_tmp
+        u = uprev + a31 * k1 + a32 * k2
+        du = f(u, p, t + c3 * dt)
 
-        e32 = T(6) + sqrt(T(2))
-        F₂ = f(u, p, t + dt)
-        k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
+        # Step 3
+        linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
+        k3 = W \ -linsolve_tmp
+        u = uprev + a41 * k1 + a42 * k2 + a43 * k3
+        du = f(u, p, t + c4 * dt)
 
-        tmp = dto6 * (k1 - 2 * k2 + k3)
-        tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
+        # Step 4
+        linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
+        k4 = W \ -linsolve_tmp
+        u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
+        du = f(u, p, t + dt)
+
+        # Step 5
+        linsolve_tmp = du + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
+        k5 = W \ -linsolve_tmp
+        u = u + k5
+        du = f(u, p, t + dt)
+
+        # Step 6
+        linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
+        k6 = W \ -linsolve_tmp
+        u = u + k6
+
+        tmp = k6 ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
         if iszero(EEst)
@@ -196,8 +288,9 @@ end
             dtnew = min(abs(dtnew), abs(tf - t - dt))
 
             @inbounds begin # Necessary for interpolation
-                integ.k1 = k1
-                integ.k2 = k2
+                @unpack h21, h22, h23, h24, h25, h31, h32, h33, h34, h35 = integ.tab
+                integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5
+                integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5
             end
 
             integ.dt = dt
@@ -223,12 +316,13 @@ end
             end
         end
     end
+
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
 
     return saved_in_cb
 end
 
-@kernel function ode_asolve_kernel(probs, alg::GPURosenbrock23, _us, _ts, dt, callback,
+@kernel function ode_asolve_kernel(probs, alg::GPURodas4, _us, _ts, dt, callback,
                                    tstops,
                                    abstol, reltol,
                                    saveat, ::Val{save_everystep}) where {save_everystep}
@@ -253,11 +347,11 @@ end
     t = tspan[1]
     tf = prob.tspan[2]
 
-    integ = gpuarosenbrock23_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
-                                  dt, prob.p,
-                                  abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
-                                  callback,
-                                  saveat)
+    integ = gpuarodas4_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
+                            dt, prob.p,
+                            abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
+                            callback,
+                            saveat)
 
     integ.cur_t = 0
     if saveat !== nothing
