@@ -6,7 +6,9 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3, d4 = integ.tab
+    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
+    C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3,
+    d4 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
@@ -73,13 +75,13 @@
     u = uprev + a31 * k1 + a32 * k2
     du = f(u, p, t + c3 * dt)
 
-    # Step 3    
+    # Step 3
     linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
     k3 = W \ -linsolve_tmp
     u = uprev + a41 * k1 + a42 * k2 + a43 * k3
     du = f(u, p, t + c4 * dt)
 
-    # Step 4   
+    # Step 4
     linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
     k4 = W \ -linsolve_tmp
     u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
@@ -91,7 +93,7 @@
     u = u + k5
     du = f(u, p, t + dt)
 
-    # Step 6   
+    # Step 6
     linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
     k6 = W \ -linsolve_tmp
     integ.u = u + k6
@@ -185,7 +187,9 @@ end
     abstol = integ.abstol
     reltol = integ.reltol
 
-    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3, d4 = integ.tab
+    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
+    C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3,
+    d4 = integ.tab
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -242,13 +246,13 @@ end
         u = uprev + a31 * k1 + a32 * k2
         du = f(u, p, t + c3 * dt)
 
-        # Step 3    
+        # Step 3
         linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
         k3 = W \ -linsolve_tmp
         u = uprev + a41 * k1 + a42 * k2 + a43 * k3
         du = f(u, p, t + c4 * dt)
 
-        # Step 4   
+        # Step 4
         linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
         k4 = W \ -linsolve_tmp
         u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
@@ -260,7 +264,7 @@ end
         u = u + k5
         du = f(u, p, t + dt)
 
-        # Step 6   
+        # Step 6
         linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
         k6 = W \ -linsolve_tmp
         u = u + k6

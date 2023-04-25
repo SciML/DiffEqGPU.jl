@@ -204,7 +204,7 @@ end
     c1 = Θ * (1 - Θ) / (1 - 2 * integ.d)
     c2 = Θ * (Θ - 2 * integ.d) / (1 - 2 * integ.d)
     return y₀ + dt * (c1 * integ.k1 + c2 * integ.k2)
-endgit 
+end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
                                           integ::T) where {
@@ -213,6 +213,4 @@ endgit
     Θ1 = 1 - Θ
     y₁ = integ.u
     return Θ1 * y₀ + Θ * (y₁ + Θ1 * (integ.k1 + Θ * integ.k2))
-    #return y₀ 
-
 end

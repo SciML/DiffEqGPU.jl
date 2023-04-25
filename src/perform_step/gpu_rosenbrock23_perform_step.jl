@@ -39,7 +39,7 @@
     dT = f.tgrad(uprev, p, t)
 
     W = I - γ * J
-    W_fact = lu(W)
+    W_fact = W
 
     # F = lu(W)
     F₀ = f(uprev, p, t)
@@ -160,7 +160,7 @@ end
         dT = f.tgrad(uprev, p, t)
 
         W = I - γ * J
-        W_fact = lu(W)
+        W_fact = W
 
         # F = lu(W)
         F₀ = f(uprev, p, t)
