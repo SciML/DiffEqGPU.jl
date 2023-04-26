@@ -7,7 +7,7 @@
     integ.uprev = integ.u
     uprev = integ.u
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
-    C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3,
+    C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3,
     d4 = integ.tab
 
     integ.tprev = t
@@ -57,7 +57,7 @@
     dtd2 = dt * d2
     dtd3 = dt * d3
     dtd4 = dt * d4
-    dtgamma = dt * gamma
+    dtgamma = dt * γ
 
     # Starting
     W = J - I * inv(dtgamma)
@@ -188,8 +188,14 @@ end
     reltol = integ.reltol
 
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
-    C51, C52, C53, C54, C61, C62, C63, C64, C65, gamma, c2, c3, c4, d1, d2, d3,
+    C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3,
     d4 = integ.tab
+
+    @unpack h21, h22, h23, h24, h25, h31, h32, h33, h34, h35 = integ.tab
+
+    # Jacobian
+    J = f.jac(uprev, p, t)
+    dT = f.tgrad(uprev, p, t)
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -202,10 +208,6 @@ end
 
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
-
-        # Jacobian
-        J = f.jac(uprev, p, t)
-        dT = f.tgrad(uprev, p, t)
 
         # Precalculations
         dtC21 = C21 / dt
@@ -228,7 +230,7 @@ end
         dtd2 = dt * d2
         dtd3 = dt * d3
         dtd4 = dt * d4
-        dtgamma = dt * gamma
+        dtgamma = dt * γ
 
         # Starting
         W = J - I * inv(dtgamma)
@@ -288,7 +290,6 @@ end
             dtnew = min(abs(dtnew), abs(tf - t - dt))
 
             @inbounds begin # Necessary for interpolation
-                @unpack h21, h22, h23, h24, h25, h31, h32, h33, h34, h35 = integ.tab
                 integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5
                 integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5
             end

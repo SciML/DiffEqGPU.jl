@@ -82,7 +82,7 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = gputsit5_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
+    integ = gputsit5_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
                           callback, save_everystep, saveat)
 
     u0 = prob.u0
@@ -121,7 +121,8 @@ end
 #############################Adaptive Version#####################################
 
 @inline function step!(integ::GPUAT5I{false, S, T}, ts, us) where {S, T}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_tsit5_controller_cache(eltype(integ.u))
+    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
+                                                                                   eltype(integ.u))
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dtnew
     t = integ.t
@@ -247,7 +248,8 @@ end
     t = tspan[1]
     tf = prob.tspan[2]
 
-    integ = gpuatsit5_init(prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt, prob.p,
+    integ = gpuatsit5_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt,
+                           prob.p,
                            abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
                            saveat)
 
