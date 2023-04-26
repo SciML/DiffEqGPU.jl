@@ -24,7 +24,7 @@ struct Rodas4Tableau{T, T2}
     C63::T
     C64::T
     C65::T
-    gamma::T
+    γ::T
     c2::T2
     c3::T2
     c4::T2
@@ -45,7 +45,7 @@ struct Rodas4Tableau{T, T2}
 end
 
 function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
-    gamma = convert(T, 0.25)
+    γ = convert(T, 0.25)
     #BET2P=0.0317D0
     #BET3P=0.0635D0
     #BET4P=0.3438D0
@@ -97,6 +97,6 @@ function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
 
     Rodas4Tableau(a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
                   C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65,
-                  gamma, c2, c3, c4, d1, d2, d3, d4,
+                  γ, c2, c3, c4, d1, d2, d3, d4,
                   h21, h22, h23, h24, h25, h31, h32, h33, h34, h35)
 end

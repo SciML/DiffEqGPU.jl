@@ -117,7 +117,7 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = gpuvern9_init(prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
+    integ = gpuvern9_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
                           callback, save_everystep, saveat)
 
     u0 = prob.u0
@@ -156,7 +156,9 @@ end
 #############################Adaptive Version#####################################
 
 @inline function step!(integ::GPUAV9I{false, S, T}, ts, us) where {S, T}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_tsit5_controller_cache(eltype(integ.u))
+    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
+                                                                                   eltype(integ.u))
+
     dt = integ.dtnew
     t = integ.t
     p = integ.p
@@ -331,7 +333,8 @@ end
     t = tspan[1]
     tf = prob.tspan[2]
 
-    integ = gpuavern9_init(prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt, prob.p,
+    integ = gpuavern9_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt,
+                           prob.p,
                            abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
                            saveat)
 
