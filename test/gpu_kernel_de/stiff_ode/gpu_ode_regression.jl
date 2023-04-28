@@ -20,7 +20,7 @@ tspan = (0.0f0, 10.0f0)
 func = ODEFunction(f, jac = f_jac, tgrad = f_tgrad)
 prob = ODEProblem{false}(func, u0, tspan)
 
-algs = (GPURosenbrock23(), GPURodas4())
+algs = (GPURosenbrock23(), GPURodas4(), GPURodas5P())
 for alg in algs
     prob_func = (prob, i, repeat) -> remake(prob, p = p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
