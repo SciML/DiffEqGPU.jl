@@ -1,7 +1,7 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 @info "Callbacks"
 
-include("../utils.jl")
+include("../../utils.jl")
 
 function f(u, p, t)
     du1 = -u[1]
