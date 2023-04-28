@@ -342,7 +342,6 @@ end
                                  DiffEqBase.ReturnCode.Default)
 end
 
-
 ##########################
 # Rodas 5P
 ##########################
@@ -389,12 +388,12 @@ end
 end
 
 @inline function gpurodas5P_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                     p::P, tstops::TS,
-                     callback::CB,
-                     save_everystep::Bool,
-                     saveat::ST) where {AlgType, F, P, T,
-                                        S <: AbstractArray{T},
-                                        TS, CB, ST}
+                                 p::P, tstops::TS,
+                                 callback::CB,
+                                 save_everystep::Bool,
+                                 saveat::ST) where {AlgType, F, P, T,
+                                                    S <: AbstractArray{T},
+                                                    TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -403,27 +402,29 @@ end
     tab = Rodas5PTableau(T, T)
 
     integ = GPURodas5PI{IIP, S, T, ST, P, F, TS, CB, typeof(tab), AlgType}(alg, f, copy(u0),
-                                                                copy(u0),
-                                                                copy(u0), t0, t0,
-                                                                t0,
-                                                                dt,
-                                                                sign(dt), p, true,
-                                                                tstops, 1,
-                                                                callback,
-                                                                save_everystep,
-                                                                saveat, 1, 1,
-                                                                event_last_time,
-                                                                vector_event_last_time,
-                                                                last_event_error,
-                                                                copy(u0),
-                                                                copy(u0), 
-                                                                copy(u0),tab,
-                                                                DiffEqBase.ReturnCode.Default)
+                                                                           copy(u0),
+                                                                           copy(u0), t0, t0,
+                                                                           t0,
+                                                                           dt,
+                                                                           sign(dt), p,
+                                                                           true,
+                                                                           tstops, 1,
+                                                                           callback,
+                                                                           save_everystep,
+                                                                           saveat, 1, 1,
+                                                                           event_last_time,
+                                                                           vector_event_last_time,
+                                                                           last_event_error,
+                                                                           copy(u0),
+                                                                           copy(u0),
+                                                                           copy(u0), tab,
+                                                                           DiffEqBase.ReturnCode.Default)
 end
 
 # Adaptive Step
-mutable struct GPUARodas5PIntegrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType
-                                    } <:
+mutable struct GPUARodas5PIntegrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
+                                     AlgType
+                                     } <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
@@ -472,12 +473,12 @@ end
 end
 
 @inline function gpuarodas5P_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-                                 dt::T, p::P,
-                                 abstol::TOL, reltol::TOL,
-                                 internalnorm::N, tstops::TS,
-                                 callback::CB,
-                                 saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
-                                                    CB, ST}
+                                  dt::T, p::P,
+                                  abstol::TOL, reltol::TOL,
+                                  internalnorm::N, tstops::TS,
+                                  callback::CB,
+                                  saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
+                                                     CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = eltype(S)(1e-4)
     event_last_time = 1
@@ -487,37 +488,37 @@ end
     tab = Rodas5PTableau(T, T)
 
     integ = GPUARodas5PI{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-                        AlgType}(alg,
-                                 f,
-                                 copy(u0),
-                                 copy(u0),
-                                 copy(u0),
-                                 t0,
-                                 t0,
-                                 t0,
-                                 tf,
-                                 dt,
-                                 dt,
-                                 sign(tf -
-                                      t0),
-                                 p,
-                                 true,
-                                 tstops,
-                                 1,
-                                 callback,
-                                 false,
-                                 saveat,
-                                 1, 1,
-                                 event_last_time,
-                                 vector_event_last_time,
-                                 last_event_error,
-                                 copy(u0),
-                                 copy(u0),
-                                 copy(u0),
-                                 tab,
-                                 qoldinit,
-                                 abstol,
-                                 reltol,
-                                 internalnorm,
-                                 DiffEqBase.ReturnCode.Default)
+                         AlgType}(alg,
+                                  f,
+                                  copy(u0),
+                                  copy(u0),
+                                  copy(u0),
+                                  t0,
+                                  t0,
+                                  t0,
+                                  tf,
+                                  dt,
+                                  dt,
+                                  sign(tf -
+                                       t0),
+                                  p,
+                                  true,
+                                  tstops,
+                                  1,
+                                  callback,
+                                  false,
+                                  saveat,
+                                  1, 1,
+                                  event_last_time,
+                                  vector_event_last_time,
+                                  last_event_error,
+                                  copy(u0),
+                                  copy(u0),
+                                  copy(u0),
+                                  tab,
+                                  qoldinit,
+                                  abstol,
+                                  reltol,
+                                  internalnorm,
+                                  DiffEqBase.ReturnCode.Default)
 end

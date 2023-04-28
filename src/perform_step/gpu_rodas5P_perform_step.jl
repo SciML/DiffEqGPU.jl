@@ -6,9 +6,9 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a62, a63, a64, a65, 
-    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, C71, C72, C73, C74, C75, C76, 
-    C81, C82, C83, C84, C85, C86, C87, γ , d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
+    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a62, a63, a64, a65,
+    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, C71, C72, C73, C74, C75, C76,
+    C81, C82, C83, C84, C85, C86, C87, γ, d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
@@ -114,24 +114,28 @@
     du = f(u, p, t + dt)
 
     # Step 7
-    linsolve_tmp = du + (dtC71 * k1 + dtC72 * k2 + dtC73 * k3 + dtC74 * k4 + dtC75 * k5 + dtC76 * k6)
+    linsolve_tmp = du + (dtC71 * k1 + dtC72 * k2 + dtC73 * k3 + dtC74 * k4 + dtC75 * k5 +
+                    dtC76 * k6)
     k7 = W \ -linsolve_tmp
     u = u + k7
     du = f(u, p, t + dt)
 
     # Step 8
-    linsolve_tmp = du + (dtC81 * k1 + dtC82 * k2 + dtC83 * k3 + dtC84 * k4 + dtC85 * k5 + dtC86 * k6 + dtC87 * k7)
+    linsolve_tmp = du + (dtC81 * k1 + dtC82 * k2 + dtC83 * k3 + dtC84 * k4 + dtC85 * k5 +
+                    dtC86 * k6 + dtC87 * k7)
     k8 = W \ -linsolve_tmp
     integ.u = u + k8
 
     @inbounds begin # Necessary for interpolation
-        @unpack h21, h22, h23, h24, h25, h26, h27, h28, h31, h32, h33, h34, 
-        h35, h36, h37, h38, h41, h42, h43, h44, h45, h46, h47, h48 =  integ.tab
+        @unpack h21, h22, h23, h24, h25, h26, h27, h28, h31, h32, h33, h34,
+        h35, h36, h37, h38, h41, h42, h43, h44, h45, h46, h47, h48 = integ.tab
 
-        integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5 + h26 * k6 + h27 * k7 + h28 * k8
-        integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5 + h36 * k6 + h37 * k7 + h38 * k8
-        integ.k3 = h41 * k1 + h42 * k2 + h43 * k3 + h44 * k4 + h45 * k5 + h46 * k6 + h47 * k7 + h48 * k8
-
+        integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5 + h26 * k6 +
+                   h27 * k7 + h28 * k8
+        integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5 + h36 * k6 +
+                   h37 * k7 + h38 * k8
+        integ.k3 = h41 * k1 + h42 * k2 + h43 * k3 + h44 * k4 + h45 * k5 + h46 * k6 +
+                   h47 * k7 + h48 * k8
     end
 
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
@@ -159,8 +163,8 @@ end
     saveat = _saveat === nothing ? saveat : _saveat
 
     integ = gpurodas5P_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
-                           tstops,
-                           callback, save_everystep, saveat)
+                            tstops,
+                            callback, save_everystep, saveat)
 
     u0 = prob.u0
     tspan = prob.tspan
@@ -215,9 +219,9 @@ end
     abstol = integ.abstol
     reltol = integ.reltol
 
-    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a62, a63, a64, a65, 
-    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, C71, C72, C73, C74, C75, C76, 
-    C81, C82, C83, C84, C85, C86, C87, γ , d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
+    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a62, a63, a64, a65,
+    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, C71, C72, C73, C74, C75, C76,
+    C81, C82, C83, C84, C85, C86, C87, γ, d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
 
     # Jacobian
     J = f.jac(uprev, p, t)
@@ -313,13 +317,17 @@ end
         du = f(u, p, t + dt)
 
         # Step 7
-        linsolve_tmp = du + (dtC71 * k1 + dtC72 * k2 + dtC73 * k3 + dtC74 * k4 + dtC75 * k5 + dtC76 * k6)
+        linsolve_tmp = du +
+                       (dtC71 * k1 + dtC72 * k2 + dtC73 * k3 + dtC74 * k4 + dtC75 * k5 +
+                        dtC76 * k6)
         k7 = W \ -linsolve_tmp
         u = u + k7
         du = f(u, p, t + dt)
 
         # Step 8
-        linsolve_tmp = du + (dtC81 * k1 + dtC82 * k2 + dtC83 * k3 + dtC84 * k4 + dtC85 * k5 + dtC86 * k6 + dtC87 * k7)
+        linsolve_tmp = du +
+                       (dtC81 * k1 + dtC82 * k2 + dtC83 * k3 + dtC84 * k4 + dtC85 * k5 +
+                        dtC86 * k6 + dtC87 * k7)
         k8 = W \ -linsolve_tmp
         u = u + k8
 
@@ -342,13 +350,15 @@ end
             dtnew = min(abs(dtnew), abs(tf - t - dt))
 
             @inbounds begin # Necessary for interpolation
-                @unpack h21, h22, h23, h24, h25, h26, h27, h28, h31, h32, h33, h34, 
-                h35, h36, h37, h38, h41, h42, h43, h44, h45, h46, h47, h48 =  integ.tab
-        
-                integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5 + h26 * k6 + h27 * k7 + h28 * k8
-                integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5 + h36 * k6 + h37 * k7 + h38 * k8
-                integ.k3 = h41 * k1 + h42 * k2 + h43 * k3 + h44 * k4 + h45 * k5 + h46 * k6 + h47 * k7 + h48 * k8
-        
+                @unpack h21, h22, h23, h24, h25, h26, h27, h28, h31, h32, h33, h34,
+                h35, h36, h37, h38, h41, h42, h43, h44, h45, h46, h47, h48 = integ.tab
+
+                integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5 + h26 * k6 +
+                           h27 * k7 + h28 * k8
+                integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5 + h36 * k6 +
+                           h37 * k7 + h38 * k8
+                integ.k3 = h41 * k1 + h42 * k2 + h43 * k3 + h44 * k4 + h45 * k5 + h46 * k6 +
+                           h47 * k7 + h48 * k8
             end
             integ.dt = dt
             integ.dtnew = dtnew
@@ -405,10 +415,10 @@ end
     tf = prob.tspan[2]
 
     integ = gpuarodas5P_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
-                            dt, prob.p,
-                            abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
-                            callback,
-                            saveat)
+                             dt, prob.p,
+                             abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
+                             callback,
+                             saveat)
 
     integ.cur_t = 0
     if saveat !== nothing
