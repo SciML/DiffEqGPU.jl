@@ -419,6 +419,14 @@ generation with EnsembleGPUKernel.
 struct GPUKvaerno3 <: GPUODEAlgorithm end
 
 """
+GPUKvaerno5()
+
+A specialized implementation of the `Kvaerno5` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPUKvaerno5 <: GPUODEAlgorithm end
+
+"""
 GPUEM()
 
 A specialized implementation of the Euler-Maruyama `GPUEM` method with weak order 1.0. Made specifically for kernel
@@ -1368,6 +1376,7 @@ include("perform_step/gpu_rosenbrock23_perform_step.jl")
 include("perform_step/gpu_rodas4_perform_step.jl")
 include("perform_step/gpu_rodas5P_perform_step.jl")
 include("perform_step/gpu_kvaerno3_perform_step.jl")
+include("perform_step/gpu_kvaerno5_perform_step.jl")
 
 include("tableaus/verner_tableaus.jl")
 include("tableaus/rodas_tableaus.jl")
@@ -1378,7 +1387,7 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 ## Stiff ODE solvers
-export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3
+export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
 
 export terminate!
 

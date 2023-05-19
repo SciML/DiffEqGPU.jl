@@ -1,4 +1,4 @@
-@inline function step!(integ::GPUKvaerno3I{false, S, T}, ts, us) where {T, S}
+@inline function step!(integ::GPUKvaerno5I{false, S, T}, ts, us) where {T, S}
     dt = integ.dt
     t = integ.t
     p = integ.p
@@ -6,7 +6,9 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31, α32 = integ.tab
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
+    @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
@@ -41,8 +43,6 @@
 
     z₁ = dt * k1
 
-    # KernelAbstractions.@print(z₁[1], " ", z₁[2], " ", z₁[3], "\n")
-
     ##### Step 2
     @set! nlsolver.z = z₁
     @set! nlsolver.tmp = uprev + γ * z₁
@@ -51,10 +51,6 @@
     nlsolver = nlsolve(nlsolver, integ)
 
     z₂ = nlsolver.z
-
-    # KernelAbstractions.@print(nlsolver.tmp[1], " ", nlsolver.tmp[2], " ", nlsolver.tmp[3], "\n")
-
-    # KernelAbstractions.@print(z₂[1], " ", z₂[2], " ", z₂[3], "\n")
 
     ##### Step 3
 
@@ -70,15 +66,44 @@
 
     ################################## Solve Step 4
 
-    @set! nlsolver.z = z₄ = a31 * z₁ + a32 * z₂ + γ * z₃ # use yhat as prediction
+    z₄ = α41 * z₁ + α42 * z₂ + α43 * z₃
+
+    @set! nlsolver.z = z₄
     @set! nlsolver.tmp = uprev + a41 * z₁ + a42 * z₂ + a43 * z₃
-    @set! nlsolver.c = one(nlsolver.c)
+    @set! nlsolver.c = c4
     nlsolver = nlsolve(nlsolver, integ)
     z₄ = nlsolver.z
 
-    integ.u = nlsolver.tmp + γ * z₄
+    z₅ = α51 * z₁ + α52 * z₂ + α53 * z₃
 
-    k2 = z₄ ./ dt
+    @set! nlsolver.z = z₅
+    @set! nlsolver.tmp = uprev + a51 * z₁ + a52 * z₂ + a53 * z₃ + a54 * z₄
+    @set! nlsolver.c = c5
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₅ = nlsolver.z
+
+    z₆ = α61 * z₁ + α62 * z₂ + α63 * z₃
+
+    @set! nlsolver.z = z₆
+    @set! nlsolver.tmp = uprev + a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅
+    @set! nlsolver.c = c6
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₆ = nlsolver.z
+
+    z₇ = a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅ + γ * z₆
+
+    @set! nlsolver.z = z₇
+    @set! nlsolver.tmp = uprev + a71 * z₁ + a73 * z₃ + a74 * z₄ + a75 * z₅ + a76 * z₆
+    @set! nlsolver.c = one(nlsolver.c)
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₇ = nlsolver.z
+
+    integ.u = nlsolver.tmp + γ * z₇
+
+    k2 = z₇ ./ dt
 
     @inbounds begin # Necessary for interpolation
         integ.k1 = f(integ.u, p, t)
@@ -93,7 +118,7 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-@kernel function ode_solve_kernel(@Const(probs), alg::GPUKvaerno3, _us, _ts, dt,
+@kernel function ode_solve_kernel(@Const(probs), alg::GPUKvaerno5, _us, _ts, dt,
                                   callback, tstops, nsteps,
                                   saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
@@ -109,7 +134,7 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = gpukvaerno3_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
+    integ = gpukvaerno5_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
                              tstops,
                              callback, save_everystep, saveat)
 
@@ -149,7 +174,7 @@ end
     end
 end
 
-@inline function step!(integ::GPUAKvaerno3I{false, S, T}, ts, us) where {T, S}
+@inline function step!(integ::GPUAKvaerno5I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
                                                                                    eltype(integ.u))
 
@@ -167,7 +192,9 @@ end
     abstol = integ.abstol
     reltol = integ.reltol
 
-    @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31, α32 = integ.tab
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
+    @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -194,15 +221,12 @@ end
 
         z₁ = dt * k1
 
-        # KernelAbstractions.@print(z₁[1], " ", z₁[2], " ", z₁[3], "\n")
-
         ##### Step 2
         @set! nlsolver.z = z₁
         @set! nlsolver.tmp = uprev + γ * z₁
         @set! nlsolver.c = γ
 
         nlsolver = nlsolve(nlsolver, integ)
-
         z₂ = nlsolver.z
 
         ##### Step 3
@@ -214,24 +238,60 @@ end
         @set! nlsolver.c = c3
 
         nlsolver = nlsolve(nlsolver, integ)
-
         z₃ = nlsolver.z
 
         ################################## Solve Step 4
 
-        @set! nlsolver.z = z₄ = a31 * z₁ + a32 * z₂ + γ * z₃ # use yhat as prediction
+        z₄ = α41 * z₁ + α42 * z₂ + α43 * z₃
+
+        @set! nlsolver.z = z₄
         @set! nlsolver.tmp = uprev + a41 * z₁ + a42 * z₂ + a43 * z₃
-        @set! nlsolver.c = one(nlsolver.c)
+        @set! nlsolver.c = c4
+
         nlsolver = nlsolve(nlsolver, integ)
         z₄ = nlsolver.z
 
-        u = nlsolver.tmp + γ * z₄
+        ################################## Solve Step 5
 
-        k2 = z₄ ./ dt
+        z₅ = α51 * z₁ + α52 * z₂ + α53 * z₃
 
-        W_eval = nlsolver.W(nlsolver.tmp + nlsolver.γ * z₄, p, t + nlsolver.c * dt)
+        @set! nlsolver.z = z₅
+        @set! nlsolver.tmp = uprev + a51 * z₁ + a52 * z₂ + a53 * z₃ + a54 * z₄
+        @set! nlsolver.c = c5
 
-        err = W_eval \ (btilde1 * z₁ + btilde2 * z₂ + btilde3 * z₃ + btilde4 * z₄)
+        nlsolver = nlsolve(nlsolver, integ)
+        z₅ = nlsolver.z
+
+        ################################## Solve Step 6
+
+        z₆ = α61 * z₁ + α62 * z₂ + α63 * z₃
+
+        @set! nlsolver.z = z₆
+        @set! nlsolver.tmp = uprev + a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅
+        @set! nlsolver.c = c6
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₆ = nlsolver.z
+
+        ################################## Solve Step 7
+
+        z₇ = a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅ + γ * z₆
+
+        @set! nlsolver.z = z₇
+        @set! nlsolver.tmp = uprev + a71 * z₁ + a73 * z₃ + a74 * z₄ + a75 * z₅ + a76 * z₆
+        @set! nlsolver.c = one(nlsolver.c)
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₇ = nlsolver.z
+
+        u = nlsolver.tmp + γ * z₇
+
+        k2 = z₇ ./ dt
+
+        W_eval = nlsolver.W(nlsolver.tmp + nlsolver.γ * z₇, p, t + nlsolver.c * dt)
+
+        err = (btilde1 * z₁ + btilde3 * z₃ + btilde4 * z₄ + btilde5 * z₅ + btilde6 * z₆ +
+               btilde7 * z₇)
 
         tmp = (err) ./
               (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
@@ -288,7 +348,7 @@ end
     return saved_in_cb
 end
 
-@kernel function ode_asolve_kernel(probs, alg::GPUKvaerno3, _us, _ts, dt, callback,
+@kernel function ode_asolve_kernel(probs, alg::GPUKvaerno5, _us, _ts, dt, callback,
                                    tstops,
                                    abstol, reltol,
                                    saveat, ::Val{save_everystep}) where {save_everystep}
@@ -313,7 +373,7 @@ end
     t = tspan[1]
     tf = prob.tspan[2]
 
-    integ = gpuakvaerno3_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
+    integ = gpuakvaerno5_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
                               dt, prob.p,
                               abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
                               callback,
