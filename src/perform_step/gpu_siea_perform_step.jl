@@ -29,32 +29,32 @@ struct SIESMEConstantCache{T, T2}
 end
 
 function SIEAConstantCache(::Type{T}, ::Type{T2}) where {T, T2}
-    α1 = convert(T, 1 // 2)
-    α2 = convert(T, 1 // 2)
+    α1 = convert(T, 1 / 2)
+    α2 = convert(T, 1 / 2)
 
-    γ1 = convert(T, 1 // 2)
+    γ1 = convert(T, 1 / 2)
 
-    λ1 = convert(T, 1 // 4)
-    λ2 = convert(T, -1 // 4)
-    λ3 = convert(T, 1 // 4)
+    λ1 = convert(T, 1 / 4)
+    λ2 = convert(T, -1 / 4)
+    λ3 = convert(T, 1 / 4)
 
-    µ1 = convert(T, 1 // 4)
-    µ2 = convert(T, 1 // 4)
-    µ3 = convert(T, -1 // 4)
+    µ1 = convert(T, 1 / 4)
+    µ2 = convert(T, 1 / 4)
+    µ3 = convert(T, -1 / 4)
 
-    µ0 = convert(T2, 1 // 1)
-    µbar0 = convert(T2, 1 // 1)
+    µ0 = convert(T2, 1 / 1)
+    µbar0 = convert(T2, 1 / 1)
 
-    λ0 = convert(T, 1 // 1)
-    λbar0 = convert(T, 1 // 1)
+    λ0 = convert(T, 1 / 1)
+    λbar0 = convert(T, 1 / 1)
 
-    ν1 = convert(T, 1 // 1)
+    ν1 = convert(T, 1 / 1)
     ν2 = convert(T, 0)
 
-    β2 = convert(T, 1 // 1)
+    β2 = convert(T, 1 / 1)
     β3 = convert(T, 0)
 
-    δ2 = convert(T, -1 // 1)
+    δ2 = convert(T, -1 / 1)
     δ3 = convert(T, 0)
 
     SIESMEConstantCache(α1, α2, γ1, λ1, λ2, λ3, µ1, µ2, µ3, µ0, µbar0, λ0, λbar0, ν1, ν2,

@@ -270,7 +270,6 @@ end
         @inbounds ts[1] = tspan[1]
         @inbounds us[1] = u0
     end
-    # @print("Hello\n")
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)

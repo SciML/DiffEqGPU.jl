@@ -41,8 +41,6 @@
 
     z₁ = dt * k1
 
-    # KernelAbstractions.@print(z₁[1], " ", z₁[2], " ", z₁[3], "\n")
-
     ##### Step 2
     @set! nlsolver.z = z₁
     @set! nlsolver.tmp = uprev + γ * z₁
@@ -51,10 +49,6 @@
     nlsolver = nlsolve(nlsolver, integ)
 
     z₂ = nlsolver.z
-
-    # KernelAbstractions.@print(nlsolver.tmp[1], " ", nlsolver.tmp[2], " ", nlsolver.tmp[3], "\n")
-
-    # KernelAbstractions.@print(z₂[1], " ", z₂[2], " ", z₂[3], "\n")
 
     ##### Step 3
 
@@ -178,8 +172,6 @@ end
 
     EEst = convert(T, Inf)
 
-    # KernelAbstractions.@print(integ.u[1], " ", integ.u[2], " ", integ.u[3],"\n")
-    # KernelAbstractions.@print("dt = ", dt,"\n")
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
 
@@ -193,8 +185,6 @@ end
         k1 = f(uprev, p, t)
 
         z₁ = dt * k1
-
-        # KernelAbstractions.@print(z₁[1], " ", z₁[2], " ", z₁[3], "\n")
 
         ##### Step 2
         @set! nlsolver.z = z₁
@@ -236,8 +226,6 @@ end
         tmp = (err) ./
               (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
-
-        # KernelAbstractions.@print(EEst, "\n")
 
         if iszero(EEst)
             q = inv(qmax)

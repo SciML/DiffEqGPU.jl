@@ -68,9 +68,6 @@ end
     tmp = u
     ztmp = u
     J, W = build_J_W(f, γ, dt)
-    # build non-linear solver
-    tt = ForwardDiff.jacobian(u -> f(u, p, t), SVector{3}(1.0f0, 1.0f0, 1.0f0))
-    # KernelAbstractions.@print(typeof(tt))
     max_iter = 30
     κ = 1 / 100
     NLSolver{typeof(dt)}(z, tmp, ztmp, γ, c, α, κ,

@@ -205,8 +205,6 @@ end
 
     EEst = convert(T, Inf)
 
-    # KernelAbstractions.@print(integ.u[1], " ", integ.u[2], " ", integ.u[3],"\n")
-    # KernelAbstractions.@print("dt = ", dt,"\n")
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
 
@@ -296,8 +294,6 @@ end
         tmp = (err) ./
               (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
-
-        # KernelAbstractions.@print(EEst, "\n")
 
         if iszero(EEst)
             q = inv(qmax)
