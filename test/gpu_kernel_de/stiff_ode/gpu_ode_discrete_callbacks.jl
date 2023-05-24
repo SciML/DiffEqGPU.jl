@@ -18,7 +18,7 @@ end
 
 func = ODEFunction(f, jac = f_jac, tgrad = f_tgrad)
 u0 = @SVector [10.0f0]
-prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
+prob = ODEProblem{false}(func, u0, (0.0f0, 10.0f0))
 prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
 
