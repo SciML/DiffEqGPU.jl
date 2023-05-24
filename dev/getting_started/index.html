@@ -58,48 +58,48 @@ f(du, u, p, t) = mul!(du, A, u)
 prob = ODEProblem(f, u0, (0.0f0, 1.0f0)) # Float32 is better on GPUs!
 sol = solve(prob, Tsit5())</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
 Interpolation: specialized 4th order &quot;free&quot; interpolation
-t: 51-element Vector{Float32}:
+t: 50-element Vector{Float32}:
  0.0
- 0.002803263
- 0.00720011
- 0.013897
- 0.022156164
- 0.032435477
- 0.04426203
- 0.056895636
- 0.071489364
- 0.0863057
+ 0.0028032633
+ 0.00770806
+ 0.014659371
+ 0.023422156
+ 0.034057636
+ 0.046285566
+ 0.05950984
+ 0.074400246
+ 0.090368554
  ⋮
- 0.8194735
- 0.84484017
- 0.8694939
- 0.8935218
- 0.9180078
- 0.94377613
- 0.96874994
- 0.9945191
+ 0.8050874
+ 0.83047694
+ 0.85561347
+ 0.88050914
+ 0.90504134
+ 0.9308001
+ 0.95659125
+ 0.98157626
  1.0
-u: 51-element Vector{CUDA.CuArray{Float32, 1, CUDA.Mem.DeviceBuffer}}:
+u: 50-element Vector{CUDA.CuArray{Float32, 1, CUDA.Mem.DeviceBuffer}}:
  Float32[0.88071316, 0.091738656, 0.5644176, 0.89315474, 0.11550513, 0.9899834, 0.76465535, 0.5730443, 0.5333632, 0.46715936  …  0.51651764, 0.69562453, 0.13039295, 0.017110005, 0.3178709, 0.7581309, 0.32872194, 0.65469325, 0.5585072, 0.12346421]
- Float32[0.8845858, 0.103832, 0.56542593, 0.91055316, 0.14688143, 0.98178184, 0.725259, 0.59418094, 0.573652, 0.43604094  …  0.46635315, 0.7562543, 0.07489449, 0.09894376, 0.27474692, 0.7218533, 0.30385885, 0.749069, 0.64209944, 0.16706456]
- Float32[0.89892614, 0.116347596, 0.55530787, 0.9226459, 0.19923125, 0.9685813, 0.65006953, 0.61626154, 0.6370172, 0.39903364  …  0.3861862, 0.8628108, -0.021920169, 0.24758221, 0.21602125, 0.64710414, 0.25887683, 0.8908064, 0.7612088, 0.2331637]
- Float32[0.9436202, 0.11914017, 0.5131002, 0.90357053, 0.27942878, 0.9464693, 0.50063, 0.6204333, 0.7359408, 0.37193733  …  0.26044405, 1.052437, -0.18311861, 0.5172268, 0.14688794, 0.48897976, 0.18062891, 1.0898973, 0.91483116, 0.3271131]
- Float32[1.0426008, 0.09335451, 0.41858193, 0.8116447, 0.364441, 0.9134629, 0.24972002, 0.5699418, 0.86480325, 0.39289352  …  0.098872416, 1.3326229, -0.38163802, 0.90938425, 0.09541785, 0.21399584, 0.08116927, 1.3021255, 1.0605175, 0.43074524]
- Float32[1.2398144, 0.012263023, 0.24157582, 0.576586, 0.42472887, 0.8591561, -0.1842185, 0.41300017, 1.037615, 0.51996464  …  -0.11370107, 1.7538157, -0.57724154, 1.4604903, 0.08825798, -0.26783675, -0.012298957, 1.4999758, 1.1832665, 0.54519403]
- Float32[1.5681609, -0.15528913, -0.027262395, 0.116398074, 0.40938625, 0.7703905, -0.88531506, 0.1046291, 1.251358, 0.84412754  …  -0.37818462, 2.3369956, -0.6393787, 2.1299958, 0.1784524, -1.0512394, -0.0058423113, 1.5974076, 1.266834, 0.6794634]
- Float32[2.0229383, -0.43444213, -0.3530747, -0.6137557, 0.30566505, 0.62877584, -1.9243308, -0.3404947, 1.4928175, 1.4694177  …  -0.6935799, 3.0702572, -0.37752292, 2.8245516, 0.44348514, -2.2352417, 0.25003827, 1.4588085, 1.3302943, 0.8842843]
- Float32[2.6340706, -0.9089602, -0.67509806, -1.7076241, 0.2019965, 0.36986727, -3.5691717, -0.87229943, 1.7945884, 2.6684372  …  -1.1226739, 4.041065, 0.5601957, 3.5468953, 1.0904741, -4.2236953, 1.037684, 0.7726877, 1.4498392, 1.3379209]
- Float32[3.2599835, -1.5854437, -0.71054304, -2.8341587, 0.4800053, -0.05597741, -5.7773066, -1.1306847, 2.1747108, 4.5599766  …  -1.6764472, 5.1334586, 2.4861772, 4.2221007, 2.3267324, -7.2497907, 2.5462027, -0.9041489, 1.7385151, 2.281534]
+ Float32[0.88458586, 0.10383208, 0.56542593, 0.9105531, 0.14688143, 0.98178184, 0.725259, 0.59418094, 0.573652, 0.43604097  …  0.46635318, 0.7562544, 0.07489447, 0.09894379, 0.2747469, 0.7218533, 0.30385882, 0.749069, 0.6420995, 0.16706459]
+ Float32[0.9013025, 0.11726365, 0.5532294, 0.92281747, 0.20539533, 0.96700597, 0.6402653, 0.6178738, 0.6443927, 0.3957117  …  0.3768051, 0.8760311, -0.033707015, 0.26627496, 0.20992415, 0.63702106, 0.253282, 0.90664876, 0.77402776, 0.24059023]
+ Float32[0.9506427, 0.11814861, 0.5062973, 0.8983726, 0.28816503, 0.94372785, 0.48070958, 0.6184501, 0.74748284, 0.37123397  …  0.24583998, 1.076143, -0.20188585, 0.55090535, 0.14055808, 0.4674204, 0.17131874, 1.1111343, 0.93024594, 0.3372425]
+ Float32[1.0623785, 0.08638905, 0.4001696, 0.79027975, 0.37505215, 0.9076652, 0.20401168, 0.5563591, 0.8853406, 0.40204  …  0.073421545, 1.3801469, -0.41001603, 0.9741743, 0.090954676, 0.1634308, 0.066957146, 1.3308672, 1.0788912, 0.44552672]
+ Float32[1.278569, -0.0058233947, 0.20831701, 0.52600056, 0.428239, 0.8488757, -0.2666873, 0.37851772, 1.0660826, 0.5520373  …  -0.14858639, 1.8276249, -0.5984681, 1.5513371, 0.09369785, -0.359674, -0.020600917, 1.5228127, 1.1977124, 0.56266296]
+ Float32[1.6344533, -0.19264252, -0.07817726, 0.015917871, 0.39763498, 0.7514975, -1.030123, 0.039752055, 1.2891968, 0.9227872  …  -0.42609212, 2.4470403, -0.6241573, 2.2441795, 0.20730077, -1.2141467, 0.014517415, 1.5952181, 1.2774434, 0.7059188]
+ Float32[2.1275413, -0.50668025, -0.41936472, -0.79362315, 0.27951172, 0.5912294, -2.1819494, -0.4400623, 1.5444939, 1.6427702  …  -0.76444525, 3.2350993, -0.26647314, 2.9609494, 0.52785707, -2.5357955, 0.34722802, 1.3856934, 1.3453207, 0.9431921]
+ Float32[2.7601502, -1.0255971, -0.71567386, -1.9411954, 0.20904303, 0.30135608, -3.95969, -0.9587043, 1.8606849, 2.981347  …  -1.2199625, 4.248185, 0.85137504, 3.6808665, 1.2795985, -4.724534, 1.273345, 0.5378595, 1.4889644, 1.4750801]
+ Float32[3.416101, -1.8075991, -0.61632633, -3.0732634, 0.7101897, -0.21086018, -6.4749594, -1.0869303, 2.3067675, 5.218714  …  -1.8599517, 5.4480147, 3.2286246, 4.417976, 2.8007317, -8.321874, 3.0981548, -1.6155888, 1.866251, 2.6711357]
  ⋮
- Float32[-2.9258934f9, 9.599162f9, -3.3892819f10, 4.8979436f9, -2.7007113f10, -2.8390932f10, 2.9058767f10, -7.32333f9, -5.323691f8, 5.6215096f9  …  -3.1333018f10, 2.6552713f10, 1.9215294f10, 3.1936543f10, -1.3544149f10, 4.337692f9, 4.83417f9, 1.3490719f10, -1.1512879f10, -6.978474f8]
- Float32[-9.58127f9, 2.0697186f10, -6.8514877f10, 1.6702063f10, -6.565686f10, -6.6674086f10, 6.3732265f10, -1.3775506f10, 3.4299036f9, 1.5940637f10  …  -7.437299f10, 6.4106308f10, 4.0681566f10, 7.091258f10, -1.751625f10, 9.041996f9, 7.62737f9, 3.422385f10, -2.6402775f10, 1.4384656f8]
- Float32[-2.573062f10, 4.207916f10, -1.327395f11, 5.4394425f10, -1.557436f11, -1.4766077f11, 1.352802f11, -2.547062f10, 1.7334346f10, 4.410677f10  …  -1.6905827f11, 1.5072099f11, 8.225592f10, 1.4950536f11, -1.6124782f10, 1.833182f10, 4.712381f9, 7.998709f10, -5.540563f10, 6.101267f9]
- Float32[-6.2673203f10, 8.032093f10, -2.5085678f11, 1.621756f11, -3.6098716f11, -3.1134204f11, 2.8105776f11, -4.6695256f10, 5.6545563f10, 1.1721591f11  …  -3.6980772f11, 3.457242f11, 1.5953755f11, 3.010428f11, -6.7303674f8, 3.5838145f10, -2.0844763f10, 1.7533292f11, -1.0815007f11, 2.8186532f10]
- Float32[-1.4969828f11, 1.4572213f11, -4.8530103f11, 4.6421823f11, -8.474078f11, -6.4849537f11, 5.9487886f11, -8.7147905f10, 1.6263576f11, 3.100247f11  …  -8.0791097f11, 8.0181756f11, 3.0599853f11, 5.9830016f11, 4.4710916f10, 6.8138586f10, -1.1757929f11, 3.761057f11, -2.0393032f11, 9.842352f10]
- Float32[-3.6830085f11, 2.4446355f11, -1.0097621f12, 1.3244515f12, -2.0678733f12, -1.3675219f12, 1.3241905f12, -1.67059f11, 4.565846f11, 8.388558f11  …  -1.8118747f12, 1.9293581f12, 5.919273f11, 1.1996602f12, 1.4453468f11, 1.2254965f11, -4.278749f11, 8.1123895f11, -3.8107192f11, 3.1335773f11]
- Float32[-8.810312f11, 3.2396847f11, -2.1797306f12, 3.4883762f12, -4.871367f12, -2.754187f12, 2.9174499f12, -3.038684f11, 1.1930902f12, 2.14293f12  …  -3.921788f12, 4.478939f12, 1.0935402f12, 2.299267f12, 2.9242845f11, 1.7826603f11, -1.2369678f12, 1.6603889f12, -6.799869f11, 8.765104f11]
- Float32[-2.1881676f12, 1.6189522f11, -5.1622277f12, 9.09691f12, -1.1682621f13, -5.5553226f12, 6.693679f12, -5.1772375f11, 3.152451f12, 5.499444f12  …  -8.647102f12, 1.0569476f13, 2.0000611f12, 4.4132026f12, 4.0453407f11, 1.20507425f11, -3.3175249f12, 3.3961f12, -1.2330982f12, 2.3699708f12]
- Float32[-2.660238f12, 3.859248f10, -6.250875f12, 1.1102114f13, -1.4053018f13, -6.43397f12, 8.0016593f12, -5.6851313f11, 3.8712016f12, 6.6997857f12  …  -1.0227765f13, 1.2668611f13, 2.2638255f12, 5.0607937f12, 3.96529f11, 6.053397f10, -4.050455f12, 3.9452892f12, -1.4038761f12, 2.9080572f12]</code></pre><p>Notice that the solution values <code>sol[i]</code> are CUDA-based arrays, which can be moved back to the CPU using <code>Array(sol[i])</code>.</p><p>More details on effective use of within-method GPU parallelism can be found in <a href="../tutorials/within_method_gpu/#withingpu">the within-method GPU parallelism tutorial</a>.</p><h2 id="Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods"><a class="docs-heading-anchor" href="#Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods">Example of Parameter-Parallelism with GPU Ensemble Methods</a><a id="Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods" title="Permalink"></a></h2><p>On the other side of the spectrum, what if we want to solve tons of small ODEs? For this use case, we would use the ensemble methods to solve the same ODE many times with different parameters. This looks like:</p><pre><code class="language-julia hljs">using DiffEqGPU, OrdinaryDiffEq, StaticArrays, CUDA
+ Float32[-1.2448122f9, 6.120147f9, -2.2411454f10, 2.5883497f9, -1.6325854f10, -1.7176054f10, 1.845867f10, -5.097449f9, -1.0280615f9, 3.1593787f9  …  -1.9029856f10, 1.6097072f10, 1.2417926f10, 2.0032188f10, -1.0834926f10, 2.8556372f9, 3.1497367f9, 7.697759f9, -6.9380485f9, -5.535416f8]
+ Float32[-5.054011f9, 1.3453031f10, -4.616155f10, 8.2861164f9, -3.969783f10, -4.1313247f10, 4.0932168f10, -9.638242f9, 4.9811946f8, 8.812047f9  …  -4.5696623f10, 3.8924104f10, 2.6688123f10, 4.5313098f10, -1.5538131f10, 5.968125f9, 6.2155515f9, 2.0368216f10, -1.6654228f10, -6.140038f8]
+ Float32[-1.4944735f10, 2.8362789f10, -9.165974f10, 2.815186f10, -9.5766045f10, -9.474463f10, 8.862145f10, -1.800876f10, 7.6212874f9, 2.4890206f10  …  -1.0672122f11, 9.316511f10, 5.550552f10, 9.85828f10, -1.7973344f10, 1.2330889f10, 7.6901f9, 4.9893302f10, -3.677066f10, 1.6863081f9]
+ Float32[-3.893791f10, 5.6953594f10, -1.7770832f11, 9.044478f10, -2.2902504f11, -2.0856529f11, 1.8912282f11, -3.359453f10, 3.0586415f10, 6.920851f10  …  -2.425359f11, 2.2062703f11, 1.117672f11, 2.0673906f11, -1.1531223f10, 2.5009125f10, -2.3971753f9, 1.1517141f11, -7.575034f10, 1.3046186f10]
+ Float32[-9.4686446f10, 1.0731566f11, -3.412096f11, 2.6793178f11, -5.3960088f11, -4.4109395f11, 3.9954403f11, -6.260374f10, 9.412401f10, 1.8581643f11  …  -5.3513342f11, 5.1393908f11, 2.1738078f11, 4.1722443f11, 1.5812787f10, 4.882664f10, -5.2608455f10, 2.5214506f11, -1.465566f11, 5.201068f10]
+ Float32[-2.3425732f11, 1.9188338f11, -6.936081f11, 7.865207f11, -1.3207119f12, -9.422044f11, 8.834734f11, -1.2063414f11, 2.7343546f11, 5.0998555f11  …  -1.2084028f12, 1.2411704f12, 4.2599105f11, 8.479224f11, 8.660919f10, 9.264514f10, -2.3117296f11, 5.5311847f11, -2.7944665f11, 1.7754315f11]
+ Float32[-5.7578055f11, 2.9436674f11, -1.4863718f12, 2.1885256f12, -3.2131108f12, -1.963872f12, 1.982272f12, -2.2853788f11, 7.4989955f11, 1.3616497f12  …  -2.6955859f12, 2.9757908f12, 8.1371673f11, 1.6795491f12, 2.162986f11, 1.5407199f11, -7.498414f11, 1.175319f12, -5.1397958f11, 5.3616073f11]
+ Float32[-1.3832491f12, 3.0316875f11, -3.320267f12, 5.6475113f12, -7.5383245f12, -3.914882f12, 4.4024636f12, -4.0234097f11, 1.9380348f12, 3.4359225f12  …  -5.81553f12, 6.876512f12, 1.4829776f12, 3.1870962f12, 3.6673844f11, 1.8028655f11, -2.0433033f12, 2.376735f12, -9.128034f11, 1.4484123f12]
+ Float32[-2.6601705f12, 3.8654902f10, -6.250732f12, 1.1101971f13, -1.4052883f13, -6.4339533f12, 8.0015576f12, -5.68527f11, 3.8711103f12, 6.6996934f12  …  -1.022768f13, 1.2668507f13, 2.263842f12, 5.060772f12, 3.9652835f11, 6.0590236f10, -4.0504087f12, 3.945264f12, -1.403861f12, 2.9080258f12]</code></pre><p>Notice that the solution values <code>sol[i]</code> are CUDA-based arrays, which can be moved back to the CPU using <code>Array(sol[i])</code>.</p><p>More details on effective use of within-method GPU parallelism can be found in <a href="../tutorials/within_method_gpu/#withingpu">the within-method GPU parallelism tutorial</a>.</p><h2 id="Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods"><a class="docs-heading-anchor" href="#Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods">Example of Parameter-Parallelism with GPU Ensemble Methods</a><a id="Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods-1"></a><a class="docs-heading-anchor-permalink" href="#Example-of-Parameter-Parallelism-with-GPU-Ensemble-Methods" title="Permalink"></a></h2><p>On the other side of the spectrum, what if we want to solve tons of small ODEs? For this use case, we would use the ensemble methods to solve the same ODE many times with different parameters. This looks like:</p><pre><code class="language-julia hljs">using DiffEqGPU, OrdinaryDiffEq, StaticArrays, CUDA
 
 function lorenz(u, p, t)
     σ = p[1]
@@ -120,4 +120,4 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
             trajectories = 10_000)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 10000 with uType:
-SciMLBase.ODESolution{Float32, 2, uType, Nothing, Nothing, tType, Nothing, P, A, IType, Nothing, Nothing} where {uType, tType, P, A, IType}</code></pre><p>To dig more into this example, see the <a href="../tutorials/gpu_ensemble_basic/#lorenz">ensemble GPU solving tutorial</a>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a><a class="docs-footer-nextpage" href="../tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Friday 28 April 2023 21:22">Friday 28 April 2023</span>. Using Julia version 1.8.5.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+SciMLBase.ODESolution{Float32, 2, uType, Nothing, Nothing, tType, Nothing, P, A, IType, Nothing, Nothing} where {uType, tType, P, A, IType}</code></pre><p>To dig more into this example, see the <a href="../tutorials/gpu_ensemble_basic/#lorenz">ensemble GPU solving tutorial</a>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../">« DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a><a class="docs-footer-nextpage" href="../tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Wednesday 24 May 2023 20:51">Wednesday 24 May 2023</span>. Using Julia version 1.9.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
