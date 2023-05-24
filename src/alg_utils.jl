@@ -9,7 +9,7 @@ alg_order(alg::GPURosenbrock23) = 2
 alg_order(alg::GPURodas4) = 4
 alg_order(alg::GPURodas5P) = 5
 alg_order(alg::GPUKvaerno3) = 3
-alg_order(alg::GPUKvaerno5) = 3
+alg_order(alg::GPUKvaerno5) = 5
 
 alg_order(alg::GPUEM) = 1
 alg_order(alg::GPUSIEA) = 2

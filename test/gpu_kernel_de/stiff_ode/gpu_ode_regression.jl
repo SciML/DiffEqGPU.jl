@@ -3,7 +3,7 @@ using DiffEqGPU, StaticArrays, OrdinaryDiffEq, LinearAlgebra
 include("../../utils.jl")
 
 function f(u, p, t)
-    du1 = -u[1]
+    du1 = -p[1] * u[1]
     return SVector{1}(du1)
 end
 
@@ -17,8 +17,9 @@ end
 
 u0 = @SVector [10.0f0]
 tspan = (0.0f0, 10.0f0)
+p = @SVector [1.0f0]
 func = ODEFunction(f, jac = f_jac, tgrad = f_tgrad)
-prob = ODEProblem{false}(func, u0, tspan)
+prob = ODEProblem{false}(func, u0, tspan, p)
 
 algs = (GPURosenbrock23(), GPURodas4(), GPURodas5P(), GPUKvaerno3(), GPUKvaerno5())
 for alg in algs
@@ -113,7 +114,7 @@ for alg in algs
 
     ## With random parameters
 
-    prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
+    prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 1)) .* p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 10,

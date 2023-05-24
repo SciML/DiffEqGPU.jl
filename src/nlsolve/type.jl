@@ -43,13 +43,23 @@ end
 
 @inline function build_J_W(f, γ, dt)
     J(u, p, t) =
-        if f.jac !== nothing
-            ForwardDiff.jacobian(u -> f(u, p, t), u)
-        else
+        if DiffEqBase.has_jac(f)
             f.jac(u, p, t)
+        else
+            ForwardDiff.jacobian(u -> f(u, p, t), u)
         end
     W(u, p, t) = -LinearAlgebra.I + γ * dt * J(u, p, t)
     J, W
+end
+
+@inline function build_tgrad(f)
+    tgrad(u, p, t) =
+        if DiffEqBase.has_tgrad(f)
+            f.tgrad(u, p, t)
+        else
+            ForwardDiff.derivative(t -> f(u, p, t), t)
+        end
+    tgrad
 end
 
 @inline function build_nlsolver(u, p,

@@ -35,19 +35,19 @@
     dto2 = dt / 2
     dto6 = dt / 6
 
-    J = f.jac(uprev, p, t)
-    dT = f.tgrad(uprev, p, t)
+    J, W = build_J_W(f, γ, dt)
+    Tgrad = build_tgrad(f)
+    dT = Tgrad(uprev, p, t)
 
-    W = I - γ * J
-    W_fact = W
+    W_fact = W(uprev, p, t)
 
     # F = lu(W)
     F₀ = f(uprev, p, t)
-    k1 = W_fact \ (F₀ + γ * dT)
+    k1 = W_fact \ -(F₀ + γ * dT)
 
     F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
-    k2 = W_fact \ (F₁ - k1) + k1
+    k2 = W_fact \ -((F₁ - k1) + k1)
 
     integ.u = uprev + dt * k2
 
@@ -111,8 +111,6 @@ end
         @inbounds ts[end] = tspan[2]
     end
 
-    # @print(typeof(integ))
-
     if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
@@ -156,25 +154,25 @@ end
         dto2 = dt / 2
         dto6 = dt / 6
 
-        J = f.jac(uprev, p, t)
-        dT = f.tgrad(uprev, p, t)
+        J, W = build_J_W(f, γ, dt)
+        Tgrad = build_tgrad(f)
 
-        W = I - γ * J
-        W_fact = W
+        dT = Tgrad(uprev, p, t)
+        W_fact = W(uprev, p, t)
 
         # F = lu(W)
         F₀ = f(uprev, p, t)
-        k1 = W_fact \ (F₀ + γ * dT)
+        k1 = W_fact \ -(F₀ + γ * dT)
 
         F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
-        k2 = W_fact \ (F₁ - k1) + k1
+        k2 = W_fact \ -((F₁ - k1) + k1)
 
         u = uprev + dt * k2
 
         e32 = T(6) + sqrt(T(2))
         F₂ = f(u, p, t + dt)
-        k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
+        k3 = W_fact \ -(F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
 
         tmp = dto6 * (k1 - 2 * k2 + k3)
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)

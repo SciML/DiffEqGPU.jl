@@ -32,8 +32,12 @@
     end
 
     # Jacobian
-    J = f.jac(uprev, p, t)
-    dT = f.tgrad(uprev, p, t)
+
+    Jf, _ = build_J_W(f, γ, dt)
+    J = Jf(uprev, p, t)
+
+    Tgrad = build_tgrad(f)
+    dT = Tgrad(uprev, p, t)
 
     # Precalculations
     dtC21 = C21 / dt
@@ -189,8 +193,12 @@ end
     d4 = integ.tab
 
     # Jacobian
-    J = f.jac(uprev, p, t)
-    dT = f.tgrad(uprev, p, t)
+
+    Jf, _ = build_J_W(f, γ, dt)
+    J = Jf(uprev, p, t)
+
+    Tgrad = build_tgrad(f)
+    dT = Tgrad(uprev, p, t)
 
     if integ.u_modified
         k1 = f(uprev, p, t)
