@@ -18,6 +18,8 @@ using LinearSolve
 using Adapt, SimpleDiffEq, StaticArrays
 using Parameters, MuladdMacro
 using Random
+using Setfield
+using ForwardDiff
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
@@ -403,10 +405,26 @@ struct GPURodas4 <: GPUODEAlgorithm end
 """
 GPURodas5P()
 
-A specialized implementation of the `Rodas4` method specifically for kernel
+A specialized implementation of the `Rodas5P` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
 struct GPURodas5P <: GPUODEAlgorithm end
+
+"""
+GPUKvaerno3()
+
+A specialized implementation of the `Kvaerno3` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPUKvaerno3 <: GPUODEAlgorithm end
+
+"""
+GPUKvaerno5()
+
+A specialized implementation of the `Kvaerno5` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPUKvaerno5 <: GPUODEAlgorithm end
 
 """
 GPUEM()
@@ -1346,6 +1364,8 @@ include("integrators/types.jl")
 include("integrators/stiff/types.jl")
 include("integrators/integrator_utils.jl")
 include("integrators/interpolants.jl")
+include("nlsolve/type.jl")
+include("nlsolve/utils.jl")
 
 include("perform_step/gpu_tsit5_perform_step.jl")
 include("perform_step/gpu_vern7_perform_step.jl")
@@ -1355,15 +1375,19 @@ include("perform_step/gpu_siea_perform_step.jl")
 include("perform_step/gpu_rosenbrock23_perform_step.jl")
 include("perform_step/gpu_rodas4_perform_step.jl")
 include("perform_step/gpu_rodas5P_perform_step.jl")
+include("perform_step/gpu_kvaerno3_perform_step.jl")
+include("perform_step/gpu_kvaerno5_perform_step.jl")
+
 include("tableaus/verner_tableaus.jl")
 include("tableaus/rodas_tableaus.jl")
+include("tableaus/kvaerno_tableaus.jl")
 include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 ## Stiff ODE solvers
-export GPURosenbrock23, GPURodas4, GPURodas5P
+export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
 
 export terminate!
 

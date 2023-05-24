@@ -33,8 +33,11 @@
     end
 
     # Jacobian
-    J = f.jac(uprev, p, t)
-    dT = f.tgrad(uprev, p, t)
+    Jf, _ = build_J_W(f, γ, dt)
+    J = Jf(uprev, p, t)
+
+    Tgrad = build_tgrad(f)
+    dT = Tgrad(uprev, p, t)
 
     # Precalculations
     dtC21 = C21 / dt
@@ -193,8 +196,6 @@ end
         @inbounds ts[end] = tspan[2]
     end
 
-    # @print(typeof(integ))
-
     if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
@@ -224,8 +225,11 @@ end
     C81, C82, C83, C84, C85, C86, C87, γ, d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
 
     # Jacobian
-    J = f.jac(uprev, p, t)
-    dT = f.tgrad(uprev, p, t)
+    Jf, _ = build_J_W(f, γ, dt)
+    J = Jf(uprev, p, t)
+
+    Tgrad = build_tgrad(f)
+    dT = Tgrad(uprev, p, t)
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -431,7 +435,6 @@ end
         @inbounds ts[1] = tspan[1]
         @inbounds us[1] = u0
     end
-    # @print("Hello\n")
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)

@@ -1,4 +1,4 @@
-@inline function step!(integ::GPURB23I{false, S, T}, ts, us) where {T, S}
+@inline function step!(integ::GPUKvaerno5I{false, S, T}, ts, us) where {T, S}
     dt = integ.dt
     t = integ.t
     p = integ.p
@@ -6,7 +6,9 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    d = integ.d
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
+    @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
@@ -30,32 +32,81 @@
         @inbounds k1 = integ.k1
     end
 
-    γ = dt * d
+    ## Build nlsolver
 
-    dto2 = dt / 2
-    dto6 = dt / 6
+    nlsolver = build_nlsolver(integ.u, integ.p, integ.t, integ.dt, integ.f, integ.tab.γ,
+                              integ.tab.c3)
 
-    Jf, _ = build_J_W(f, γ, dt)
-    J = Jf(uprev, p, t)
+    ## Steps
 
-    Tgrad = build_tgrad(f)
-    dT = Tgrad(uprev, p, t)
+    # FSAL Step 1
 
-    W = I - γ * J
-    W_fact = W
+    z₁ = dt * k1
 
-    # F = lu(W)
-    F₀ = f(uprev, p, t)
-    k1 = W_fact \ (F₀ + γ * dT)
+    ##### Step 2
+    @set! nlsolver.z = z₁
+    @set! nlsolver.tmp = uprev + γ * z₁
+    @set! nlsolver.c = γ
 
-    F₁ = f(uprev + dto2 * k1, p, t + dto2)
+    nlsolver = nlsolve(nlsolver, integ)
 
-    k2 = W_fact \ (F₁ - k1) + k1
+    z₂ = nlsolver.z
 
-    integ.u = uprev + dt * k2
+    ##### Step 3
+
+    z₃ = α31 * z₁ + α32 * z₂
+
+    @set! nlsolver.z = z₃
+    @set! nlsolver.tmp = uprev + a31 * z₁ + a32 * z₂
+    @set! nlsolver.c = c3
+
+    nlsolver = nlsolve(nlsolver, integ)
+
+    z₃ = nlsolver.z
+
+    ################################## Solve Step 4
+
+    z₄ = α41 * z₁ + α42 * z₂ + α43 * z₃
+
+    @set! nlsolver.z = z₄
+    @set! nlsolver.tmp = uprev + a41 * z₁ + a42 * z₂ + a43 * z₃
+    @set! nlsolver.c = c4
+    nlsolver = nlsolve(nlsolver, integ)
+    z₄ = nlsolver.z
+
+    z₅ = α51 * z₁ + α52 * z₂ + α53 * z₃
+
+    @set! nlsolver.z = z₅
+    @set! nlsolver.tmp = uprev + a51 * z₁ + a52 * z₂ + a53 * z₃ + a54 * z₄
+    @set! nlsolver.c = c5
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₅ = nlsolver.z
+
+    z₆ = α61 * z₁ + α62 * z₂ + α63 * z₃
+
+    @set! nlsolver.z = z₆
+    @set! nlsolver.tmp = uprev + a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅
+    @set! nlsolver.c = c6
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₆ = nlsolver.z
+
+    z₇ = a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅ + γ * z₆
+
+    @set! nlsolver.z = z₇
+    @set! nlsolver.tmp = uprev + a71 * z₁ + a73 * z₃ + a74 * z₄ + a75 * z₅ + a76 * z₆
+    @set! nlsolver.c = one(nlsolver.c)
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₇ = nlsolver.z
+
+    integ.u = nlsolver.tmp + γ * z₇
+
+    k2 = z₇ ./ dt
 
     @inbounds begin # Necessary for interpolation
-        integ.k1 = k1
+        integ.k1 = f(integ.u, p, t)
         integ.k2 = k2
     end
 
@@ -67,7 +118,7 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-@kernel function ode_solve_kernel(@Const(probs), alg::GPURosenbrock23, _us, _ts, dt,
+@kernel function ode_solve_kernel(@Const(probs), alg::GPUKvaerno5, _us, _ts, dt,
                                   callback, tstops, nsteps,
                                   saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
@@ -83,9 +134,9 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = gpurosenbrock23_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
-                                 tstops,
-                                 callback, save_everystep, saveat)
+    integ = gpukvaerno5_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
+                             tstops,
+                             callback, save_everystep, saveat)
 
     u0 = prob.u0
     tspan = prob.tspan
@@ -103,7 +154,10 @@ end
     end
 
     integ.step_idx += 1
+
+    # nlsolver = build_nlsolver(integ.u, integ.p, integ.t, integ.dt, integ.f, integ.tab.γ, integ.tab.c3)
     # FSAL
+
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)
@@ -120,11 +174,10 @@ end
     end
 end
 
-#############################Adaptive Version#####################################
-
-@inline function step!(integ::GPUARB23I{false, S, T}, ts, us) where {S, T}
+@inline function step!(integ::GPUAKvaerno5I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
                                                                                    eltype(integ.u))
+
     dt = integ.dtnew
     t = integ.t
     p = integ.p
@@ -134,11 +187,14 @@ end
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    d = integ.d
 
     qold = integ.qold
     abstol = integ.abstol
     reltol = integ.reltol
+
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
+    @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -152,36 +208,91 @@ end
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
 
-        γ = dt * d
+        ## Steps
 
-        dto2 = dt / 2
-        dto6 = dt / 6
+        nlsolver = build_nlsolver(integ.u, integ.p, integ.t, dt, integ.f, integ.tab.γ,
+                                  integ.tab.c3)
 
-        Jf, _ = build_J_W(f, γ, dt)
-        J = Jf(uprev, p, t)
+        # FSAL Step 1
 
-        Tgrad = build_tgrad(f)
-        dT = Tgrad(uprev, p, t)
+        k1 = f(uprev, p, t)
 
-        W = I - γ * J
-        W_fact = W
+        z₁ = dt * k1
 
-        # F = lu(W)
-        F₀ = f(uprev, p, t)
-        k1 = W_fact \ (F₀ + γ * dT)
+        ##### Step 2
+        @set! nlsolver.z = z₁
+        @set! nlsolver.tmp = uprev + γ * z₁
+        @set! nlsolver.c = γ
 
-        F₁ = f(uprev + dto2 * k1, p, t + dto2)
+        nlsolver = nlsolve(nlsolver, integ)
+        z₂ = nlsolver.z
 
-        k2 = W_fact \ (F₁ - k1) + k1
+        ##### Step 3
 
-        u = uprev + dt * k2
+        z₃ = α31 * z₁ + α32 * z₂
 
-        e32 = T(6) + sqrt(T(2))
-        F₂ = f(u, p, t + dt)
-        k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
+        @set! nlsolver.z = z₃
+        @set! nlsolver.tmp = uprev + a31 * z₁ + a32 * z₂
+        @set! nlsolver.c = c3
 
-        tmp = dto6 * (k1 - 2 * k2 + k3)
-        tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
+        nlsolver = nlsolve(nlsolver, integ)
+        z₃ = nlsolver.z
+
+        ################################## Solve Step 4
+
+        z₄ = α41 * z₁ + α42 * z₂ + α43 * z₃
+
+        @set! nlsolver.z = z₄
+        @set! nlsolver.tmp = uprev + a41 * z₁ + a42 * z₂ + a43 * z₃
+        @set! nlsolver.c = c4
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₄ = nlsolver.z
+
+        ################################## Solve Step 5
+
+        z₅ = α51 * z₁ + α52 * z₂ + α53 * z₃
+
+        @set! nlsolver.z = z₅
+        @set! nlsolver.tmp = uprev + a51 * z₁ + a52 * z₂ + a53 * z₃ + a54 * z₄
+        @set! nlsolver.c = c5
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₅ = nlsolver.z
+
+        ################################## Solve Step 6
+
+        z₆ = α61 * z₁ + α62 * z₂ + α63 * z₃
+
+        @set! nlsolver.z = z₆
+        @set! nlsolver.tmp = uprev + a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅
+        @set! nlsolver.c = c6
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₆ = nlsolver.z
+
+        ################################## Solve Step 7
+
+        z₇ = a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅ + γ * z₆
+
+        @set! nlsolver.z = z₇
+        @set! nlsolver.tmp = uprev + a71 * z₁ + a73 * z₃ + a74 * z₄ + a75 * z₅ + a76 * z₆
+        @set! nlsolver.c = one(nlsolver.c)
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₇ = nlsolver.z
+
+        u = nlsolver.tmp + γ * z₇
+
+        k2 = z₇ ./ dt
+
+        W_eval = nlsolver.W(nlsolver.tmp + nlsolver.γ * z₇, p, t + nlsolver.c * dt)
+
+        err = (btilde1 * z₁ + btilde3 * z₃ + btilde4 * z₄ + btilde5 * z₅ + btilde6 * z₆ +
+               btilde7 * z₇)
+
+        tmp = (err) ./
+              (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
         if iszero(EEst)
@@ -227,12 +338,13 @@ end
             end
         end
     end
+
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
 
     return saved_in_cb
 end
 
-@kernel function ode_asolve_kernel(probs, alg::GPURosenbrock23, _us, _ts, dt, callback,
+@kernel function ode_asolve_kernel(probs, alg::GPUKvaerno5, _us, _ts, dt, callback,
                                    tstops,
                                    abstol, reltol,
                                    saveat, ::Val{save_everystep}) where {save_everystep}
@@ -257,11 +369,11 @@ end
     t = tspan[1]
     tf = prob.tspan[2]
 
-    integ = gpuarosenbrock23_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
-                                  dt, prob.p,
-                                  abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
-                                  callback,
-                                  saveat)
+    integ = gpuakvaerno5_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
+                              dt, prob.p,
+                              abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
+                              callback,
+                              saveat)
 
     integ.cur_t = 0
     if saveat !== nothing
@@ -274,6 +386,7 @@ end
         @inbounds ts[1] = tspan[1]
         @inbounds us[1] = u0
     end
+
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)
