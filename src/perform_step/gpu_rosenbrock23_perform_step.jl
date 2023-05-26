@@ -124,7 +124,7 @@ end
 
 @inline function step!(integ::GPUARB23I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
-                                                                                   eltype(integ.u))
+                                                                                   T)
     dt = integ.dtnew
     t = integ.t
     p = integ.p

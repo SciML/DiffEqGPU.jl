@@ -54,12 +54,12 @@ const GPURB23I = GPURosenbrock23Integrator
                                       callback::CB,
                                       save_everystep::Bool,
                                       saveat::ST) where {AlgType, F, P, T,
-                                                         S <: AbstractArray{T},
+                                                         S,
                                                          TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
     d = T(2)
     d = 1 / (d + sqrt(d))
 
@@ -126,10 +126,10 @@ const GPUARB23I = GPUARosenbrock23Integrator
                                                           CB, ST}
     !IIP && @assert S <: SArray
 
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     d = T(2)
     d = 1 / (d + sqrt(d))
@@ -209,12 +209,12 @@ const GPURodas4I = GPURodas4Integrator
                                 callback::CB,
                                 save_everystep::Bool,
                                 saveat::ST) where {AlgType, F, P, T,
-                                                   S <: AbstractArray{T},
+                                                   S,
                                                    TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Rodas4Tableau(T, T)
 
@@ -284,10 +284,10 @@ const GPUARodas4I = GPUARodas4Integrator
                                  saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
                                                     CB, ST}
     !IIP && @assert S <: SArray
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Rodas4Tableau(T, T)
 
@@ -367,12 +367,12 @@ const GPURodas5PI = GPURodas5PIntegrator
                                  callback::CB,
                                  save_everystep::Bool,
                                  saveat::ST) where {AlgType, F, P, T,
-                                                    S <: AbstractArray{T},
+                                                    S,
                                                     TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Rodas5PTableau(T, T)
 
@@ -446,10 +446,10 @@ const GPUARodas5PI = GPUARodas5PIntegrator
                                   saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
                                                      CB, ST}
     !IIP && @assert S <: SArray
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Rodas5PTableau(T, T)
 
@@ -529,12 +529,12 @@ const GPUKvaerno3I = GPUKvaerno3Integrator
                                   callback::CB,
                                   save_everystep::Bool,
                                   saveat::ST) where {AlgType, F, P, T,
-                                                     S <: AbstractArray{T},
+                                                     S,
                                                      TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Kvaerno3Tableau(T, T)
 
@@ -608,10 +608,10 @@ const GPUAKvaerno3I = GPUAKvaerno3Integrator
                                    saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
                                                       CB, ST}
     !IIP && @assert S <: SArray
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Kvaerno3Tableau(T, T)
 
@@ -691,12 +691,12 @@ const GPUKvaerno5I = GPUKvaerno5Integrator
                                   callback::CB,
                                   save_everystep::Bool,
                                   saveat::ST) where {AlgType, F, P, T,
-                                                     S <: AbstractArray{T},
+                                                     S,
                                                      TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Kvaerno5Tableau(T, T)
 
@@ -770,10 +770,10 @@ const GPUAKvaerno5I = GPUAKvaerno5Integrator
                                    saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS,
                                                       CB, ST}
     !IIP && @assert S <: SArray
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     tab = Kvaerno5Tableau(T, T)
 

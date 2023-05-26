@@ -314,14 +314,14 @@ end
                                p::P, tstops::TS,
                                callback::CB,
                                save_everystep::Bool,
-                               saveat::ST) where {AlgType, F, P, T, S <: AbstractArray{T},
+                               saveat::ST) where {AlgType, F, P, T, S,
                                                   TS, CB, ST}
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUT5I{IIP, S, T, ST, P, F, TS, CB, AlgType}(alg, f, copy(u0), copy(u0),
                                                          copy(u0), t0, t0, t0,
@@ -349,10 +349,10 @@ end
 
     !IIP && @assert S <: SArray
 
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, AlgType}(alg, f,
                                                                                     copy(u0),
@@ -396,14 +396,14 @@ end
                                p::P, tstops::TS,
                                callback::CB,
                                save_everystep::Bool,
-                               saveat::ST) where {AlgType, F, P, T, S <: AbstractArray{T},
+                               saveat::ST) where {AlgType, F, P, T, S,
                                                   TS, CB, ST}
     tab = Vern7Tableau(T, T)
 
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUV7I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), AlgType}(alg, f, copy(u0),
                                                                       copy(u0),
@@ -438,10 +438,10 @@ end
 
     tab = Vern7Tableau(T, T)
 
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUAV7I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
                     AlgType}(alg, f,
@@ -490,14 +490,14 @@ end
                                p::P, tstops::TS,
                                callback::CB,
                                save_everystep::Bool,
-                               saveat::ST) where {AlgType, F, P, T, S <: AbstractArray{T},
+                               saveat::ST) where {AlgType, F, P, T, S,
                                                   TS, CB, ST}
     tab = Vern9Tableau(T, T)
 
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUV9I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), AlgType}(alg, f, copy(u0),
                                                                       copy(u0),
@@ -531,10 +531,10 @@ end
 
     tab = Vern9Tableau(T, T)
 
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUAV9I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
                     AlgType}(alg, f,
