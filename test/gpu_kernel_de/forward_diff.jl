@@ -27,7 +27,7 @@ function ode_solve(x, alg)
     prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(3)) .* p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(CUDA.CUDABackend(), 0.0),
+    sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0),
                 trajectories = 2, adaptive = true, dt = 0.01f0)
 
     Array(sol)
