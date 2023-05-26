@@ -24,7 +24,7 @@ function ode_solve(x, alg)
     p = SVector{3}(x[4], x[5], x[6])
     prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
-    prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(3)) .* p)
+    prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0),
@@ -36,5 +36,5 @@ end
 for alg in (GPUTsit5(), GPUVern7(), GPUVern9())
     @info alg
     ForwardDiff.jacobian(x -> ode_solve(x, alg),
-                         [1.0f0, 0.0f0, 0.0f0, 10.0f0, 28.0f0, 8 / 3.0f0])
+                         [u0; p])
 end
