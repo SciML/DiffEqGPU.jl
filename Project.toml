@@ -19,10 +19,23 @@ Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 Requires = "ae029012-a4dd-5104-9daa-d747884805df"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+Setfield = "efcf1570-3423-57d1-acb7-fd33fddbac46"
 SimpleDiffEq = "05bca326-078c-5bf0-a5bf-ce7c7982d7fd"
 StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
 TOML = "fa267f1f-6049-4f14-aa54-33bafae1ed76"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
+
+[weakdeps]
+AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+
+[extensions]
+AMDGPUExt = ["AMDGPU"]
+CUDAExt = ["CUDA"]
+MetalExt = ["Metal"]
+oneAPIExt = ["oneAPI"]
 
 [compat]
 AMDGPU = "0.4.9"
@@ -40,25 +53,14 @@ Parameters = "0.12"
 RecursiveArrayTools = "2"
 Requires = "1.0"
 SciMLBase = "1.26"
+Setfield = "1"
 SimpleDiffEq = "1"
 StaticArrays = "1"
 ZygoteRules = "0.2"
 julia = "1.6"
 oneAPI = "1.2"
 
-[extensions]
-AMDGPUExt = ["AMDGPU"]
-CUDAExt = ["CUDA"]
-MetalExt = ["Metal"]
-oneAPIExt = ["oneAPI"]
-
 [extras]
-AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
-CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
-oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
-
-[weakdeps]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"

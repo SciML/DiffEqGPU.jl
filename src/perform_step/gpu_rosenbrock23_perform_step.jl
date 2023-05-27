@@ -35,8 +35,11 @@
     dto2 = dt / 2
     dto6 = dt / 6
 
-    J = f.jac(uprev, p, t)
-    dT = f.tgrad(uprev, p, t)
+    Jf, _ = build_J_W(f, γ, dt)
+    J = Jf(uprev, p, t)
+
+    Tgrad = build_tgrad(f)
+    dT = Tgrad(uprev, p, t)
 
     mass_matrix = integ.f.mass_matrix
     W = mass_matrix - γ * J
@@ -116,8 +119,6 @@ end
         @inbounds ts[end] = tspan[2]
     end
 
-    # @print(typeof(integ))
-
     if saveat === nothing && !save_everystep
         @inbounds us[2] = integ.u
         @inbounds ts[2] = integ.t
@@ -163,8 +164,11 @@ end
         dto2 = dt / 2
         dto6 = dt / 6
 
-        J = f.jac(uprev, p, t)
-        dT = f.tgrad(uprev, p, t)
+        Jf, _ = build_J_W(f, γ, dt)
+        J = Jf(uprev, p, t)
+
+        Tgrad = build_tgrad(f)
+        dT = Tgrad(uprev, p, t)
 
         W = mass_matrix - γ * J
         W_fact = W
@@ -288,7 +292,6 @@ end
         @inbounds ts[1] = tspan[1]
         @inbounds us[1] = u0
     end
-    # @print("Hello\n")
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)

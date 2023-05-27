@@ -1,4 +1,4 @@
-@inline function step!(integ::GPURodas4I{false, S, T}, ts, us) where {T, S}
+@inline function step!(integ::GPUKvaerno5I{false, S, T}, ts, us) where {T, S}
     dt = integ.dt
     t = integ.t
     p = integ.p
@@ -6,8 +6,9 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
-    C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3, d4 = integ.tab
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
+    @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
@@ -31,82 +32,82 @@
         @inbounds k1 = integ.k1
     end
 
-    # Jacobian
+    ## Build nlsolver
 
-    Jf, _ = build_J_W(f, γ, dt)
-    J = Jf(uprev, p, t)
+    nlsolver = build_nlsolver(integ.u, integ.p, integ.t, integ.dt, integ.f, integ.tab.γ,
+                              integ.tab.c3)
 
-    Tgrad = build_tgrad(f)
-    dT = Tgrad(uprev, p, t)
+    ## Steps
 
-    # Precalculations
-    dtC21 = C21 / dt
-    dtC31 = C31 / dt
-    dtC32 = C32 / dt
-    dtC41 = C41 / dt
-    dtC42 = C42 / dt
-    dtC43 = C43 / dt
-    dtC51 = C51 / dt
-    dtC52 = C52 / dt
-    dtC53 = C53 / dt
-    dtC54 = C54 / dt
-    dtC61 = C61 / dt
-    dtC62 = C62 / dt
-    dtC63 = C63 / dt
-    dtC64 = C64 / dt
-    dtC65 = C65 / dt
+    # FSAL Step 1
 
-    dtd1 = dt * d1
-    dtd2 = dt * d2
-    dtd3 = dt * d3
-    dtd4 = dt * d4
-    dtgamma = dt * γ
+    z₁ = dt * k1
 
-    # Starting
-    W = J - I * inv(dtgamma)
-    du = f(uprev, p, t)
+    ##### Step 2
+    @set! nlsolver.z = z₁
+    @set! nlsolver.tmp = uprev + γ * z₁
+    @set! nlsolver.c = γ
 
-    # Step 1
-    linsolve_tmp = du + dtd1 * dT
-    k1 = W \ -linsolve_tmp
-    u = uprev + a21 * k1
-    du = f(u, p, t + c2 * dt)
+    nlsolver = nlsolve(nlsolver, integ)
 
-    # Step 2
-    linsolve_tmp = du + dtd2 * dT + dtC21 * k1
-    k2 = W \ -linsolve_tmp
-    u = uprev + a31 * k1 + a32 * k2
-    du = f(u, p, t + c3 * dt)
+    z₂ = nlsolver.z
 
-    # Step 3
-    linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
-    k3 = W \ -linsolve_tmp
-    u = uprev + a41 * k1 + a42 * k2 + a43 * k3
-    du = f(u, p, t + c4 * dt)
+    ##### Step 3
 
-    # Step 4
-    linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
-    k4 = W \ -linsolve_tmp
-    u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
-    du = f(u, p, t + dt)
+    z₃ = α31 * z₁ + α32 * z₂
 
-    # Step 5
-    linsolve_tmp = du + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
-    k5 = W \ -linsolve_tmp
-    u = u + k5
-    du = f(u, p, t + dt)
+    @set! nlsolver.z = z₃
+    @set! nlsolver.tmp = uprev + a31 * z₁ + a32 * z₂
+    @set! nlsolver.c = c3
 
-    # Step 6
-    linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
-    k6 = W \ -linsolve_tmp
-    integ.u = u + k6
+    nlsolver = nlsolve(nlsolver, integ)
+
+    z₃ = nlsolver.z
+
+    ################################## Solve Step 4
+
+    z₄ = α41 * z₁ + α42 * z₂ + α43 * z₃
+
+    @set! nlsolver.z = z₄
+    @set! nlsolver.tmp = uprev + a41 * z₁ + a42 * z₂ + a43 * z₃
+    @set! nlsolver.c = c4
+    nlsolver = nlsolve(nlsolver, integ)
+    z₄ = nlsolver.z
+
+    z₅ = α51 * z₁ + α52 * z₂ + α53 * z₃
+
+    @set! nlsolver.z = z₅
+    @set! nlsolver.tmp = uprev + a51 * z₁ + a52 * z₂ + a53 * z₃ + a54 * z₄
+    @set! nlsolver.c = c5
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₅ = nlsolver.z
+
+    z₆ = α61 * z₁ + α62 * z₂ + α63 * z₃
+
+    @set! nlsolver.z = z₆
+    @set! nlsolver.tmp = uprev + a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅
+    @set! nlsolver.c = c6
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₆ = nlsolver.z
+
+    z₇ = a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅ + γ * z₆
+
+    @set! nlsolver.z = z₇
+    @set! nlsolver.tmp = uprev + a71 * z₁ + a73 * z₃ + a74 * z₄ + a75 * z₅ + a76 * z₆
+    @set! nlsolver.c = one(nlsolver.c)
+
+    nlsolver = nlsolve(nlsolver, integ)
+    z₇ = nlsolver.z
+
+    integ.u = nlsolver.tmp + γ * z₇
+
+    k2 = z₇ ./ dt
 
     @inbounds begin # Necessary for interpolation
-        @unpack h21, h22, h23, h24, h25, h31, h32, h33, h34, h35 = integ.tab
-        integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5
-        integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5
-        # integ.k1 = k1
-        # integ.k2 = k2
+        integ.k1 = f(integ.u, p, t)
+        integ.k2 = k2
     end
 
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
@@ -117,7 +118,7 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-@kernel function ode_solve_kernel(@Const(probs), alg::GPURodas4, _us, _ts, dt,
+@kernel function ode_solve_kernel(@Const(probs), alg::GPUKvaerno5, _us, _ts, dt,
                                   callback, tstops, nsteps,
                                   saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
@@ -133,9 +134,9 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = gpurodas4_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
-                           tstops,
-                           callback, save_everystep, saveat)
+    integ = gpukvaerno5_init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p,
+                             tstops,
+                             callback, save_everystep, saveat)
 
     u0 = prob.u0
     tspan = prob.tspan
@@ -153,7 +154,10 @@ end
     end
 
     integ.step_idx += 1
+
+    # nlsolver = build_nlsolver(integ.u, integ.p, integ.t, integ.dt, integ.f, integ.tab.γ, integ.tab.c3)
     # FSAL
+
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)
@@ -170,7 +174,7 @@ end
     end
 end
 
-@inline function step!(integ::GPUARodas4I{false, S, T}, ts, us) where {T, S}
+@inline function step!(integ::GPUAKvaerno5I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
                                                                                    eltype(integ.u))
 
@@ -188,17 +192,9 @@ end
     abstol = integ.abstol
     reltol = integ.reltol
 
-    @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
-    C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3,
-    d4 = integ.tab
-
-    # Jacobian
-
-    Jf, _ = build_J_W(f, γ, dt)
-    J = Jf(uprev, p, t)
-
-    Tgrad = build_tgrad(f)
-    dT = Tgrad(uprev, p, t)
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
+    @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -212,69 +208,91 @@ end
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
 
-        # Precalculations
-        dtC21 = C21 / dt
-        dtC31 = C31 / dt
-        dtC32 = C32 / dt
-        dtC41 = C41 / dt
-        dtC42 = C42 / dt
-        dtC43 = C43 / dt
-        dtC51 = C51 / dt
-        dtC52 = C52 / dt
-        dtC53 = C53 / dt
-        dtC54 = C54 / dt
-        dtC61 = C61 / dt
-        dtC62 = C62 / dt
-        dtC63 = C63 / dt
-        dtC64 = C64 / dt
-        dtC65 = C65 / dt
+        ## Steps
 
-        dtd1 = dt * d1
-        dtd2 = dt * d2
-        dtd3 = dt * d3
-        dtd4 = dt * d4
-        dtgamma = dt * γ
+        nlsolver = build_nlsolver(integ.u, integ.p, integ.t, dt, integ.f, integ.tab.γ,
+                                  integ.tab.c3)
 
-        # Starting
-        W = J - I * inv(dtgamma)
-        du = f(uprev, p, t)
+        # FSAL Step 1
 
-        # Step 1
-        linsolve_tmp = du + dtd1 * dT
-        k1 = W \ -linsolve_tmp
-        u = uprev + a21 * k1
-        du = f(u, p, t + c2 * dt)
+        k1 = f(uprev, p, t)
 
-        # Step 2
-        linsolve_tmp = du + dtd2 * dT + dtC21 * k1
-        k2 = W \ -linsolve_tmp
-        u = uprev + a31 * k1 + a32 * k2
-        du = f(u, p, t + c3 * dt)
+        z₁ = dt * k1
 
-        # Step 3
-        linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
-        k3 = W \ -linsolve_tmp
-        u = uprev + a41 * k1 + a42 * k2 + a43 * k3
-        du = f(u, p, t + c4 * dt)
+        ##### Step 2
+        @set! nlsolver.z = z₁
+        @set! nlsolver.tmp = uprev + γ * z₁
+        @set! nlsolver.c = γ
 
-        # Step 4
-        linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
-        k4 = W \ -linsolve_tmp
-        u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
-        du = f(u, p, t + dt)
+        nlsolver = nlsolve(nlsolver, integ)
+        z₂ = nlsolver.z
 
-        # Step 5
-        linsolve_tmp = du + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
-        k5 = W \ -linsolve_tmp
-        u = u + k5
-        du = f(u, p, t + dt)
+        ##### Step 3
 
-        # Step 6
-        linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
-        k6 = W \ -linsolve_tmp
-        u = u + k6
+        z₃ = α31 * z₁ + α32 * z₂
 
-        tmp = k6 ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
+        @set! nlsolver.z = z₃
+        @set! nlsolver.tmp = uprev + a31 * z₁ + a32 * z₂
+        @set! nlsolver.c = c3
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₃ = nlsolver.z
+
+        ################################## Solve Step 4
+
+        z₄ = α41 * z₁ + α42 * z₂ + α43 * z₃
+
+        @set! nlsolver.z = z₄
+        @set! nlsolver.tmp = uprev + a41 * z₁ + a42 * z₂ + a43 * z₃
+        @set! nlsolver.c = c4
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₄ = nlsolver.z
+
+        ################################## Solve Step 5
+
+        z₅ = α51 * z₁ + α52 * z₂ + α53 * z₃
+
+        @set! nlsolver.z = z₅
+        @set! nlsolver.tmp = uprev + a51 * z₁ + a52 * z₂ + a53 * z₃ + a54 * z₄
+        @set! nlsolver.c = c5
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₅ = nlsolver.z
+
+        ################################## Solve Step 6
+
+        z₆ = α61 * z₁ + α62 * z₂ + α63 * z₃
+
+        @set! nlsolver.z = z₆
+        @set! nlsolver.tmp = uprev + a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅
+        @set! nlsolver.c = c6
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₆ = nlsolver.z
+
+        ################################## Solve Step 7
+
+        z₇ = a61 * z₁ + a63 * z₃ + a64 * z₄ + a65 * z₅ + γ * z₆
+
+        @set! nlsolver.z = z₇
+        @set! nlsolver.tmp = uprev + a71 * z₁ + a73 * z₃ + a74 * z₄ + a75 * z₅ + a76 * z₆
+        @set! nlsolver.c = one(nlsolver.c)
+
+        nlsolver = nlsolve(nlsolver, integ)
+        z₇ = nlsolver.z
+
+        u = nlsolver.tmp + γ * z₇
+
+        k2 = z₇ ./ dt
+
+        W_eval = nlsolver.W(nlsolver.tmp + nlsolver.γ * z₇, p, t + nlsolver.c * dt)
+
+        err = (btilde1 * z₁ + btilde3 * z₃ + btilde4 * z₄ + btilde5 * z₅ + btilde6 * z₆ +
+               btilde7 * z₇)
+
+        tmp = (err) ./
+              (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
         if iszero(EEst)
@@ -293,9 +311,8 @@ end
             dtnew = min(abs(dtnew), abs(tf - t - dt))
 
             @inbounds begin # Necessary for interpolation
-                @unpack h21, h22, h23, h24, h25, h31, h32, h33, h34, h35 = integ.tab
-                integ.k1 = h21 * k1 + h22 * k2 + h23 * k3 + h24 * k4 + h25 * k5
-                integ.k2 = h31 * k1 + h32 * k2 + h33 * k3 + h34 * k4 + h35 * k5
+                integ.k1 = k1
+                integ.k2 = k2
             end
 
             integ.dt = dt
@@ -327,7 +344,7 @@ end
     return saved_in_cb
 end
 
-@kernel function ode_asolve_kernel(probs, alg::GPURodas4, _us, _ts, dt, callback,
+@kernel function ode_asolve_kernel(probs, alg::GPUKvaerno5, _us, _ts, dt, callback,
                                    tstops,
                                    abstol, reltol,
                                    saveat, ::Val{save_everystep}) where {save_everystep}
@@ -352,11 +369,11 @@ end
     t = tspan[1]
     tf = prob.tspan[2]
 
-    integ = gpuarodas4_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
-                            dt, prob.p,
-                            abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
-                            callback,
-                            saveat)
+    integ = gpuakvaerno5_init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2],
+                              dt, prob.p,
+                              abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops,
+                              callback,
+                              saveat)
 
     integ.cur_t = 0
     if saveat !== nothing
@@ -369,6 +386,7 @@ end
         @inbounds ts[1] = tspan[1]
         @inbounds us[1] = u0
     end
+
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)

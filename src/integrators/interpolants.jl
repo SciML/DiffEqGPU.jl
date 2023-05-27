@@ -1,3 +1,21 @@
+# Default: Hermite Interpolation
+@inline @muladd function _ode_interpolant(Θ, dt, y₀,
+                                          integ::DiffEqBase.AbstractODEIntegrator{AlgType,
+                                                                                  IIP, S, T
+                                                                                  }) where {
+                                                                                            AlgType <:
+                                                                                            GPUODEAlgorithm,
+                                                                                            IIP,
+                                                                                            S,
+                                                                                            T
+                                                                                            }
+    y₁ = integ.u
+    k1 = integ.k1
+    k2 = integ.k2
+    out = (1 - Θ) * y₀ + Θ * y₁ +
+          Θ * (Θ - 1) * ((1 - 2Θ) * (y₁ - y₀) + (Θ - 1) * dt * k1 + Θ * dt * k2)
+    return out
+end
 
 @inline function bΘs(integ::T, Θ) where {T <: Union{GPUV7I, GPUAV7I}}
     @unpack r011, r012, r013, r014, r015, r016, r017, r042, r043, r044, r045, r046, r047,
