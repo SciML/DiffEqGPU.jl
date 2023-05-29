@@ -35,8 +35,8 @@ for alg in (GPUTsit5(), GPUVern7(), GPUVern9(), GPURosenbrock23(autodiff = false
             GPURodas4(autodiff = false), GPURodas5P(autodiff = false),
             GPUKvaerno3(autodiff = false), GPUKvaerno5(autodiff = false))
     @info alg
-    sol = solve(monteprob, alg, EnsembleGPUKernel(CUDA.CUDABackend(), 0.0),
+    sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0),
                 trajectories = 2, save_everystep = false, adaptive = false, dt = 0.01f0)
-    asol = solve(monteprob, alg, EnsembleGPUKernel(CUDA.CUDABackend(), 0.0),
+    asol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0),
                  trajectories = 2, adaptive = true, dt = 0.01f0)
 end
