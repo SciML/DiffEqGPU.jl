@@ -360,6 +360,7 @@ end
 ##Solvers for EnsembleGPUKernel
 abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
 abstract type GPUSDEAlgorithm <: DiffEqBase.AbstractSDEAlgorithm end
+abstract type GPUODEImplicitAlgorithm{AD} <: GPUODEAlgorithm end
 
 """
 GPUTsit5()
@@ -392,7 +393,7 @@ GPURosenbrock23()
 A specialized implementation of the W-method `Rosenbrock23` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
-struct GPURosenbrock23 <: GPUODEAlgorithm end
+struct GPURosenbrock23{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 """
 GPURodas4()
@@ -400,7 +401,7 @@ GPURodas4()
 A specialized implementation of the `Rodas4` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
-struct GPURodas4 <: GPUODEAlgorithm end
+struct GPURodas4{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 """
 GPURodas5P()
@@ -408,7 +409,7 @@ GPURodas5P()
 A specialized implementation of the `Rodas5P` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
-struct GPURodas5P <: GPUODEAlgorithm end
+struct GPURodas5P{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 """
 GPUKvaerno3()
@@ -416,7 +417,7 @@ GPUKvaerno3()
 A specialized implementation of the `Kvaerno3` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
-struct GPUKvaerno3 <: GPUODEAlgorithm end
+struct GPUKvaerno3{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 """
 GPUKvaerno5()
@@ -424,7 +425,13 @@ GPUKvaerno5()
 A specialized implementation of the `Kvaerno5` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
-struct GPUKvaerno5 <: GPUODEAlgorithm end
+struct GPUKvaerno5{AD} <: GPUODEImplicitAlgorithm{AD} end
+
+for Alg in [:GPURosenbrock23, :GPURodas4, :GPURodas5P, :GPUKvaerno3, :GPUKvaerno5]
+    @eval begin function $Alg(; autodiff = Val{true}())
+        $Alg{SciMLBase._unwrap_val(autodiff)}()
+    end end
+end
 
 """
 GPUEM()

@@ -41,35 +41,44 @@ function NLSolver{tType}(z, tmp, ztmp, γ, c, α, κ, J, W, dt, t, p,
                                                                                          maxiters)
 end
 
-@inline function build_J_W(f, γ, dt)
+@inline function build_J_W(alg, f, γ, dt)
     J(u, p, t) =
         if DiffEqBase.has_jac(f)
             f.jac(u, p, t)
-        else
+        elseif alg_autodiff(alg)
             ForwardDiff.jacobian(u -> f(u, p, t), u)
+        else
+            finite_diff_jac(u -> f(u, p, t), f.jac_prototype, u)
         end
     W(u, p, t) = -LinearAlgebra.I + γ * dt * J(u, p, t)
     J, W
 end
 
-@inline function build_tgrad(f)
-    tgrad(u, p, t) =
+@inline function build_tgrad(alg, f)
+    function tgrad(u, p, t)
         if DiffEqBase.has_tgrad(f)
             f.tgrad(u, p, t)
-        else
+        elseif alg_autodiff(alg)
             ForwardDiff.derivative(t -> f(u, p, t), t)
+        else
+            # derivative using finite difference
+            begin
+                dt = sqrt(eps(eltype(t)))
+                (f(u, p, t + dt) - f(u, p, t)) / dt
+            end
         end
+    end
     tgrad
 end
 
-@inline function build_nlsolver(u, p,
+@inline function build_nlsolver(alg, u, p,
                                 t, dt,
                                 f,
                                 γ, c)
-    build_nlsolver(u, p, t, dt, f, γ, c, 1)
+    build_nlsolver(alg, u, p, t, dt, f, γ, c, 1)
 end
 
-@inline function build_nlsolver(u, p,
+@inline function build_nlsolver(alg, u, p,
                                 t, dt,
                                 f,
                                 γ, c, α)
@@ -77,7 +86,7 @@ end
     z = u
     tmp = u
     ztmp = u
-    J, W = build_J_W(f, γ, dt)
+    J, W = build_J_W(alg, f, γ, dt)
     max_iter = 30
     κ = 1 / 100
     NLSolver{typeof(dt)}(z, tmp, ztmp, γ, c, α, κ,
