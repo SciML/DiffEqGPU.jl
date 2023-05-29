@@ -33,10 +33,10 @@
     end
 
     # Jacobian
-    Jf, _ = build_J_W(f, γ, dt)
+    Jf, _ = build_J_W(integ.alg, f, γ, dt)
     J = Jf(uprev, p, t)
 
-    Tgrad = build_tgrad(f)
+    Tgrad = build_tgrad(integ.alg, f)
     dT = Tgrad(uprev, p, t)
 
     # Precalculations
@@ -225,10 +225,10 @@ end
     C81, C82, C83, C84, C85, C86, C87, γ, d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
 
     # Jacobian
-    Jf, _ = build_J_W(f, γ, dt)
+    Jf, _ = build_J_W(integ.alg, f, γ, dt)
     J = Jf(uprev, p, t)
 
-    Tgrad = build_tgrad(f)
+    Tgrad = build_tgrad(integ.alg, f)
     dT = Tgrad(uprev, p, t)
 
     if integ.u_modified

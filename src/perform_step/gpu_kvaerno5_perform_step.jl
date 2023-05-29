@@ -34,7 +34,8 @@
 
     ## Build nlsolver
 
-    nlsolver = build_nlsolver(integ.u, integ.p, integ.t, integ.dt, integ.f, integ.tab.γ,
+    nlsolver = build_nlsolver(integ.alg, integ.u, integ.p, integ.t, integ.dt, integ.f,
+                              integ.tab.γ,
                               integ.tab.c3)
 
     ## Steps
@@ -155,9 +156,6 @@ end
 
     integ.step_idx += 1
 
-    # nlsolver = build_nlsolver(integ.u, integ.p, integ.t, integ.dt, integ.f, integ.tab.γ, integ.tab.c3)
-    # FSAL
-
     while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
         saved_in_cb = step!(integ, ts, us)
         !saved_in_cb && savevalues!(integ, ts, us)
@@ -210,7 +208,8 @@ end
 
         ## Steps
 
-        nlsolver = build_nlsolver(integ.u, integ.p, integ.t, dt, integ.f, integ.tab.γ,
+        nlsolver = build_nlsolver(integ.alg, integ.u, integ.p, integ.t, dt, integ.f,
+                                  integ.tab.γ,
                                   integ.tab.c3)
 
         # FSAL Step 1

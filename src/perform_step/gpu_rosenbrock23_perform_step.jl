@@ -35,10 +35,10 @@
     dto2 = dt / 2
     dto6 = dt / 6
 
-    Jf, _ = build_J_W(f, γ, dt)
+    Jf, _ = build_J_W(integ.alg, f, γ, dt)
     J = Jf(uprev, p, t)
 
-    Tgrad = build_tgrad(f)
+    Tgrad = build_tgrad(integ.alg, f)
     dT = Tgrad(uprev, p, t)
 
     W = I - γ * J
@@ -157,11 +157,13 @@ end
         dto2 = dt / 2
         dto6 = dt / 6
 
-        Jf, _ = build_J_W(f, γ, dt)
+        Jf, _ = build_J_W(integ.alg, f, γ, dt)
         J = Jf(uprev, p, t)
 
-        Tgrad = build_tgrad(f)
+        Tgrad = build_tgrad(integ.alg, f)
         dT = Tgrad(uprev, p, t)
+
+        # KernelAbstractions.@print(J[1][1], " ")
 
         W = I - γ * J
         W_fact = W
