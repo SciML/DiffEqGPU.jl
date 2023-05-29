@@ -25,6 +25,7 @@ using SafeTestsets, Test
 @time @safetestset "GPU Kernelized Stiff ODE DiscreteCallback" begin include("gpu_kernel_de/stiff_ode/gpu_ode_discrete_callbacks.jl") end
 
 @time @safetestset "GPU Kernelized ForwardDiff" begin include("gpu_kernel_de/forward_diff.jl") end
+@time @safetestset "GPU Kernelized Finite Diff" begin include("gpu_kernel_de/forward_diff.jl") end
 
 if GROUP in SUPPORTS_LUFACT
     @time @safetestset "EnsembleGPUArray" begin include("ensemblegpuarray.jl") end
