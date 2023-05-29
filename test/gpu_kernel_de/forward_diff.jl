@@ -1,5 +1,5 @@
 
-using DiffEqGPU, DiffEqBase, StaticArrays, LinearAlgebra
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
 include("../utils.jl")
 
 using ForwardDiff
