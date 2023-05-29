@@ -50,7 +50,7 @@
     k1 = W_fact \ (F₀ + γ * dT)
 
     F₁ = f(uprev + dto2 * k1, p, t + dto2)
-    
+
     if mass_matrix === I
         k2 = W_fact \ (F₁ - k1) + k1
     else
@@ -189,13 +189,13 @@ end
 
         e32 = T(6) + sqrt(T(2))
         F₂ = f(u, p, t + dt)
-        
+
         if mass_matrix === I
             k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
 
-       else
+        else
             k3 = W_fact \ (F₂ - mass_matrix * (e32 * k2 + 2 * k1) +
-                           e32 * F₁ + 2 * F₀ + dt * dT)
+                  e32 * F₁ + 2 * F₀ + dt * dT)
         end
 
         tmp = dto6 * (k1 - 2 * k2 + k3)
