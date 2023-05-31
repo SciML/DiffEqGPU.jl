@@ -532,12 +532,12 @@ end
 const GPUKvaerno3I = GPUKvaerno3Integrator
 
 @inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                                  p::P, tstops::TS,
-                                  callback::CB,
-                                  save_everystep::Bool,
-                                  saveat::ST) where {F, P, T,
-                                                     S,
-                                                     TS, CB, ST}
+                      p::P, tstops::TS,
+                      callback::CB,
+                      save_everystep::Bool,
+                      saveat::ST) where {F, P, T,
+                                         S,
+                                         TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
