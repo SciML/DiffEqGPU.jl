@@ -26,16 +26,16 @@ t: 229-element Vector{Float32}:
    0.039545782
    0.06525832
    0.09650515
-   0.13952234
+   0.13952377
    ⋮
-  95.27474
-  95.91405
-  96.57581
-  97.23758
-  97.899345
-  98.56111
-  99.23641
-  99.91171
+  95.27473
+  95.91403
+  96.57579
+  97.23755
+  97.89931
+  98.561066
+  99.23637
+  99.91167
  100.0
 u: 229-element Vector{CUDA.CuArray{Float32, 1, CUDA.Mem.DeviceBuffer}}:
  Float32[1.0, 0.0, 0.0]
@@ -47,14 +47,14 @@ u: 229-element Vector{CUDA.CuArray{Float32, 1, CUDA.Mem.DeviceBuffer}}:
  Float32[0.9666134, -0.016576296, -0.0360636]
  Float32[0.9460261, -0.026261317, -0.05836517]
  Float32[0.9221204, -0.036940157, -0.08431637]
- Float32[0.89107263, -0.049805336, -0.11809503]
+ Float32[0.8910716, -0.04980573, -0.11809613]
  ⋮
- Float32[0.000497219, -0.002243581, 0.0021882413]
- Float32[0.0010859751, -0.0024246988, 0.0015704188]
- Float32[0.0015606071, -0.0023972152, 0.0008474603]
- Float32[0.0018686759, -0.0021694046, 0.00010603073]
- Float32[0.0019964029, -0.001775199, -0.00058993173]
- Float32[0.001946243, -0.0012600849, -0.0011850193]
- Float32[0.0017297472, -0.000664239, -0.0016438798]
- Float32[0.001377614, -5.466292f-5, -0.0019241166]
- Float32[0.0013233931, 2.3381774f-5, -0.0019467642]</code></pre><p>Notice that both stiff and non-stiff ODE solvers were used here.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Time span was changed to <code>Float32</code> types, as GPUs generally have very slow <code>Float64</code> operations, usually around 1/32 of the speed of <code>Float32</code>. <code>cu(x)</code> on an array automatically changes an <code>Array{Float64}</code> to a <code>CuArray{Float32}</code>. If this is not intended, use the <code>CuArray</code> constructor directly. For more information on GPU <code>Float64</code> performance issues, search around Google for <a href="https://www.techpowerup.com/forums/threads/nerfed-fp64-performance-in-consumer-gpu-cards.272732/">discussions like this</a>.</p></div></div><div class="admonition is-category-warn"><header class="admonition-header">Warn</header><div class="admonition-body"><p><code>Float32</code> precision is sometimes not enough precision to accurately solve a stiff ODE. Make sure that the precision is necessary by investigating the condition number of the Jacobian. If this value is well-above <code>1e8</code>, use <code>Float32</code> with caution!</p></div></div><h2 id="Restrictions-of-CuArrays"><a class="docs-heading-anchor" href="#Restrictions-of-CuArrays">Restrictions of CuArrays</a><a id="Restrictions-of-CuArrays-1"></a><a class="docs-heading-anchor-permalink" href="#Restrictions-of-CuArrays" title="Permalink"></a></h2><p>Note that all the rules of <a href="https://cuda.juliagpu.org/stable/">CUDA.jl</a> apply when <code>CuArrays</code> are being used in the solver. While for most of the <code>AbstractArray</code> interface they act similarly to <code>Array</code>s, such as having valid broadcasting operations (<code>x .* y</code>) defined, they will work on GPUs. For more information on the rules and restrictions of <code>CuArrays</code>, see <a href="https://cuda.juliagpu.org/stable/usage/array/">this page from the CUDA.jl documentation</a>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../weak_order_conv_sde/">« Using the EnsembleGPUKernel SDE solvers for the expectation of SDEs </a><a class="docs-footer-nextpage" href="../../examples/sde/">GPU Parallel Solving of Stochastic Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Wednesday 31 May 2023 18:30">Wednesday 31 May 2023</span>. Using Julia version 1.9.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+ Float32[0.00049719884, -0.0022435721, 0.0021882595]
+ Float32[0.0010859583, -0.0024246967, 0.0015704404]
+ Float32[0.0015605923, -0.0023972206, 0.00084748876]
+ Float32[0.0018686663, -0.0021694193, 0.000106063744]
+ Float32[0.0019964012, -0.0017752235, -0.0005898974]
+ Float32[0.0019462514, -0.0012601186, -0.0011849877]
+ Float32[0.001729764, -0.00066427403, -0.0016438589]
+ Float32[0.0013776367, -5.4696073f-5, -0.0019241067]
+ Float32[0.001323388, 2.3389219f-5, -0.0019467665]</code></pre><p>Notice that both stiff and non-stiff ODE solvers were used here.</p><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>Time span was changed to <code>Float32</code> types, as GPUs generally have very slow <code>Float64</code> operations, usually around 1/32 of the speed of <code>Float32</code>. <code>cu(x)</code> on an array automatically changes an <code>Array{Float64}</code> to a <code>CuArray{Float32}</code>. If this is not intended, use the <code>CuArray</code> constructor directly. For more information on GPU <code>Float64</code> performance issues, search around Google for <a href="https://www.techpowerup.com/forums/threads/nerfed-fp64-performance-in-consumer-gpu-cards.272732/">discussions like this</a>.</p></div></div><div class="admonition is-category-warn"><header class="admonition-header">Warn</header><div class="admonition-body"><p><code>Float32</code> precision is sometimes not enough precision to accurately solve a stiff ODE. Make sure that the precision is necessary by investigating the condition number of the Jacobian. If this value is well-above <code>1e8</code>, use <code>Float32</code> with caution!</p></div></div><h2 id="Restrictions-of-CuArrays"><a class="docs-heading-anchor" href="#Restrictions-of-CuArrays">Restrictions of CuArrays</a><a id="Restrictions-of-CuArrays-1"></a><a class="docs-heading-anchor-permalink" href="#Restrictions-of-CuArrays" title="Permalink"></a></h2><p>Note that all the rules of <a href="https://cuda.juliagpu.org/stable/">CUDA.jl</a> apply when <code>CuArrays</code> are being used in the solver. While for most of the <code>AbstractArray</code> interface they act similarly to <code>Array</code>s, such as having valid broadcasting operations (<code>x .* y</code>) defined, they will work on GPUs. For more information on the rules and restrictions of <code>CuArrays</code>, see <a href="https://cuda.juliagpu.org/stable/usage/array/">this page from the CUDA.jl documentation</a>.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../weak_order_conv_sde/">« Using the EnsembleGPUKernel SDE solvers for the expectation of SDEs </a><a class="docs-footer-nextpage" href="../../examples/sde/">GPU Parallel Solving of Stochastic Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Wednesday 31 May 2023 19:30">Wednesday 31 May 2023</span>. Using Julia version 1.9.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
