@@ -531,7 +531,7 @@ mutable struct GPUKvaerno3Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgTy
 end
 const GPUKvaerno3I = GPUKvaerno3Integrator
 
-@inline function gpukvaerno3_init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
                                   p::P, tstops::TS,
                                   callback::CB,
                                   save_everystep::Bool,
