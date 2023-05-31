@@ -176,9 +176,9 @@ end
 # saveat is just a bool here:
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
-@kernel function ode_solve_kernel(@Const(probs), alg::Alg, _us, _ts, dt, callback,
+@kernel function ode_solve_kernel(@Const(probs), alg, _us, _ts, dt, callback,
                                   tstops, nsteps,
-                                  saveat, ::Val{save_everystep}) where {Alg, save_everystep}
+                                  saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -228,10 +228,10 @@ end
     end
 end
 
-@kernel function ode_asolve_kernel(probs, alg::Alg, _us, _ts, dt, callback, tstops,
+@kernel function ode_asolve_kernel(probs, alg, _us, _ts, dt, callback, tstops,
                                    abstol, reltol,
                                    saveat,
-                                   ::Val{save_everystep}) where {Alg, save_everystep}
+                                   ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
