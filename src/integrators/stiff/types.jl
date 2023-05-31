@@ -535,7 +535,7 @@ const GPUKvaerno3I = GPUKvaerno3Integrator
                                   p::P, tstops::TS,
                                   callback::CB,
                                   save_everystep::Bool,
-                                  saveat::ST) where {AlgType, F, P, T,
+                                  saveat::ST) where {F, P, T,
                                                      S,
                                                      TS, CB, ST}
     !IIP && @assert S <: SArray
