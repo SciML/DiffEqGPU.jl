@@ -336,7 +336,7 @@ This introduces the following limitations on its usage:
 ## Example
 
 ```julia
-using DiffEqGPU, OrdinaryDiffEq
+using DiffEqGPU, CUDA, OrdinaryDiffEq
 function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
     du[2] = u[1] * (p[2] - u[3]) - u[2]
@@ -488,7 +488,7 @@ imparts some extra limitations on the use.
 ## Example
 
 ```julia
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays
+using DiffEqGPU, CUDA, OrdinaryDiffEq, StaticArrays
 
 function lorenz(u, p, t)
     σ = p[1]

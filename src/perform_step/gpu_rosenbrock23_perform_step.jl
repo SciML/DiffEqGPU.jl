@@ -41,7 +41,8 @@
     Tgrad = build_tgrad(integ.alg, f)
     dT = Tgrad(uprev, p, t)
 
-    W = I - γ * J
+    mass_matrix = integ.f.mass_matrix
+    W = mass_matrix - γ * J
     W_fact = W
 
     # F = lu(W)
@@ -50,7 +51,11 @@
 
     F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
-    k2 = W_fact \ (F₁ - k1) + k1
+    if mass_matrix === I
+        k2 = W_fact \ (F₁ - k1) + k1
+    else
+        k2 = W_fact \ (F₁ - mass_matrix * k1) + k1
+    end
 
     integ.u = uprev + dt * k2
 
@@ -93,6 +98,8 @@ end
 
     EEst = convert(T, Inf)
 
+    mass_matrix = integ.f.mass_matrix
+
     while EEst > convert(T, 1.0)
         dt < convert(T, 1.0f-14) && error("dt<dtmin")
 
@@ -107,9 +114,7 @@ end
         Tgrad = build_tgrad(integ.alg, f)
         dT = Tgrad(uprev, p, t)
 
-        # KernelAbstractions.@print(J[1][1], " ")
-
-        W = I - γ * J
+        W = mass_matrix - γ * J
         W_fact = W
 
         # F = lu(W)
@@ -118,13 +123,24 @@ end
 
         F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
-        k2 = W_fact \ (F₁ - k1) + k1
+        if mass_matrix === I
+            k2 = W_fact \ (F₁ - k1) + k1
+        else
+            k2 = W_fact \ (F₁ - mass_matrix * k1) + k1
+        end
 
         u = uprev + dt * k2
 
         e32 = T(6) + sqrt(T(2))
         F₂ = f(u, p, t + dt)
-        k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
+
+        if mass_matrix === I
+            k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
+
+        else
+            k3 = W_fact \ (F₂ - mass_matrix * (e32 * k2 + 2 * k1) +
+                  e32 * F₁ + 2 * F₀ + dt * dT)
+        end
 
         tmp = dto6 * (k1 - 2 * k2 + k3)
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)

@@ -19,6 +19,7 @@ const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
 
+@time @safetestset "GPU Kernelized Stiff ODE Mass Matrix" begin include("gpu_kernel_de/stiff_ode/gpu_ode_mass_matrix.jl") end
 @time @testset "GPU Kernelized Non Stiff ODE Regression" begin include("gpu_kernel_de/gpu_ode_regression.jl") end
 @time @safetestset "GPU Kernelized Non Stiff ODE DiscreteCallback" begin include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl") end
 @time @testset "GPU Kernelized Stiff ODE Regression" begin include("gpu_kernel_de/stiff_ode/gpu_ode_regression.jl") end
