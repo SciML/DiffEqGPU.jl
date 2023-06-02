@@ -310,271 +310,283 @@ end
 #######################################################################################
 # Initialization of Integrators
 #######################################################################################
-@inline function gputsit5_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                               p::P, tstops::TS,
-                               callback::CB,
-                               save_everystep::Bool,
-                               saveat::ST) where {AlgType, F, P, T, S <: AbstractArray{T},
-                                                  TS, CB, ST}
+@inline function init(alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+                      p::P, tstops::TS,
+                      callback::CB,
+                      save_everystep::Bool,
+                      saveat::ST) where {F, P, T, S,
+                                         TS, CB, ST}
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
-    integ = GPUT5I{IIP, S, T, ST, P, F, TS, CB, AlgType}(alg, f, copy(u0), copy(u0),
-                                                         copy(u0), t0, t0, t0,
-                                                         dt,
-                                                         sign(dt), p, true, tstops, 1,
-                                                         callback,
-                                                         save_everystep, saveat, 1, 1,
-                                                         event_last_time,
-                                                         vector_event_last_time,
-                                                         last_event_error,
-                                                         copy(u0), copy(u0), copy(u0),
-                                                         copy(u0),
-                                                         copy(u0),
-                                                         copy(u0), copy(u0), cs, as, rs,
-                                                         DiffEqBase.ReturnCode.Default)
+    integ = GPUT5I{IIP, S, T, ST, P, F, TS, CB, typeof(alg)}(alg, f, copy(u0), copy(u0),
+                                                             copy(u0), t0, t0, t0,
+                                                             dt,
+                                                             sign(dt), p, true, tstops, 1,
+                                                             callback,
+                                                             save_everystep, saveat, 1, 1,
+                                                             event_last_time,
+                                                             vector_event_last_time,
+                                                             last_event_error,
+                                                             copy(u0), copy(u0), copy(u0),
+                                                             copy(u0),
+                                                             copy(u0),
+                                                             copy(u0), copy(u0), cs, as, rs,
+                                                             DiffEqBase.ReturnCode.Default)
 end
 
-@inline function gpuatsit5_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
-                                p::P,
-                                abstol::TOL, reltol::TOL,
-                                internalnorm::N, tstops::TS,
-                                callback::CB,
-                                saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS, CB, ST}
+@inline function init(alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
+                      p::P,
+                      abstol::TOL, reltol::TOL,
+                      internalnorm::N, tstops::TS,
+                      callback::CB,
+                      saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(T)
 
     !IIP && @assert S <: SArray
 
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
-    integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, AlgType}(alg, f,
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    t0, t0,
-                                                                                    t0,
-                                                                                    tf, dt,
-                                                                                    dt,
-                                                                                    sign(tf -
-                                                                                         t0),
-                                                                                    p,
-                                                                                    true,
-                                                                                    tstops,
-                                                                                    1,
-                                                                                    callback,
-                                                                                    false,
-                                                                                    saveat,
-                                                                                    1, 1,
-                                                                                    event_last_time,
-                                                                                    vector_event_last_time,
-                                                                                    last_event_error,
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    copy(u0),
-                                                                                    cs, as,
-                                                                                    btildes,
-                                                                                    rs,
-                                                                                    qoldinit,
-                                                                                    abstol,
-                                                                                    reltol,
-                                                                                    internalnorm,
-                                                                                    DiffEqBase.ReturnCode.Default)
+    integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(alg,
+                                                                                        f,
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        t0,
+                                                                                        t0,
+                                                                                        t0,
+                                                                                        tf,
+                                                                                        dt,
+                                                                                        dt,
+                                                                                        sign(tf -
+                                                                                             t0),
+                                                                                        p,
+                                                                                        true,
+                                                                                        tstops,
+                                                                                        1,
+                                                                                        callback,
+                                                                                        false,
+                                                                                        saveat,
+                                                                                        1,
+                                                                                        1,
+                                                                                        event_last_time,
+                                                                                        vector_event_last_time,
+                                                                                        last_event_error,
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        copy(u0),
+                                                                                        cs,
+                                                                                        as,
+                                                                                        btildes,
+                                                                                        rs,
+                                                                                        qoldinit,
+                                                                                        abstol,
+                                                                                        reltol,
+                                                                                        internalnorm,
+                                                                                        DiffEqBase.ReturnCode.Default)
 end
 
-@inline function gpuvern7_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                               p::P, tstops::TS,
-                               callback::CB,
-                               save_everystep::Bool,
-                               saveat::ST) where {AlgType, F, P, T, S <: AbstractArray{T},
-                                                  TS, CB, ST}
+@inline function init(alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+                      p::P, tstops::TS,
+                      callback::CB,
+                      save_everystep::Bool,
+                      saveat::ST) where {F, P, T, S <: AbstractArray{T},
+                                         TS, CB, ST}
     tab = Vern7Tableau(T, T)
 
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
-    integ = GPUV7I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), AlgType}(alg, f, copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0),
-                                                                      t0, t0, t0, dt,
-                                                                      sign(dt), p, true,
-                                                                      tstops, 1,
-                                                                      callback,
-                                                                      save_everystep,
-                                                                      saveat, 1, 1,
-                                                                      event_last_time,
-                                                                      vector_event_last_time,
-                                                                      last_event_error,
-                                                                      copy(u0), copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0), copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0), copy(u0),
-                                                                      tab,
-                                                                      DiffEqBase.ReturnCode.Default)
+    integ = GPUV7I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f, copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          t0, t0, t0, dt,
+                                                                          sign(dt), p, true,
+                                                                          tstops, 1,
+                                                                          callback,
+                                                                          save_everystep,
+                                                                          saveat, 1, 1,
+                                                                          event_last_time,
+                                                                          vector_event_last_time,
+                                                                          last_event_error,
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          tab,
+                                                                          DiffEqBase.ReturnCode.Default)
 end
 
-@inline function gpuavern7_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
-                                p::P,
-                                abstol::TOL, reltol::TOL,
-                                internalnorm::N, tstops::TS,
-                                callback::CB,
-                                saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS, CB, ST}
+@inline function init(alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
+                      p::P,
+                      abstol::TOL, reltol::TOL,
+                      internalnorm::N, tstops::TS,
+                      callback::CB,
+                      saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern7Tableau(T, T)
 
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUAV7I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-                    AlgType}(alg, f,
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             t0,
-                             t0,
-                             t0,
-                             tf,
-                             dt,
-                             dt,
-                             sign(tf -
-                                  t0),
-                             p,
-                             true,
-                             tstops,
-                             1,
-                             callback,
-                             false,
-                             saveat,
-                             1,
-                             1,
-                             event_last_time,
-                             vector_event_last_time,
-                             last_event_error,
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             tab,
-                             qoldinit,
-                             abstol,
-                             reltol,
-                             internalnorm,
-                             DiffEqBase.ReturnCode.Default)
+                    typeof(alg)}(alg, f,
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 t0,
+                                 t0,
+                                 t0,
+                                 tf,
+                                 dt,
+                                 dt,
+                                 sign(tf -
+                                      t0),
+                                 p,
+                                 true,
+                                 tstops,
+                                 1,
+                                 callback,
+                                 false,
+                                 saveat,
+                                 1,
+                                 1,
+                                 event_last_time,
+                                 vector_event_last_time,
+                                 last_event_error,
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 tab,
+                                 qoldinit,
+                                 abstol,
+                                 reltol,
+                                 internalnorm,
+                                 DiffEqBase.ReturnCode.Default)
 end
 
-@inline function gpuvern9_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                               p::P, tstops::TS,
-                               callback::CB,
-                               save_everystep::Bool,
-                               saveat::ST) where {AlgType, F, P, T, S <: AbstractArray{T},
-                                                  TS, CB, ST}
+@inline function init(alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+                      p::P, tstops::TS,
+                      callback::CB,
+                      save_everystep::Bool,
+                      saveat::ST) where {F, P, T, S <: AbstractArray{T},
+                                         TS, CB, ST}
     tab = Vern9Tableau(T, T)
 
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
-    integ = GPUV9I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), AlgType}(alg, f, copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0),
-                                                                      t0, t0, t0, dt,
-                                                                      sign(dt), p, true,
-                                                                      tstops, 1,
-                                                                      callback,
-                                                                      save_everystep,
-                                                                      saveat, 1, 1,
-                                                                      event_last_time,
-                                                                      vector_event_last_time,
-                                                                      last_event_error,
-                                                                      copy(u0), copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0), copy(u0),
-                                                                      copy(u0),
-                                                                      copy(u0), copy(u0),
-                                                                      copy(u0), copy(u0),
-                                                                      tab,
-                                                                      DiffEqBase.ReturnCode.Default)
+    integ = GPUV9I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f, copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          t0, t0, t0, dt,
+                                                                          sign(dt), p, true,
+                                                                          tstops, 1,
+                                                                          callback,
+                                                                          save_everystep,
+                                                                          saveat, 1, 1,
+                                                                          event_last_time,
+                                                                          vector_event_last_time,
+                                                                          last_event_error,
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          copy(u0),
+                                                                          tab,
+                                                                          DiffEqBase.ReturnCode.Default)
 end
 
-@inline function gpuavern9_init(alg::AlgType, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
-                                p::P,
-                                abstol::TOL, reltol::TOL,
-                                internalnorm::N, tstops::TS,
-                                callback::CB,
-                                saveat::ST) where {AlgType, F, P, S, T, N, TOL, TS, CB, ST}
+@inline function init(alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
+                      p::P,
+                      abstol::TOL, reltol::TOL,
+                      internalnorm::N, tstops::TS,
+                      callback::CB,
+                      saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern9Tableau(T, T)
 
-    qoldinit = eltype(S)(1e-4)
+    qoldinit = T(1e-4)
     event_last_time = 1
     vector_event_last_time = 0
-    last_event_error = zero(eltype(S))
+    last_event_error = zero(T)
 
     integ = GPUAV9I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-                    AlgType}(alg, f,
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             t0,
-                             t0,
-                             t0,
-                             tf,
-                             dt,
-                             dt,
-                             sign(tf -
-                                  t0),
-                             p,
-                             true,
-                             tstops,
-                             1,
-                             callback,
-                             false,
-                             saveat,
-                             1,
-                             1,
-                             event_last_time,
-                             vector_event_last_time,
-                             last_event_error,
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             copy(u0),
-                             tab,
-                             qoldinit,
-                             abstol,
-                             reltol,
-                             internalnorm,
-                             DiffEqBase.ReturnCode.Default)
+                    typeof(alg)}(alg, f,
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 t0,
+                                 t0,
+                                 t0,
+                                 tf,
+                                 dt,
+                                 dt,
+                                 sign(tf -
+                                      t0),
+                                 p,
+                                 true,
+                                 tstops,
+                                 1,
+                                 callback,
+                                 false,
+                                 saveat,
+                                 1,
+                                 1,
+                                 event_last_time,
+                                 vector_event_last_time,
+                                 last_event_error,
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 copy(u0),
+                                 tab,
+                                 qoldinit,
+                                 abstol,
+                                 reltol,
+                                 internalnorm,
+                                 DiffEqBase.ReturnCode.Default)
 end

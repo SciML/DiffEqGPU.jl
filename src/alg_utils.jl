@@ -13,3 +13,21 @@ alg_order(alg::GPUKvaerno5) = 5
 
 alg_order(alg::GPUEM) = 1
 alg_order(alg::GPUSIEA) = 2
+
+function finite_diff_jac(f, jac_prototype, x)
+    dx = sqrt(eps(DiffEqBase.RecursiveArrayTools.recursive_bottom_eltype(x)))
+    jac = MMatrix{size(x, 1), size(x, 1), eltype(x)}(1I)
+    for i in eachindex(x)
+        x_dx = convert(MArray, x)
+        x_dx[i] = x_dx[i] + dx
+        x_dx = convert(SArray, x_dx)
+        jac[:, i] .= (f(x_dx) - f(x)) / dx
+    end
+    convert(SMatrix, jac)
+end
+
+function alg_autodiff(alg::GPUODEAlgorithm)
+    error("This algorithm does not have an autodifferentiation option defined.")
+end
+
+alg_autodiff(::GPUODEImplicitAlgorithm{AD}) where {AD} = AD
