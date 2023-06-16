@@ -850,10 +850,6 @@ function vectorized_map_solve(probs, alg,
                                   adaptive = adaptive, kwargs...)
 end
 
-function time_transform(prob)
-    remake(prob; tspan = (zero(prob.tspan[1]), one(prob.tspan[2])))
-end
-
 function batch_solve(ensembleprob, alg,
                      ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
                      adaptive;
@@ -941,15 +937,16 @@ function batch_solve(ensembleprob, alg,
                        for i in 1:length(I))
 
             # Change the tspan of first problem to (0,1)
+            orig_prob = copy(probs[1])
             probs[1] = remake(probs[1];
                               tspan = (zero(probs[1].tspan[1]), one(probs[1].tspan[2])))
 
-            tranformed_probs = time_transform.(probs)
-
-            sol, solus = batch_solve_up(ensembleprob, tranformed_probs, alg, ensemblealg, I,
+            sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I,
                                         u0, p; adaptive = adaptive, kwargs...)
 
-            [ensembleprob.output_func(SciMLBase.build_solution(tranformed_probs[i], alg,
+            probs[1] = orig_prob
+
+            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
                                                                map(t -> probs[i].tspan[1] +
                                                                         (probs[i].tspan[2] -
                                                                          probs[i].tspan[1]) *
@@ -958,6 +955,9 @@ function batch_solve(ensembleprob, alg,
                                                                retcode = sol.retcode), i)[1]
              for i in 1:length(probs)]
         else
+            p = reduce(hcat,
+                       probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
+                       for i in 1:length(I))
             sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
                                         adaptive = adaptive, kwargs...)
             [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t,
