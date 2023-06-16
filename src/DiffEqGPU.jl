@@ -924,7 +924,7 @@ function batch_solve(ensembleprob, alg,
     else
         u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
 
-        if !all(Base.Fix2((prob1, prob2) -> !isequal(prob1.tspan, prob2.tspan),
+        if !all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
                           probs[1]),
                 probs)
 
