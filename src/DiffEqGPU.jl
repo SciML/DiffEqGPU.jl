@@ -1231,7 +1231,7 @@ function LinearSolve.init_cacheval(linsol::LinSolveGPUSplitFactorize, A, b, u, P
     LinSolveGPUSplitFactorize(linsol.len, length(u) ÷ linsol.len)
 end
 
-function SciMLBase.solve(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFactorize,
+function SciMLBase.solve!(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFactorize,
                          args...; kwargs...)
     p = cache.cacheval
     A = cache.A
