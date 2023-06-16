@@ -21,6 +21,45 @@ using Random
 using Setfield
 using ForwardDiff
 
+"""
+Wrapper for modifying parameters to contain additional data. Useful for simulating
+trajectories with different time span values.
+"""
+struct ParamWrapper{P, T}
+    params::P
+    data::T
+end
+
+function Adapt.adapt_structure(to, ps::ParamWrapper{P, T}) where {P, T}
+    ParamWrapper(adapt(to, ps.params),
+                 adapt(to, ps.data))
+end
+
+@kernel function gpu_kernel(f, du, @Const(u),
+                            @Const(params::AbstractArray{ParamWrapper{P, T}}),
+                            @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+    @views @inbounds f(du[:, i], u[:, i], p, t)
+    @inbounds for j in 1:size(du, 1)
+        du[j, i] = du[j, i] * (tspan[2] - tspan[1])
+    end
+end
+
+@kernel function gpu_kernel_oop(f, du, @Const(u),
+                                @Const(params::AbstractArray{ParamWrapper{P, T}}),
+                                @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    @views @inbounds x = f(u[:, i], p, t)
+    @inbounds for j in 1:size(du, 1)
+        du[j, i] = x[j] * (tspan[2] - tspan[1])
+    end
+end
+
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
     if eltype(p) <: Number
@@ -39,6 +78,36 @@ end
     end
     @inbounds for j in 1:size(du, 1)
         du[j, i] = x[j]
+    end
+end
+
+@kernel function jac_kernel(f, J, @Const(u),
+                            @Const(params::AbstractArray{ParamWrapper{P, T}}),
+                            @Const(t)) where {P, T}
+    i = @index(Global, Linear) - 1
+    section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
+    @inbounds p = params[i + 1].params
+    @inbounds tspan = params[i + 1].data
+
+    @views @inbounds f(J[section, section], u[:, i + 1], p, t)
+    @inbounds for j in section, k in section
+        J[k, j] = J[k, j] * (tspan[2] - tspan[1])
+    end
+end
+
+@kernel function jac_kernel_oop(f, J, @Const(u),
+                                @Const(params::AbstractArray{ParamWrapper{P, T}}),
+                                @Const(t)) where {P, T}
+    i = @index(Global, Linear) - 1
+    section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
+
+    @inbounds p = params[i + 1].params
+    @inbounds tspan = params[i + 1].data
+
+    @views @inbounds x = f(u[:, i + 1], p, t)
+
+    @inbounds for j in section, k in section
+        J[k, j] = x[k, j] * (tspan[2] - tspan[1])
     end
 end
 
@@ -94,11 +163,57 @@ function workgroupsize(backend, n)
     min(maxthreads(backend), n)
 end
 
+@kernel function W_kernel(jac, W, @Const(u),
+                          @Const(params::AbstractArray{ParamWrapper{P, T}}), @Const(gamma),
+                          @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+    _W = @inbounds @view(W[:, :, i])
+
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    @views @inbounds jac(_W, u[:, i], p, t)
+
+    @inbounds for i in eachindex(_W)
+        _W[i] = gamma * _W[i] * (tspan[2] - tspan[1])
+    end
+    _one = one(eltype(_W))
+    @inbounds for i in 1:len
+        _W[i, i] = _W[i, i] - _one
+    end
+end
+
 @kernel function W_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
     @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @inbounds for i in eachindex(_W)
+        _W[i] = gamma * _W[i]
+    end
+    _one = one(eltype(_W))
+    @inbounds for i in 1:len
+        _W[i, i] = _W[i, i] - _one
+    end
+end
+
+@kernel function W_kernel_oop(jac, W, @Const(u),
+                              @Const(params::AbstractArray{ParamWrapper{P, T}}),
+                              @Const(gamma),
+                              @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    _W = @inbounds @view(W[:, :, i])
+
+    @views @inbounds x = jac(u[:, i], p, t)
+    @inbounds for j in 1:length(_W)
+        _W[j] = x[j] * (tspan[2] - tspan[1])
+    end
     @inbounds for i in eachindex(_W)
         _W[i] = gamma * _W[i]
     end
@@ -125,11 +240,38 @@ end
     end
 end
 
+@kernel function Wt_kernel(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
+                           @Const(t)) where {T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+    _W = @inbounds @view(W[:, :, i])
+    @inbounds jac = f[i].tgrad
+    @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @inbounds for i in 1:len
+        _W[i, i] = -inv(gamma) + _W[i, i]
+    end
+end
+
 @kernel function Wt_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
     @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @inbounds for i in 1:len
+        _W[i, i] = -inv(gamma) + _W[i, i]
+    end
+end
+
+@kernel function Wt_kernel_oop(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
+                               @Const(t)) where {T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+    _W = @inbounds @view(W[:, :, i])
+    @inbounds jac = f[i].tgrad
+    @views @inbounds x = jac(u[:, i], p[:, i], t)
+    @inbounds for j in 1:length(_W)
+        _W[j] = x[j]
+    end
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
@@ -145,6 +287,31 @@ end
     end
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
+    end
+end
+
+@kernel function gpu_kernel_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+                                  @Const(t)) where {T}
+    i = @index(Global, Linear)
+    @inbounds f = f[i].tgrad
+    if eltype(p) <: Number
+        @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
+    else
+        @views @inbounds f(du[:, i], u[:, i], p[i], t)
+    end
+end
+
+@kernel function gpu_kernel_oop_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+                                      @Const(t)) where {T}
+    i = @index(Global, Linear)
+    @inbounds f = f[i].tgrad
+    if eltype(p) <: Number
+        @views @inbounds x = f(u[:, i], p[:, i], t)
+    else
+        @views @inbounds x = f(u[:, i], p[i], t)
+    end
+    @inbounds for j in 1:size(du, 1)
+        du[j, i] = x[j]
     end
 end
 
@@ -683,6 +850,10 @@ function vectorized_map_solve(probs, alg,
                                   adaptive = adaptive, kwargs...)
 end
 
+function time_transform(prob)
+    remake(prob; tspan = (zero(prob.tspan[1]), one(prob.tspan[2])))
+end
+
 function batch_solve(ensembleprob, alg,
                      ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
                      adaptive;
@@ -755,20 +926,46 @@ function batch_solve(ensembleprob, alg,
             error("We don't have solvers implemented for this algorithm yet")
         end
     else
-        @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
-                              probs[1]),
-                    probs)
         u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
-        p = reduce(hcat,
-                   probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-                   for i in 1:length(I))
 
-        sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
-                                    adaptive = adaptive, kwargs...)
-        [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t, solus[i],
-                                                           stats = sol.stats,
-                                                           retcode = sol.retcode), i)[1]
-         for i in 1:length(probs)]
+        if !all(Base.Fix2((prob1, prob2) -> !isequal(prob1.tspan, prob2.tspan),
+                          probs[1]),
+                probs)
+
+            # Requires prob.p to be isbits otherwise it wouldn't work with ParamWrapper
+            @assert all(prob -> isbits(prob.p), probs)
+            @info "Remaking the problem to normalize time span values..."
+
+            p = reduce(hcat,
+                       ParamWrapper(probs[i].p, probs[i].tspan)
+                       for i in 1:length(I))
+
+            # Change the tspan of first problem to (0,1)
+            probs[1] = remake(probs[1];
+                              tspan = (zero(probs[1].tspan[1]), one(probs[1].tspan[2])))
+
+            tranformed_probs = time_transform.(probs)
+
+            sol, solus = batch_solve_up(ensembleprob, tranformed_probs, alg, ensemblealg, I,
+                                        u0, p; adaptive = adaptive, kwargs...)
+
+            [ensembleprob.output_func(SciMLBase.build_solution(tranformed_probs[i], alg,
+                                                               map(t -> probs[i].tspan[1] +
+                                                                        (probs[i].tspan[2] -
+                                                                         probs[i].tspan[1]) *
+                                                                        t, sol.t), solus[i],
+                                                               stats = sol.stats,
+                                                               retcode = sol.retcode), i)[1]
+             for i in 1:length(probs)]
+        else
+            sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
+                                        adaptive = adaptive, kwargs...)
+            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t,
+                                                               solus[i],
+                                                               stats = sol.stats,
+                                                               retcode = sol.retcode), i)[1]
+             for i in 1:length(probs)]
+        end
     end
 end
 

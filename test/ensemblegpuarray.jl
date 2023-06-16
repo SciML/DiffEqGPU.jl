@@ -229,3 +229,19 @@ monteprob = EnsembleProblem(prob, prob_func = param_prob_func)
 @time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
                   saveat = 1.0f0)
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
+
+@info "Different time-spans"
+
+saveats = 1.0f0:1.0f0:10.0f0
+
+prob = ODEProblem(lorenz, u0, tspan, p)
+monteprob = EnsembleProblem(prob_jac,
+                            prob_func = (prob, i, repeat) -> remake(prob;
+                                                                    tspan = (0.0f0,
+                                                                             saveats[i])))
+
+sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDABackend()), trajectories = 10,
+            adaptive = false, dt = 0.01f0, save_everystep = false)
+
+sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(CUDABackend()), trajectories = 10,
+            adaptive = false, dt = 0.01f0, save_everystep = false)
