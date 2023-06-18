@@ -23,9 +23,9 @@ for alg in algs
     @info typeof(alg)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
-                      adaptive = false, dt = 0.01f0)
+        adaptive = false, dt = 0.01f0)
     asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
-                 adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
+        adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
 
     @test sol.converged == true
     @test asol.converged == true
@@ -34,7 +34,7 @@ for alg in algs
 
     bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0)
     bench_asol = solve(prob, Vern9(), dt = 0.1f-1, save_everystep = false, abstol = 1.0f-7,
-                       reltol = 1.0f-7)
+        reltol = 1.0f-7)
 
     @test norm(bench_sol.u[end] - sol[1].u[end]) < 5e-3
     @test norm(bench_asol.u - asol[1].u) < 8e-4
@@ -44,15 +44,15 @@ for alg in algs
     saveat = [2.0f0, 4.0f0]
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
-                      adaptive = false, dt = 0.01f0, saveat = saveat)
+        adaptive = false, dt = 0.01f0, saveat = saveat)
 
     asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
-                 adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
-                 saveat = saveat)
+        adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
+        saveat = saveat)
 
     bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0, saveat = saveat)
     bench_asol = solve(prob, Vern9(), dt = 0.1f-1, save_everystep = false, abstol = 1.0f-7,
-                       reltol = 1.0f-7, saveat = saveat)
+        reltol = 1.0f-7, saveat = saveat)
 
     @test norm(asol[1].u[end] - sol[1].u[end]) < 5e-3
 
@@ -65,15 +65,15 @@ for alg in algs
     saveat = collect(0.0f0:0.1f0:10.0f0)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
-                      adaptive = false, dt = 0.01f0, saveat = saveat)
+        adaptive = false, dt = 0.01f0, saveat = saveat)
 
     asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
-                 adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
-                 saveat = saveat)
+        adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
+        saveat = saveat)
 
     bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0, saveat = saveat)
     bench_asol = solve(prob, Vern9(), dt = 0.1f-1, save_everystep = false, abstol = 1.0f-7,
-                       reltol = 1.0f-7, saveat = saveat)
+        reltol = 1.0f-7, saveat = saveat)
 
     @test norm(asol[1].u[end] - sol[1].u[end]) < 6e-3
 
@@ -84,7 +84,7 @@ for alg in algs
     @test length(asol[1].u) == length(saveat)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
-                      adaptive = false, dt = 0.01f0, save_everystep = false)
+        adaptive = false, dt = 0.01f0, save_everystep = false)
 
     bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0, save_everystep = false)
 
@@ -94,10 +94,10 @@ for alg in algs
 
     ### Huge number of threads
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10_000,
-                      adaptive = false, dt = 0.01f0, save_everystep = false)
+        adaptive = false, dt = 0.01f0, save_everystep = false)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10_000,
-                      adaptive = true, dt = 0.01f0, save_everystep = false)
+        adaptive = true, dt = 0.01f0, save_everystep = false)
 
     ## With random parameters
 
@@ -105,7 +105,7 @@ for alg in algs
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
-                      adaptive = false, dt = 0.1f0)
+        adaptive = false, dt = 0.1f0)
     asol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,
-                 adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
+        adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
 end

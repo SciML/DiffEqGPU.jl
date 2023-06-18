@@ -148,7 +148,7 @@ end
 
 @inline function step!(integ::GPUARodas5PI{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
-                                                                                   T)
+        T)
 
     dt = integ.dtnew
     t = integ.t

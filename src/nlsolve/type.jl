@@ -20,25 +20,25 @@ struct NLSolver{uType, gamType, tmpType, tType, JType, WType, pType} <: Abstract
 end
 
 function NLSolver{tType}(z, tmp, ztmp, γ, c, α, κ, J, W, dt, t, p,
-                         iter, maxiters, tmp2 = nothing) where {tType}
+    iter, maxiters, tmp2 = nothing) where {tType}
     NLSolver{typeof(z), typeof(γ), typeof(tmp2), tType, typeof(J), typeof(W), typeof(p)}(z,
-                                                                                         tmp,
-                                                                                         tmp2,
-                                                                                         ztmp,
-                                                                                         γ,
-                                                                                         convert(tType,
-                                                                                                 c),
-                                                                                         convert(tType,
-                                                                                                 α),
-                                                                                         convert(tType,
-                                                                                                 κ),
-                                                                                         J,
-                                                                                         W,
-                                                                                         dt,
-                                                                                         t,
-                                                                                         p,
-                                                                                         iter,
-                                                                                         maxiters)
+        tmp,
+        tmp2,
+        ztmp,
+        γ,
+        convert(tType,
+            c),
+        convert(tType,
+            α),
+        convert(tType,
+            κ),
+        J,
+        W,
+        dt,
+        t,
+        p,
+        iter,
+        maxiters)
 end
 
 @inline function build_J_W(alg, f, γ, dt)
@@ -72,16 +72,16 @@ end
 end
 
 @inline function build_nlsolver(alg, u, p,
-                                t, dt,
-                                f,
-                                γ, c)
+    t, dt,
+    f,
+    γ, c)
     build_nlsolver(alg, u, p, t, dt, f, γ, c, 1)
 end
 
 @inline function build_nlsolver(alg, u, p,
-                                t, dt,
-                                f,
-                                γ, c, α)
+    t, dt,
+    f,
+    γ, c, α)
     # define fields of non-linear solver
     z = u
     tmp = u
@@ -90,5 +90,5 @@ end
     max_iter = 30
     κ = 1 / 100
     NLSolver{typeof(dt)}(z, tmp, ztmp, γ, c, α, κ,
-                         J, W, dt, t, p, 0, max_iter)
+        J, W, dt, t, p, 0, max_iter)
 end

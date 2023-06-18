@@ -1,20 +1,25 @@
-@inline function (integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T})(t) where {
-                                                                                              AlgType <:
-                                                                                              GPUODEAlgorithm,
-                                                                                              IIP,
-                                                                                              S,
-                                                                                              T
-                                                                                              }
+@inline function (integrator::DiffEqBase.AbstractODEIntegrator{
+    AlgType,
+    IIP,
+    S,
+    T,
+})(t) where {
+    AlgType <:
+    GPUODEAlgorithm,
+    IIP,
+    S,
+    T,
+}
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 @inline function DiffEqBase.u_modified!(integrator::DiffEqBase.AbstractODEIntegrator{
-                                                                                     AlgType,
-                                                                                     IIP, S,
-                                                                                     T},
-                                        bool::Bool) where {AlgType <: GPUODEAlgorithm, IIP,
-                                                           S, T}
+        AlgType,
+        IIP, S,
+        T},
+    bool::Bool) where {AlgType <: GPUODEAlgorithm, IIP,
+    S, T}
     integrator.u_modified = bool
 end
 
@@ -50,12 +55,12 @@ end
 const GPURB23I = GPURosenbrock23Integrator
 
 @inline function init(alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                      p::P, tstops::TS,
-                      callback::CB,
-                      save_everystep::Bool,
-                      saveat::ST) where {F, P, T,
-                                         S,
-                                         TS, CB, ST}
+    p::P, tstops::TS,
+    callback::CB,
+    save_everystep::Bool,
+    saveat::ST) where {F, P, T,
+    S,
+    TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -64,21 +69,33 @@ const GPURB23I = GPURosenbrock23Integrator
     d = 1 / (d + sqrt(d))
 
     integ = GPURB23I{IIP, S, T, ST, P, F, TS, CB, typeof(alg)}(alg, f, copy(u0), copy(u0),
-                                                               copy(u0), t0, t0,
-                                                               t0,
-                                                               dt,
-                                                               sign(dt), p, true, tstops, 1,
-                                                               callback,
-                                                               save_everystep, saveat, 1, 1,
-                                                               event_last_time,
-                                                               vector_event_last_time,
-                                                               last_event_error,
-                                                               copy(u0), copy(u0), d,
-                                                               DiffEqBase.ReturnCode.Default)
+        copy(u0), t0, t0,
+        t0,
+        dt,
+        sign(dt), p, true, tstops, 1,
+        callback,
+        save_everystep, saveat, 1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0), copy(u0), d,
+        DiffEqBase.ReturnCode.Default)
 end
 
-mutable struct GPUARosenbrock23Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, AlgType
-                                          } <:
+mutable struct GPUARosenbrock23Integrator{
+    IIP,
+    S,
+    T,
+    ST,
+    P,
+    F,
+    N,
+    TOL,
+    Q,
+    TS,
+    CB,
+    AlgType,
+} <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
@@ -118,12 +135,12 @@ end
 const GPUARB23I = GPUARosenbrock23Integrator
 
 @inline function init(alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-                      dt::T, p::P,
-                      abstol::TOL, reltol::TOL,
-                      internalnorm::N, tstops::TS,
-                      callback::CB,
-                      saveat::ST) where {F, P, S, T, N, TOL, TS,
-                                         CB, ST}
+    dt::T, p::P,
+    abstol::TOL, reltol::TOL,
+    internalnorm::N, tstops::TS,
+    callback::CB,
+    saveat::ST) where {F, P, S, T, N, TOL, TS,
+    CB, ST}
     !IIP && @assert S <: SArray
 
     qoldinit = T(1e-4)
@@ -135,39 +152,39 @@ const GPUARB23I = GPUARosenbrock23Integrator
     d = 1 / (d + sqrt(d))
 
     integ = GPUARB23I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(alg,
-                                                                                          f,
-                                                                                          copy(u0),
-                                                                                          copy(u0),
-                                                                                          copy(u0),
-                                                                                          t0,
-                                                                                          t0,
-                                                                                          t0,
-                                                                                          tf,
-                                                                                          dt,
-                                                                                          dt,
-                                                                                          sign(tf -
-                                                                                               t0),
-                                                                                          p,
-                                                                                          true,
-                                                                                          tstops,
-                                                                                          1,
-                                                                                          callback,
-                                                                                          false,
-                                                                                          saveat,
-                                                                                          1,
-                                                                                          1,
-                                                                                          event_last_time,
-                                                                                          vector_event_last_time,
-                                                                                          last_event_error,
-                                                                                          copy(u0),
-                                                                                          copy(u0),
-                                                                                          copy(u0),
-                                                                                          d,
-                                                                                          qoldinit,
-                                                                                          abstol,
-                                                                                          reltol,
-                                                                                          internalnorm,
-                                                                                          DiffEqBase.ReturnCode.Default)
+        f,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        tf,
+        dt,
+        dt,
+        sign(tf -
+             t0),
+        p,
+        true,
+        tstops,
+        1,
+        callback,
+        false,
+        saveat,
+        1,
+        1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        d,
+        qoldinit,
+        abstol,
+        reltol,
+        internalnorm,
+        DiffEqBase.ReturnCode.Default)
 end
 
 ##########################
@@ -206,12 +223,12 @@ end
 const GPURodas4I = GPURodas4Integrator
 
 @inline function init(alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                      p::P, tstops::TS,
-                      callback::CB,
-                      save_everystep::Bool,
-                      saveat::ST) where {F, P, T,
-                                         S,
-                                         TS, CB, ST}
+    p::P, tstops::TS,
+    callback::CB,
+    save_everystep::Bool,
+    saveat::ST) where {F, P, T,
+    S,
+    TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -220,29 +237,42 @@ const GPURodas4I = GPURodas4Integrator
     tab = Rodas4Tableau(T, T)
 
     integ = GPURodas4I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
-                                                                              copy(u0),
-                                                                              copy(u0),
-                                                                              copy(u0), t0,
-                                                                              t0,
-                                                                              t0,
-                                                                              dt,
-                                                                              sign(dt), p,
-                                                                              true,
-                                                                              tstops, 1,
-                                                                              callback,
-                                                                              save_everystep,
-                                                                              saveat, 1, 1,
-                                                                              event_last_time,
-                                                                              vector_event_last_time,
-                                                                              last_event_error,
-                                                                              copy(u0),
-                                                                              copy(u0), tab,
-                                                                              DiffEqBase.ReturnCode.Default)
+        copy(u0),
+        copy(u0),
+        copy(u0), t0,
+        t0,
+        t0,
+        dt,
+        sign(dt), p,
+        true,
+        tstops, 1,
+        callback,
+        save_everystep,
+        saveat, 1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0), tab,
+        DiffEqBase.ReturnCode.Default)
 end
 
 # Adaptive Step
-mutable struct GPUARodas4Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType
-                                    } <:
+mutable struct GPUARodas4Integrator{
+    IIP,
+    S,
+    T,
+    ST,
+    P,
+    F,
+    N,
+    TOL,
+    Q,
+    TS,
+    CB,
+    TabType,
+    AlgType,
+} <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
@@ -281,12 +311,12 @@ end
 const GPUARodas4I = GPUARodas4Integrator
 
 @inline function init(alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-                      dt::T, p::P,
-                      abstol::TOL, reltol::TOL,
-                      internalnorm::N, tstops::TS,
-                      callback::CB,
-                      saveat::ST) where {F, P, S, T, N, TOL, TS,
-                                         CB, ST}
+    dt::T, p::P,
+    abstol::TOL, reltol::TOL,
+    internalnorm::N, tstops::TS,
+    callback::CB,
+    saveat::ST) where {F, P, S, T, N, TOL, TS,
+    CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
@@ -296,38 +326,38 @@ const GPUARodas4I = GPUARodas4Integrator
     tab = Rodas4Tableau(T, T)
 
     integ = GPUARodas4I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-                        typeof(alg)}(alg,
-                                     f,
-                                     copy(u0),
-                                     copy(u0),
-                                     copy(u0),
-                                     t0,
-                                     t0,
-                                     t0,
-                                     tf,
-                                     dt,
-                                     dt,
-                                     sign(tf -
-                                          t0),
-                                     p,
-                                     true,
-                                     tstops,
-                                     1,
-                                     callback,
-                                     false,
-                                     saveat,
-                                     1, 1,
-                                     event_last_time,
-                                     vector_event_last_time,
-                                     last_event_error,
-                                     copy(u0),
-                                     copy(u0),
-                                     tab,
-                                     qoldinit,
-                                     abstol,
-                                     reltol,
-                                     internalnorm,
-                                     DiffEqBase.ReturnCode.Default)
+        typeof(alg)}(alg,
+        f,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        tf,
+        dt,
+        dt,
+        sign(tf -
+             t0),
+        p,
+        true,
+        tstops,
+        1,
+        callback,
+        false,
+        saveat,
+        1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        tab,
+        qoldinit,
+        abstol,
+        reltol,
+        internalnorm,
+        DiffEqBase.ReturnCode.Default)
 end
 
 ##########################
@@ -367,12 +397,12 @@ end
 const GPURodas5PI = GPURodas5PIntegrator
 
 @inline function init(alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                      p::P, tstops::TS,
-                      callback::CB,
-                      save_everystep::Bool,
-                      saveat::ST) where {F, P, T,
-                                         S,
-                                         TS, CB, ST}
+    p::P, tstops::TS,
+    callback::CB,
+    save_everystep::Bool,
+    saveat::ST) where {F, P, T,
+    S,
+    TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -381,32 +411,32 @@ const GPURodas5PI = GPURodas5PIntegrator
     tab = Rodas5PTableau(T, T)
 
     integ = GPURodas5PI{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
-                                                                               copy(u0),
-                                                                               copy(u0),
-                                                                               copy(u0), t0,
-                                                                               t0,
-                                                                               t0,
-                                                                               dt,
-                                                                               sign(dt), p,
-                                                                               true,
-                                                                               tstops, 1,
-                                                                               callback,
-                                                                               save_everystep,
-                                                                               saveat, 1, 1,
-                                                                               event_last_time,
-                                                                               vector_event_last_time,
-                                                                               last_event_error,
-                                                                               copy(u0),
-                                                                               copy(u0),
-                                                                               copy(u0),
-                                                                               tab,
-                                                                               DiffEqBase.ReturnCode.Default)
+        copy(u0),
+        copy(u0),
+        copy(u0), t0,
+        t0,
+        t0,
+        dt,
+        sign(dt), p,
+        true,
+        tstops, 1,
+        callback,
+        save_everystep,
+        saveat, 1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        tab,
+        DiffEqBase.ReturnCode.Default)
 end
 
 # Adaptive Step
 mutable struct GPUARodas5PIntegrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-                                     AlgType
-                                     } <:
+    AlgType,
+} <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
@@ -446,12 +476,12 @@ end
 const GPUARodas5PI = GPUARodas5PIntegrator
 
 @inline function init(alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-                      dt::T, p::P,
-                      abstol::TOL, reltol::TOL,
-                      internalnorm::N, tstops::TS,
-                      callback::CB,
-                      saveat::ST) where {F, P, S, T, N, TOL, TS,
-                                         CB, ST}
+    dt::T, p::P,
+    abstol::TOL, reltol::TOL,
+    internalnorm::N, tstops::TS,
+    callback::CB,
+    saveat::ST) where {F, P, S, T, N, TOL, TS,
+    CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
@@ -461,39 +491,39 @@ const GPUARodas5PI = GPUARodas5PIntegrator
     tab = Rodas5PTableau(T, T)
 
     integ = GPUARodas5PI{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-                         typeof(alg)}(alg,
-                                      f,
-                                      copy(u0),
-                                      copy(u0),
-                                      copy(u0),
-                                      t0,
-                                      t0,
-                                      t0,
-                                      tf,
-                                      dt,
-                                      dt,
-                                      sign(tf -
-                                           t0),
-                                      p,
-                                      true,
-                                      tstops,
-                                      1,
-                                      callback,
-                                      false,
-                                      saveat,
-                                      1, 1,
-                                      event_last_time,
-                                      vector_event_last_time,
-                                      last_event_error,
-                                      copy(u0),
-                                      copy(u0),
-                                      copy(u0),
-                                      tab,
-                                      qoldinit,
-                                      abstol,
-                                      reltol,
-                                      internalnorm,
-                                      DiffEqBase.ReturnCode.Default)
+        typeof(alg)}(alg,
+        f,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        tf,
+        dt,
+        dt,
+        sign(tf -
+             t0),
+        p,
+        true,
+        tstops,
+        1,
+        callback,
+        false,
+        saveat,
+        1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        tab,
+        qoldinit,
+        abstol,
+        reltol,
+        internalnorm,
+        DiffEqBase.ReturnCode.Default)
 end
 
 ##########################
@@ -532,12 +562,12 @@ end
 const GPUKvaerno3I = GPUKvaerno3Integrator
 
 @inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                      p::P, tstops::TS,
-                      callback::CB,
-                      save_everystep::Bool,
-                      saveat::ST) where {F, P, T,
-                                         S,
-                                         TS, CB, ST}
+    p::P, tstops::TS,
+    callback::CB,
+    save_everystep::Bool,
+    saveat::ST) where {F, P, T,
+    S,
+    TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -546,33 +576,33 @@ const GPUKvaerno3I = GPUKvaerno3Integrator
     tab = Kvaerno3Tableau(T, T)
 
     integ = GPUKvaerno3I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
-                                                                                copy(u0),
-                                                                                copy(u0),
-                                                                                copy(u0),
-                                                                                t0,
-                                                                                t0,
-                                                                                t0,
-                                                                                dt,
-                                                                                sign(dt), p,
-                                                                                true,
-                                                                                tstops, 1,
-                                                                                callback,
-                                                                                save_everystep,
-                                                                                saveat, 1,
-                                                                                1,
-                                                                                event_last_time,
-                                                                                vector_event_last_time,
-                                                                                last_event_error,
-                                                                                copy(u0),
-                                                                                copy(u0),
-                                                                                tab,
-                                                                                DiffEqBase.ReturnCode.Default)
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        dt,
+        sign(dt), p,
+        true,
+        tstops, 1,
+        callback,
+        save_everystep,
+        saveat, 1,
+        1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        tab,
+        DiffEqBase.ReturnCode.Default)
 end
 
 # Adaptive Step
 mutable struct GPUAKvaerno3Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-                                      AlgType
-                                      } <:
+    AlgType,
+} <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
@@ -611,12 +641,12 @@ end
 const GPUAKvaerno3I = GPUAKvaerno3Integrator
 
 @inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-                      dt::T, p::P,
-                      abstol::TOL, reltol::TOL,
-                      internalnorm::N, tstops::TS,
-                      callback::CB,
-                      saveat::ST) where {F, P, S, T, N, TOL, TS,
-                                         CB, ST}
+    dt::T, p::P,
+    abstol::TOL, reltol::TOL,
+    internalnorm::N, tstops::TS,
+    callback::CB,
+    saveat::ST) where {F, P, S, T, N, TOL, TS,
+    CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
@@ -626,39 +656,39 @@ const GPUAKvaerno3I = GPUAKvaerno3Integrator
     tab = Kvaerno3Tableau(T, T)
 
     integ = GPUAKvaerno3I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB,
-                          typeof(tab),
-                          typeof(alg)}(alg,
-                                       f,
-                                       copy(u0),
-                                       copy(u0),
-                                       copy(u0),
-                                       t0,
-                                       t0,
-                                       t0,
-                                       tf,
-                                       dt,
-                                       dt,
-                                       sign(tf -
-                                            t0),
-                                       p,
-                                       true,
-                                       tstops,
-                                       1,
-                                       callback,
-                                       false,
-                                       saveat,
-                                       1, 1,
-                                       event_last_time,
-                                       vector_event_last_time,
-                                       last_event_error,
-                                       copy(u0),
-                                       copy(u0),
-                                       tab,
-                                       qoldinit,
-                                       abstol,
-                                       reltol,
-                                       internalnorm,
-                                       DiffEqBase.ReturnCode.Default)
+        typeof(tab),
+        typeof(alg)}(alg,
+        f,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        tf,
+        dt,
+        dt,
+        sign(tf -
+             t0),
+        p,
+        true,
+        tstops,
+        1,
+        callback,
+        false,
+        saveat,
+        1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        tab,
+        qoldinit,
+        abstol,
+        reltol,
+        internalnorm,
+        DiffEqBase.ReturnCode.Default)
 end
 
 ##########################
@@ -697,12 +727,12 @@ end
 const GPUKvaerno5I = GPUKvaerno5Integrator
 
 @inline function init(alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-                      p::P, tstops::TS,
-                      callback::CB,
-                      save_everystep::Bool,
-                      saveat::ST) where {F, P, T,
-                                         S,
-                                         TS, CB, ST}
+    p::P, tstops::TS,
+    callback::CB,
+    save_everystep::Bool,
+    saveat::ST) where {F, P, T,
+    S,
+    TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -711,33 +741,33 @@ const GPUKvaerno5I = GPUKvaerno5Integrator
     tab = Kvaerno5Tableau(T, T)
 
     integ = GPUKvaerno5I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
-                                                                                copy(u0),
-                                                                                copy(u0),
-                                                                                copy(u0),
-                                                                                t0,
-                                                                                t0,
-                                                                                t0,
-                                                                                dt,
-                                                                                sign(dt), p,
-                                                                                true,
-                                                                                tstops, 1,
-                                                                                callback,
-                                                                                save_everystep,
-                                                                                saveat, 1,
-                                                                                1,
-                                                                                event_last_time,
-                                                                                vector_event_last_time,
-                                                                                last_event_error,
-                                                                                copy(u0),
-                                                                                copy(u0),
-                                                                                tab,
-                                                                                DiffEqBase.ReturnCode.Default)
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        dt,
+        sign(dt), p,
+        true,
+        tstops, 1,
+        callback,
+        save_everystep,
+        saveat, 1,
+        1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        tab,
+        DiffEqBase.ReturnCode.Default)
 end
 
 # Adaptive Step
 mutable struct GPUAKvaerno5Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-                                      AlgType
-                                      } <:
+    AlgType,
+} <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
@@ -776,12 +806,12 @@ end
 const GPUAKvaerno5I = GPUAKvaerno5Integrator
 
 @inline function init(alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-                      dt::T, p::P,
-                      abstol::TOL, reltol::TOL,
-                      internalnorm::N, tstops::TS,
-                      callback::CB,
-                      saveat::ST) where {F, P, S, T, N, TOL, TS,
-                                         CB, ST}
+    dt::T, p::P,
+    abstol::TOL, reltol::TOL,
+    internalnorm::N, tstops::TS,
+    callback::CB,
+    saveat::ST) where {F, P, S, T, N, TOL, TS,
+    CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
@@ -791,37 +821,37 @@ const GPUAKvaerno5I = GPUAKvaerno5Integrator
     tab = Kvaerno5Tableau(T, T)
 
     integ = GPUAKvaerno5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB,
-                          typeof(tab),
-                          typeof(alg)}(alg,
-                                       f,
-                                       copy(u0),
-                                       copy(u0),
-                                       copy(u0),
-                                       t0,
-                                       t0,
-                                       t0,
-                                       tf,
-                                       dt,
-                                       dt,
-                                       sign(tf -
-                                            t0),
-                                       p,
-                                       true,
-                                       tstops,
-                                       1,
-                                       callback,
-                                       false,
-                                       saveat,
-                                       1, 1,
-                                       event_last_time,
-                                       vector_event_last_time,
-                                       last_event_error,
-                                       copy(u0),
-                                       copy(u0),
-                                       tab,
-                                       qoldinit,
-                                       abstol,
-                                       reltol,
-                                       internalnorm,
-                                       DiffEqBase.ReturnCode.Default)
+        typeof(tab),
+        typeof(alg)}(alg,
+        f,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        tf,
+        dt,
+        dt,
+        sign(tf -
+             t0),
+        p,
+        true,
+        tstops,
+        1,
+        callback,
+        false,
+        saveat,
+        1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        tab,
+        qoldinit,
+        abstol,
+        reltol,
+        internalnorm,
+        DiffEqBase.ReturnCode.Default)
 end

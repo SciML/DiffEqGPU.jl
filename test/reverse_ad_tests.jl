@@ -15,7 +15,7 @@ function model()
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
     solve(ensemble_prob, Tsit5(), EnsembleGPUArray(backend), saveat = 0.1,
-          trajectories = 10)
+        trajectories = 10)
 end
 
 # loss function

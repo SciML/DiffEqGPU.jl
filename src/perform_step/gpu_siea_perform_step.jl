@@ -58,11 +58,11 @@ function SIEAConstantCache(::Type{T}, ::Type{T2}) where {T, T2}
     δ3 = convert(T, 0)
 
     SIESMEConstantCache(α1, α2, γ1, λ1, λ2, λ3, µ1, µ2, µ3, µ0, µbar0, λ0, λbar0, ν1, ν2,
-                        β2, β3, δ2, δ3)
+        β2, β3, δ2, δ3)
 end
 
 @kernel function siea_kernel(@Const(probs), _us, _ts, dt,
-                             saveat, ::Val{save_everystep}) where {save_everystep}
+    saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -123,9 +123,9 @@ end
             W3 = ν2 * (dW) .^ 3 / dt
             k1 = f(uprev + λ0 * k0 * dt + ν1 * g0 .* dW + g0 .* W3, p, t + µ0 * dt)
             g1 = g(uprev + λbar0 * k0 * dt + β2 * g0 * sqdt + β3 * g0 .* W2, p,
-                   t + µbar0 * dt)
+                t + µbar0 * dt)
             g2 = g(uprev + λbar0 * k0 * dt + δ2 * g0 * sqdt + δ3 * g0 .* W2, p,
-                   t + µbar0 * dt)
+                t + µbar0 * dt)
 
             u = uprev + (α1 * k0 + α2 * k1) * dt
 

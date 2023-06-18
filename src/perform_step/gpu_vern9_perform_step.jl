@@ -50,11 +50,11 @@
     k8 = f(uprev + dt * (a0801 * k1 + a0806 * k6 + a0807 * k7), p, t + c7 * dt)
     k9 = f(uprev + dt * (a0901 * k1 + a0906 * k6 + a0907 * k7 + a0908 * k8), p, t + c8 * dt)
     k10 = f(uprev + dt * (a1001 * k1 + a1006 * k6 + a1007 * k7 + a1008 * k8 + a1009 * k9),
-            p, t + c9 * dt)
+        p, t + c9 * dt)
     k11 = f(uprev +
             dt *
             (a1101 * k1 + a1106 * k6 + a1107 * k7 + a1108 * k8 + a1109 * k9 + a1110 * k10),
-            p, t + c10 * dt)
+        p, t + c10 * dt)
     k12 = f(uprev +
             dt *
             (a1201 * k1 + a1206 * k6 + a1207 * k7 + a1208 * k8 + a1209 * k9 + a1210 * k10 +
@@ -105,7 +105,7 @@ end
 
 @inline function step!(integ::GPUAV9I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
-                                                                                   T)
+        T)
 
     dt = integ.dtnew
     t = integ.t
@@ -151,18 +151,18 @@ end
         k5 = f(uprev + dt * (a0501 * k1 + a0503 * k3 + a0504 * k4), p, t + c4 * dt)
         k6 = f(uprev + dt * (a0601 * k1 + a0604 * k4 + a0605 * k5), p, t + c5 * dt)
         k7 = f(uprev + dt * (a0701 * k1 + a0704 * k4 + a0705 * k5 + a0706 * k6), p,
-               t + c6 * dt)
+            t + c6 * dt)
         k8 = f(uprev + dt * (a0801 * k1 + a0806 * k6 + a0807 * k7), p, t + c7 * dt)
         k9 = f(uprev + dt * (a0901 * k1 + a0906 * k6 + a0907 * k7 + a0908 * k8), p,
-               t + c8 * dt)
+            t + c8 * dt)
         k10 = f(uprev +
                 dt * (a1001 * k1 + a1006 * k6 + a1007 * k7 + a1008 * k8 + a1009 * k9),
-                p, t + c9 * dt)
+            p, t + c9 * dt)
         k11 = f(uprev +
                 dt *
                 (a1101 * k1 + a1106 * k6 + a1107 * k7 + a1108 * k8 + a1109 * k9 +
                  a1110 * k10),
-                p, t + c10 * dt)
+            p, t + c10 * dt)
         k12 = f(uprev +
                 dt *
                 (a1201 * k1 + a1206 * k6 + a1207 * k7 + a1208 * k8 + a1209 * k9 +

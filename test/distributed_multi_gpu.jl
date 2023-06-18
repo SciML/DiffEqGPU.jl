@@ -26,12 +26,12 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
 @time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
-                  saveat = 1.0f0)
+    saveat = 1.0f0)
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
 @time sol = solve(monteprob, ROCK4(), EnsembleGPUArray(backend), trajectories = 10,
-                  saveat = 1.0f0)
+    saveat = 1.0f0)
 @time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
-                   batch_size = 5, saveat = 1.0f0)
+    batch_size = 5, saveat = 1.0f0)
 
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
 @test length(filter(x -> x.u != sol2.u[6].u, sol.u)) != 0 # 0 element array

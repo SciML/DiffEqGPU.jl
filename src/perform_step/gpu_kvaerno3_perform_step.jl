@@ -33,8 +33,8 @@
     ## Build nlsolver
 
     nlsolver = build_nlsolver(integ.alg, integ.u, integ.p, integ.t, integ.dt, integ.f,
-                              integ.tab.γ,
-                              integ.tab.c3)
+        integ.tab.γ,
+        integ.tab.c3)
 
     ## Steps
 
@@ -87,7 +87,7 @@ end
 
 @inline function step!(integ::GPUAKvaerno3I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
-                                                                                   T)
+        T)
 
     dt = integ.dtnew
     t = integ.t
@@ -120,8 +120,8 @@ end
         ## Steps
 
         nlsolver = build_nlsolver(integ.alg, integ.u, integ.p, integ.t, dt, integ.f,
-                                  integ.tab.γ,
-                                  integ.tab.c3)
+            integ.tab.γ,
+            integ.tab.c3)
 
         # FSAL Step 1
 

@@ -62,19 +62,19 @@ for alg in algs
     @info alg
 
     DiffEqGPU.vectorized_solve(gpu_probs, prob, alg;
-                               save_everystep = false, dt = 0.1f0)
+        save_everystep = false, dt = 0.1f0)
 
     DiffEqGPU.vectorized_asolve(gpu_probs, prob, alg;
-                                save_everystep = false, dt = 0.1f0)
+        save_everystep = false, dt = 0.1f0)
 end
 
 @info "Testing lower level API for EnsembleGPUArray"
 
 @time sol = DiffEqGPU.vectorized_map_solve(probs, Tsit5(), EnsembleGPUArray(backend, 0.0),
-                                           batch, false, dt = 0.001f0,
-                                           save_everystep = false, dense = false)
+    batch, false, dt = 0.001f0,
+    save_everystep = false, dense = false)
 
 ## Adaptive time-stepping (Notice the boolean argument)
 @time sol = DiffEqGPU.vectorized_map_solve(probs, Tsit5(), EnsembleGPUArray(backend, 0.0),
-                                           batch, true, dt = 0.001f0,
-                                           save_everystep = false, dense = false)
+    batch, true, dt = 0.001f0,
+    save_everystep = false, dense = false)

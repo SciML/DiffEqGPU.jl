@@ -1,14 +1,14 @@
 # Default: Hermite Interpolation
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::DiffEqBase.AbstractODEIntegrator{AlgType,
-                                                                                  IIP, S, T
-                                                                                  }) where {
-                                                                                            AlgType <:
-                                                                                            GPUODEAlgorithm,
-                                                                                            IIP,
-                                                                                            S,
-                                                                                            T
-                                                                                            }
+    integ::DiffEqBase.AbstractODEIntegrator{AlgType,
+        IIP, S, T,
+    }) where {
+    AlgType <:
+    GPUODEAlgorithm,
+    IIP,
+    S,
+    T,
+}
     y₁ = integ.u
     k1 = integ.k1
     k2 = integ.k2
@@ -43,8 +43,8 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::T) where {T <:
-                                                           Union{GPUV7I, GPUAV7I}}
+    integ::T) where {T <:
+         Union{GPUV7I, GPUAV7I}}
     b1Θ, b4Θ, b5Θ, b6Θ, b7Θ, b8Θ, b9Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b16Θ = bΘs(integ, Θ)
 
     @unpack c11, a1101, a1104, a1105, a1106, a1107, a1108, a1109, c12, a1201, a1204,
@@ -62,7 +62,7 @@ end
     k12 = f(uprev +
             dt * (a1201 * k1 + a1204 * k4 + a1205 * k5 + a1206 * k6 +
              a1207 * k7 + a1208 * k8 + a1209 * k9 + a1211 * k11), p,
-            t + c12 * dt)
+        t + c12 * dt)
     k13 = f(uprev +
             dt * (a1301 * k1 + a1304 * k4 + a1305 * k5 + a1306 * k6 +
              a1307 * k7 + a1308 * k8 + a1309 * k9 + a1311 * k11 +
@@ -123,12 +123,12 @@ end
     b26Θ = @evalpoly(Θ, 0, 0, r262, r263, r264, r265, r266, r267, r268, r269)
 
     return b1Θ, b8Θ, b9Θ, b10Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b17Θ, b18Θ, b19Θ, b20Θ,
-           b21Θ, b22Θ, b23Θ, b24Θ, b25Θ, b26Θ
+    b21Θ, b22Θ, b23Θ, b24Θ, b25Θ, b26Θ
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::T) where {T <:
-                                                           Union{GPUV9I, GPUAV9I}}
+    integ::T) where {T <:
+         Union{GPUV9I, GPUAV9I}}
     b1Θ, b8Θ, b9Θ, b10Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b17Θ, b18Θ, b19Θ, b20Θ,
     b21Θ, b22Θ, b23Θ, b24Θ, b25Θ, b26Θ = bΘs(integ, Θ)
 
@@ -149,7 +149,7 @@ end
     k11 = f(uprev +
             dt * (a1701 * k1 + a1708 * k2 + a1709 * k3 + a1710 * k4 +
              a1711 * k5 + a1712 * k6 + a1713 * k7 + a1714 * k8 + a1715 * k9),
-            p, t + c17 * dt)
+        p, t + c17 * dt)
     k12 = f(uprev +
             dt * (a1801 * k1 + a1808 * k2 + a1809 * k3 + a1810 * k4 +
              a1811 * k5 + a1812 * k6 + a1813 * k7 + a1814 * k8 +
@@ -162,7 +162,7 @@ end
             dt * (a2001 * k1 + a2008 * k2 + a2009 * k3 + a2010 * k4 +
              a2011 * k5 + a2012 * k6 + a2013 * k7 + a2014 * k8 +
              a2015 * k9 + a2017 * k11 + a2018 * k12 + a2019 * k13), p,
-            t + c20 * dt)
+        t + c20 * dt)
     k15 = f(uprev +
             dt * (a2101 * k1 + a2108 * k2 + a2109 * k3 + a2110 * k4 +
              a2111 * k5 + a2112 * k6 + a2113 * k7 + a2114 * k8 +
@@ -206,8 +206,8 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::T) where {T <:
-                                                           Union{GPUT5I, GPUAT5I}}
+    integ::T) where {T <:
+         Union{GPUT5I, GPUAT5I}}
     b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integ.rs, Θ)
     return y₀ +
            dt *
@@ -217,26 +217,26 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::T) where {T <:
-                                                           Union{GPURB23I, GPUARB23I}}
+    integ::T) where {T <:
+         Union{GPURB23I, GPUARB23I}}
     c1 = Θ * (1 - Θ) / (1 - 2 * integ.d)
     c2 = Θ * (Θ - 2 * integ.d) / (1 - 2 * integ.d)
     return y₀ + dt * (c1 * integ.k1 + c2 * integ.k2)
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::T) where {
-                                                           T <:
-                                                           Union{GPURodas4I, GPUARodas4I}}
+    integ::T) where {
+    T <:
+    Union{GPURodas4I, GPUARodas4I}}
     Θ1 = 1 - Θ
     y₁ = integ.u
     return Θ1 * y₀ + Θ * (y₁ + Θ1 * (integ.k1 + Θ * integ.k2))
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-                                          integ::T) where {
-                                                           T <:
-                                                           Union{GPURodas5PI, GPUARodas5PI}}
+    integ::T) where {
+    T <:
+    Union{GPURodas5PI, GPUARodas5PI}}
     Θ1 = 1 - Θ
     y₁ = integ.u
     return Θ1 * y₀ + Θ * (y₁ + Θ1 * (integ.k1 + Θ * (integ.k2 + Θ * integ.k3)))

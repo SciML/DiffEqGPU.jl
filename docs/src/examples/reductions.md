@@ -35,7 +35,7 @@ function reduction(u, batch, I)
 end
 
 prob2 = EnsembleProblem(prob, prob_func = prob_func, output_func = output_func,
-                        reduction = reduction, u_init = Vector{eltype(prob.u0)}([0.0]))
+    reduction = reduction, u_init = Vector{eltype(prob.u0)}([0.0]))
 sim4 = solve(prob2, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 100,
-             batch_size = 20)
+    batch_size = 20)
 ```

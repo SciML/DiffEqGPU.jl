@@ -22,10 +22,10 @@ Only a subset of the common solver arguments are supported.
 function vectorized_solve end
 
 function vectorized_solve(probs, prob::ODEProblem, alg;
-                          dt, saveat = nothing,
-                          save_everystep = true,
-                          debug = false, callback = CallbackSet(nothing), tstops = nothing,
-                          kwargs...)
+    dt, saveat = nothing,
+    save_everystep = true,
+    debug = false, callback = CallbackSet(nothing), tstops = nothing,
+    kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
@@ -62,8 +62,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     end
 
     kernel(probs, alg, us, ts, dt, callback, tstops, nsteps, saveat,
-           Val(save_everystep);
-           ndrange = length(probs))
+        Val(save_everystep);
+        ndrange = length(probs))
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -75,10 +75,10 @@ end
 
 # SDEProblems over GPU cannot support u0 as a Number type, because GPU kernels compiled only through u0 being StaticArrays
 function vectorized_solve(probs, prob::SDEProblem, alg;
-                          dt, saveat = nothing,
-                          save_everystep = true,
-                          debug = false,
-                          kwargs...)
+    dt, saveat = nothing,
+    save_everystep = true,
+    debug = false,
+    kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
     if saveat === nothing
@@ -110,16 +110,16 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
     end
 
     kernel(probs, us, ts, dt, saveat, Val(save_everystep);
-           ndrange = length(probs))
+        ndrange = length(probs))
     ts, us
 end
 
 function vectorized_asolve(probs, prob::ODEProblem, alg;
-                           dt = 0.1f0, saveat = nothing,
-                           save_everystep = false,
-                           abstol = 1.0f-6, reltol = 1.0f-3,
-                           debug = false, callback = CallbackSet(nothing), tstops = nothing,
-                           kwargs...)
+    dt = 0.1f0, saveat = nothing,
+    save_everystep = false,
+    abstol = 1.0f-6, reltol = 1.0f-3,
+    debug = false, callback = CallbackSet(nothing), tstops = nothing,
+    kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
@@ -154,8 +154,8 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     end
 
     kernel(probs, alg, us, ts, dt, callback, tstops,
-           abstol, reltol, saveat, Val(save_everystep);
-           ndrange = length(probs))
+        abstol, reltol, saveat, Val(save_everystep);
+        ndrange = length(probs))
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -166,10 +166,10 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
 end
 
 function vectorized_asolve(probs, prob::SDEProblem, alg;
-                           dt, saveat = nothing,
-                           save_everystep = true,
-                           debug = false,
-                           kwargs...)
+    dt, saveat = nothing,
+    save_everystep = true,
+    debug = false,
+    kwargs...)
     error("Adaptive time-stepping is not supported yet with GPUEM.")
 end
 
@@ -177,8 +177,8 @@ end
 #  true: ts is a vector of timestamps to read from
 #  false: each ODE has its own timestamps, so ts is a vector to write to
 @kernel function ode_solve_kernel(@Const(probs), alg, _us, _ts, dt, callback,
-                                  tstops, nsteps,
-                                  saveat, ::Val{save_everystep}) where {save_everystep}
+    tstops, nsteps,
+    saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -193,7 +193,7 @@ end
     saveat = _saveat === nothing ? saveat : _saveat
 
     integ = init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
-                 callback, save_everystep, saveat)
+        callback, save_everystep, saveat)
 
     u0 = prob.u0
     tspan = prob.tspan
@@ -229,9 +229,9 @@ end
 end
 
 @kernel function ode_asolve_kernel(probs, alg, _us, _ts, dt, callback, tstops,
-                                   abstol, reltol,
-                                   saveat,
-                                   ::Val{save_everystep}) where {save_everystep}
+    abstol, reltol,
+    saveat,
+    ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -254,9 +254,9 @@ end
     tf = prob.tspan[2]
 
     integ = init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt,
-                 prob.p,
-                 abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
-                 saveat)
+        prob.p,
+        abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
+        saveat)
 
     integ.cur_t = 0
     if saveat !== nothing

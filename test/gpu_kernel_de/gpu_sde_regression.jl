@@ -23,11 +23,11 @@ for alg in algs
 
     ## solve using off-loading on CPU
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
-                adaptive = false)
+        adaptive = false)
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt,
-                trajectories = 1000,
-                adaptive = false)
+        trajectories = 1000,
+        adaptive = false)
 
     sol_array = Array(sol)
 
@@ -57,12 +57,12 @@ for alg in algs
     dt = Float32(1 // 2^(8))
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-                adaptive = false)
+        adaptive = false)
 
     @test sol.converged == true
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-                adaptive = false, save_everystep = false)
+        adaptive = false, save_everystep = false)
 
     @test sol.converged == true
     @test length(sol[1].u) == 2
@@ -70,7 +70,7 @@ for alg in algs
     saveat = [0.3f0, 0.5f0]
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-                adaptive = false, saveat = saveat)
+        adaptive = false, saveat = saveat)
 end
 
 @info "Non-Diagonal Noise"
@@ -98,12 +98,12 @@ prob = SDEProblem(f, g, u0, (0.0f0, 1.0f0), noise_rate_prototype = noise_rate_pr
 monteprob = EnsembleProblem(prob)
 
 sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-            adaptive = false)
+    adaptive = false)
 
 @test sol.converged == true
 
 sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-            adaptive = false, save_everystep = false)
+    adaptive = false, save_everystep = false)
 
 @test sol.converged == true
 @test length(sol[1].u) == 2
