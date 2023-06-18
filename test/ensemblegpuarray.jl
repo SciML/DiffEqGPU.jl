@@ -71,8 +71,6 @@ func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
 prob_jac = ODEProblem(func, u0, tspan, p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
-# TODO: Does not work with Linearsolve.jl v1.35.0 https://github.com/SciML/DiffEqGPU.jl/pull/229
-
 @time solve(monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
     trajectories = 10,
     saveat = 1.0f0)
@@ -240,8 +238,8 @@ monteprob = EnsembleProblem(prob_jac,
         tspan = (0.0f0,
             saveats[i])))
 
-sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDABackend()), trajectories = 10,
+sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend, 0.0), trajectories = 10,
     adaptive = false, dt = 0.01f0, save_everystep = false)
 
-sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(CUDABackend()), trajectories = 10,
+sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend, 0.0), trajectories = 10,
     adaptive = false, dt = 0.01f0, save_everystep = false)

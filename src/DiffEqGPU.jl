@@ -967,7 +967,7 @@ function batch_solve(ensembleprob, alg,
                 for i in 1:length(I))
 
             # Change the tspan of first problem to (0,1)
-            orig_prob = copy(probs[1])
+            orig_prob = probs[1]
             probs[1] = remake(probs[1];
                 tspan = (zero(probs[1].tspan[1]), one(probs[1].tspan[2])))
 
