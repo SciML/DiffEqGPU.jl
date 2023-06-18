@@ -77,7 +77,6 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
     trajectories = 10_000, adaptive = false, dt = 0.1f0)
 ```
 
-
 ## Benchmarks
 
 Curious about our claims? See [https://github.com/utkarsh530/GPUODEBenchmarks](https://github.com/utkarsh530/GPUODEBenchmarks) for comparsion of our GPU solvers against CPUs and GPUs implementation in C++, JAX and PyTorch.
