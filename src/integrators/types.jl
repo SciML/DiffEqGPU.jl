@@ -401,7 +401,7 @@ end
     p::P, tstops::TS,
     callback::CB,
     save_everystep::Bool,
-    saveat::ST) where {F, P, T, S <: AbstractArray{T},
+    saveat::ST) where {F, P, T, S,
     TS, CB, ST}
     tab = Vern7Tableau(T, T)
 
@@ -498,7 +498,7 @@ end
     p::P, tstops::TS,
     callback::CB,
     save_everystep::Bool,
-    saveat::ST) where {F, P, T, S <: AbstractArray{T},
+    saveat::ST) where {F, P, T, S,
     TS, CB, ST}
     tab = Vern9Tableau(T, T)
 
