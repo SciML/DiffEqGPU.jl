@@ -74,5 +74,22 @@ prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .*
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 @time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
-                  trajectories = 10_000, adaptive = false, dt = 0.1f0)
+    trajectories = 10_000, adaptive = false, dt = 0.1f0)
+```
+
+## Benchmarks
+
+Curious about our claims? See [https://github.com/utkarsh530/GPUODEBenchmarks](https://github.com/utkarsh530/GPUODEBenchmarks) for comparsion of our GPU solvers against CPUs and GPUs implementation in C++, JAX and PyTorch.
+
+## Citation
+
+If you are using `DiffEqGPU.jl` in your work, consider citing our paper:
+
+```
+@article{utkarsh2023automated,
+  title={Automated Translation and Accelerated Solving of Differential Equations on Multiple GPU Platforms},
+  author={Utkarsh, Utkarsh and Churavy, Valentin and Ma, Yingbo and Besard, Tim and Gymnich, Tim and Gerlach, Adam R and Edelman, Alan and Rackauckas, Christopher},
+  journal={arXiv preprint arXiv:2304.06835},
+  year={2023}
+}
 ```

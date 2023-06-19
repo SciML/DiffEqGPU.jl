@@ -86,6 +86,6 @@ du2[end] # 1431.1460373522068
 du2[521] # -318.1677459142322
 
 prob_ode_brusselator_2d_cuda = ODEProblem(brusselator_2d, CuArray(u0), (0.0f0, 11.5f0), p,
-                                          tstops = [1.1f0])
+    tstops = [1.1f0])
 solve(prob_ode_brusselator_2d_cuda, Rosenbrock23(), save_everystep = false);
 ```

@@ -21,6 +21,45 @@ using Random
 using Setfield
 using ForwardDiff
 
+"""
+Wrapper for modifying parameters to contain additional data. Useful for simulating
+trajectories with different time span values.
+"""
+struct ParamWrapper{P, T}
+    params::P
+    data::T
+end
+
+function Adapt.adapt_structure(to, ps::ParamWrapper{P, T}) where {P, T}
+    ParamWrapper(adapt(to, ps.params),
+        adapt(to, ps.data))
+end
+
+@kernel function gpu_kernel(f, du, @Const(u),
+    @Const(params::AbstractArray{ParamWrapper{P, T}}),
+    @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+    @views @inbounds f(du[:, i], u[:, i], p, t)
+    @inbounds for j in 1:size(du, 1)
+        du[j, i] = du[j, i] * (tspan[2] - tspan[1])
+    end
+end
+
+@kernel function gpu_kernel_oop(f, du, @Const(u),
+    @Const(params::AbstractArray{ParamWrapper{P, T}}),
+    @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    @views @inbounds x = f(u[:, i], p, t)
+    @inbounds for j in 1:size(du, 1)
+        du[j, i] = x[j] * (tspan[2] - tspan[1])
+    end
+end
+
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
     if eltype(p) <: Number
@@ -39,6 +78,36 @@ end
     end
     @inbounds for j in 1:size(du, 1)
         du[j, i] = x[j]
+    end
+end
+
+@kernel function jac_kernel(f, J, @Const(u),
+    @Const(params::AbstractArray{ParamWrapper{P, T}}),
+    @Const(t)) where {P, T}
+    i = @index(Global, Linear) - 1
+    section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
+    @inbounds p = params[i + 1].params
+    @inbounds tspan = params[i + 1].data
+
+    @views @inbounds f(J[section, section], u[:, i + 1], p, t)
+    @inbounds for j in section, k in section
+        J[k, j] = J[k, j] * (tspan[2] - tspan[1])
+    end
+end
+
+@kernel function jac_kernel_oop(f, J, @Const(u),
+    @Const(params::AbstractArray{ParamWrapper{P, T}}),
+    @Const(t)) where {P, T}
+    i = @index(Global, Linear) - 1
+    section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
+
+    @inbounds p = params[i + 1].params
+    @inbounds tspan = params[i + 1].data
+
+    @views @inbounds x = f(u[:, i + 1], p, t)
+
+    @inbounds for j in section, k in section
+        J[k, j] = x[k, j] * (tspan[2] - tspan[1])
     end
 end
 
@@ -76,7 +145,7 @@ end
 end
 
 @kernel function continuous_condition_kernel(condition, out, @Const(u), @Const(t),
-                                             @Const(p))
+    @Const(p))
     i = @index(Global, Linear)
     @views @inbounds out[i] = condition(u[:, i], t, FakeIntegrator(u[:, i], t, p[:, i]))
 end
@@ -94,11 +163,57 @@ function workgroupsize(backend, n)
     min(maxthreads(backend), n)
 end
 
+@kernel function W_kernel(jac, W, @Const(u),
+    @Const(params::AbstractArray{ParamWrapper{P, T}}), @Const(gamma),
+    @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+    _W = @inbounds @view(W[:, :, i])
+
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    @views @inbounds jac(_W, u[:, i], p, t)
+
+    @inbounds for i in eachindex(_W)
+        _W[i] = gamma * _W[i] * (tspan[2] - tspan[1])
+    end
+    _one = one(eltype(_W))
+    @inbounds for i in 1:len
+        _W[i, i] = _W[i, i] - _one
+    end
+end
+
 @kernel function W_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
     @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @inbounds for i in eachindex(_W)
+        _W[i] = gamma * _W[i]
+    end
+    _one = one(eltype(_W))
+    @inbounds for i in 1:len
+        _W[i, i] = _W[i, i] - _one
+    end
+end
+
+@kernel function W_kernel_oop(jac, W, @Const(u),
+    @Const(params::AbstractArray{ParamWrapper{P, T}}),
+    @Const(gamma),
+    @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    _W = @inbounds @view(W[:, :, i])
+
+    @views @inbounds x = jac(u[:, i], p, t)
+    @inbounds for j in 1:length(_W)
+        _W[j] = x[j] * (tspan[2] - tspan[1])
+    end
     @inbounds for i in eachindex(_W)
         _W[i] = gamma * _W[i]
     end
@@ -125,11 +240,38 @@ end
     end
 end
 
+@kernel function Wt_kernel(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
+    @Const(t)) where {T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+    _W = @inbounds @view(W[:, :, i])
+    @inbounds jac = f[i].tgrad
+    @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @inbounds for i in 1:len
+        _W[i, i] = -inv(gamma) + _W[i, i]
+    end
+end
+
 @kernel function Wt_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
     @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @inbounds for i in 1:len
+        _W[i, i] = -inv(gamma) + _W[i, i]
+    end
+end
+
+@kernel function Wt_kernel_oop(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
+    @Const(t)) where {T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+    _W = @inbounds @view(W[:, :, i])
+    @inbounds jac = f[i].tgrad
+    @views @inbounds x = jac(u[:, i], p[:, i], t)
+    @inbounds for j in 1:length(_W)
+        _W[j] = x[j]
+    end
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
@@ -145,6 +287,31 @@ end
     end
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
+    end
+end
+
+@kernel function gpu_kernel_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+    @Const(t)) where {T}
+    i = @index(Global, Linear)
+    @inbounds f = f[i].tgrad
+    if eltype(p) <: Number
+        @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
+    else
+        @views @inbounds f(du[:, i], u[:, i], p[i], t)
+    end
+end
+
+@kernel function gpu_kernel_oop_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+    @Const(t)) where {T}
+    i = @index(Global, Linear)
+    @inbounds f = f[i].tgrad
+    if eltype(p) <: Number
+        @views @inbounds x = f(u[:, i], p[:, i], t)
+    else
+        @views @inbounds x = f(u[:, i], p[i], t)
+    end
+    @inbounds for j in 1:size(du, 1)
+        du[j, i] = x[j]
     end
 end
 
@@ -170,25 +337,25 @@ struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCall
     finalize::F4
     save_positions::F5
     function GPUDiscreteCallback(condition::F1, affect!::F2,
-                                 initialize::F3, finalize::F4,
-                                 save_positions::F5) where {F1, F2, F3, F4, F5}
+        initialize::F3, finalize::F4,
+        save_positions::F5) where {F1, F2, F3, F4, F5}
         if save_positions != (false, false)
             error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
         end
         new{F1, F2, F3, F4, F5}(condition,
-                                affect!, initialize, finalize, save_positions)
+            affect!, initialize, finalize, save_positions)
     end
 end
 function GPUDiscreteCallback(condition, affect!;
-                             initialize = SciMLBase.INITIALIZE_DEFAULT,
-                             finalize = SciMLBase.FINALIZE_DEFAULT,
-                             save_positions = (false, false))
+    initialize = SciMLBase.INITIALIZE_DEFAULT,
+    finalize = SciMLBase.FINALIZE_DEFAULT,
+    save_positions = (false, false))
     GPUDiscreteCallback(condition, affect!, initialize, finalize, save_positions)
 end
 
 function Base.convert(::Type{GPUDiscreteCallback}, x::T) where {T <: DiscreteCallback}
     GPUDiscreteCallback(x.condition, x.affect!, x.initialize, x.finalize,
-                        Tuple(x.save_positions))
+        Tuple(x.save_positions))
 end
 
 struct GPUContinuousCallback{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R} <:
@@ -207,62 +374,62 @@ struct GPUContinuousCallback{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R} <:
     reltol::T2
     repeat_nudge::T3
     function GPUContinuousCallback(condition::F1, affect!::F2, affect_neg!::F3,
-                                   initialize::F4, finalize::F5, idxs::I, rootfind,
-                                   interp_points, save_positions::F6, dtrelax::R, abstol::T,
-                                   reltol::T2,
-                                   repeat_nudge::T3) where {F1, F2, F3, F4, F5, F6, T, T2,
-                                                            T3, I, R
-                                                            }
+        initialize::F4, finalize::F5, idxs::I, rootfind,
+        interp_points, save_positions::F6, dtrelax::R, abstol::T,
+        reltol::T2,
+        repeat_nudge::T3) where {F1, F2, F3, F4, F5, F6, T, T2,
+        T3, I, R,
+    }
         if save_positions != (false, false)
             error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
         end
         new{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R}(condition,
-                                                     affect!, affect_neg!,
-                                                     initialize, finalize, idxs, rootfind,
-                                                     interp_points,
-                                                     save_positions,
-                                                     dtrelax, abstol, reltol, repeat_nudge)
+            affect!, affect_neg!,
+            initialize, finalize, idxs, rootfind,
+            interp_points,
+            save_positions,
+            dtrelax, abstol, reltol, repeat_nudge)
     end
 end
 
 function GPUContinuousCallback(condition, affect!, affect_neg!;
-                               initialize = SciMLBase.INITIALIZE_DEFAULT,
-                               finalize = SciMLBase.FINALIZE_DEFAULT,
-                               idxs = nothing,
-                               rootfind = LeftRootFind,
-                               save_positions = (false, false),
-                               interp_points = 10,
-                               dtrelax = 1,
-                               abstol = 10eps(Float32), reltol = 0,
-                               repeat_nudge = 1 // 100)
+    initialize = SciMLBase.INITIALIZE_DEFAULT,
+    finalize = SciMLBase.FINALIZE_DEFAULT,
+    idxs = nothing,
+    rootfind = LeftRootFind,
+    save_positions = (false, false),
+    interp_points = 10,
+    dtrelax = 1,
+    abstol = 10eps(Float32), reltol = 0,
+    repeat_nudge = 1 // 100)
     GPUContinuousCallback(condition, affect!, affect_neg!, initialize, finalize,
-                          idxs,
-                          rootfind, interp_points,
-                          save_positions,
-                          dtrelax, abstol, reltol, repeat_nudge)
+        idxs,
+        rootfind, interp_points,
+        save_positions,
+        dtrelax, abstol, reltol, repeat_nudge)
 end
 
 function GPUContinuousCallback(condition, affect!;
-                               initialize = SciMLBase.INITIALIZE_DEFAULT,
-                               finalize = SciMLBase.FINALIZE_DEFAULT,
-                               idxs = nothing,
-                               rootfind = LeftRootFind,
-                               save_positions = (false, false),
-                               affect_neg! = affect!,
-                               interp_points = 10,
-                               dtrelax = 1,
-                               abstol = 10eps(Float32), reltol = 0, repeat_nudge = 1 // 100)
+    initialize = SciMLBase.INITIALIZE_DEFAULT,
+    finalize = SciMLBase.FINALIZE_DEFAULT,
+    idxs = nothing,
+    rootfind = LeftRootFind,
+    save_positions = (false, false),
+    affect_neg! = affect!,
+    interp_points = 10,
+    dtrelax = 1,
+    abstol = 10eps(Float32), reltol = 0, repeat_nudge = 1 // 100)
     GPUContinuousCallback(condition, affect!, affect_neg!, initialize, finalize, idxs,
-                          rootfind, interp_points,
-                          save_positions,
-                          dtrelax, abstol, reltol, repeat_nudge)
+        rootfind, interp_points,
+        save_positions,
+        dtrelax, abstol, reltol, repeat_nudge)
 end
 
 function Base.convert(::Type{GPUContinuousCallback}, x::T) where {T <: ContinuousCallback}
     GPUContinuousCallback(x.condition, x.affect!, x.affect_neg!, x.initialize, x.finalize,
-                          x.idxs, x.rootfind, x.interp_points,
-                          Tuple(x.save_positions), x.dtrelax, 100 * eps(Float32), x.reltol,
-                          x.repeat_nudge)
+        x.idxs, x.rootfind, x.interp_points,
+        Tuple(x.save_positions), x.dtrelax, 100 * eps(Float32), x.reltol,
+        x.repeat_nudge)
 end
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
@@ -428,9 +595,11 @@ generation with EnsembleGPUKernel.
 struct GPUKvaerno5{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 for Alg in [:GPURosenbrock23, :GPURodas4, :GPURodas5P, :GPUKvaerno3, :GPUKvaerno5]
-    @eval begin function $Alg(; autodiff = Val{true}())
-        $Alg{SciMLBase._unwrap_val(autodiff)}()
-    end end
+    @eval begin
+        function $Alg(; autodiff = Val{true}())
+            $Alg{SciMLBase._unwrap_val(autodiff)}()
+        end
+    end
 end
 
 """
@@ -517,8 +686,8 @@ struct EnsembleGPUKernel{Dev} <: EnsembleKernelAlgorithm
 end
 
 cpu_alg = Dict(GPUTsit5 => (GPUSimpleTsit5(), GPUSimpleATsit5()),
-               GPUVern7 => (GPUSimpleVern7(), GPUSimpleAVern7()),
-               GPUVern9 => (GPUSimpleVern9(), GPUSimpleAVern9()))
+    GPUVern7 => (GPUSimpleVern7(), GPUSimpleAVern7()),
+    GPUVern9 => (GPUSimpleVern9(), GPUSimpleAVern9()))
 
 # Work around the fact that Zygote cannot handle the task system
 # Work around the fact that Zygote isderiving fails with constants?
@@ -539,16 +708,16 @@ ZygoteRules.@adjoint function EnsembleGPUArray(dev)
 end
 
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
-                           alg::Union{SciMLBase.DEAlgorithm, Nothing,
-                                      DiffEqGPU.GPUODEAlgorithm, DiffEqGPU.GPUSDEAlgorithm},
-                           ensemblealg::Union{EnsembleArrayAlgorithm,
-                                              EnsembleKernelAlgorithm};
-                           trajectories, batch_size = trajectories,
-                           unstable_check = (dt, u, p, t) -> false, adaptive = true,
-                           kwargs...)
+    alg::Union{SciMLBase.DEAlgorithm, Nothing,
+        DiffEqGPU.GPUODEAlgorithm, DiffEqGPU.GPUSDEAlgorithm},
+    ensemblealg::Union{EnsembleArrayAlgorithm,
+        EnsembleKernelAlgorithm};
+    trajectories, batch_size = trajectories,
+    unstable_check = (dt, u, p, t) -> false, adaptive = true,
+    kwargs...)
     if trajectories == 1
         return SciMLBase.__solve(ensembleprob, alg, EnsembleSerial(); trajectories = 1,
-                                 kwargs...)
+            kwargs...)
     end
 
     cpu_trajectories = ((ensemblealg isa EnsembleGPUArray ||
@@ -581,18 +750,20 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 
         function f()
             SciMLBase.solve_batch(ensembleprob, _alg, EnsembleThreads(), cpu_II, nothing;
-                                  kwargs...)
+                kwargs...)
         end
 
         cpu_sols = Channel{Core.Compiler.return_type(f, Tuple{})}(1)
-        t = @task begin put!(cpu_sols, f()) end
+        t = @task begin
+            put!(cpu_sols, f())
+        end
         schedule(t)
     end
 
     if num_batches == 1 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
         time = @elapsed sol = batch_solve(ensembleprob, alg, ensemblealg,
-                                          1:gpu_trajectories, adaptive;
-                                          unstable_check = unstable_check, kwargs...)
+            1:gpu_trajectories, adaptive;
+            unstable_check = unstable_check, kwargs...)
         if cpu_trajectories != 0
             wait(t)
             sol = vcat(sol, take!(cpu_sols))
@@ -603,42 +774,46 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
     converged::Bool = false
     u = ensembleprob.u_init === nothing ?
         similar(batch_solve(ensembleprob, alg, ensemblealg, 1:batch_size, adaptive;
-                            unstable_check = unstable_check, kwargs...), 0) :
+            unstable_check = unstable_check, kwargs...), 0) :
         ensembleprob.u_init
 
     if nprocs() == 1
         # While pmap works, this makes much better error messages.
-        time = @elapsed begin sols = map(1:num_batches) do i
-            if i == num_batches
-                I = (batch_size * (i - 1) + 1):gpu_trajectories
-            else
-                I = (batch_size * (i - 1) + 1):(batch_size * i)
+        time = @elapsed begin
+            sols = map(1:num_batches) do i
+                if i == num_batches
+                    I = (batch_size * (i - 1) + 1):gpu_trajectories
+                else
+                    I = (batch_size * (i - 1) + 1):(batch_size * i)
+                end
+                batch_data = batch_solve(ensembleprob, alg, ensemblealg, I, adaptive;
+                    unstable_check = unstable_check, kwargs...)
+                if ensembleprob.reduction !== SciMLBase.DEFAULT_REDUCTION
+                    u, _ = ensembleprob.reduction(u, batch_data, I)
+                    return u
+                else
+                    batch_data
+                end
             end
-            batch_data = batch_solve(ensembleprob, alg, ensemblealg, I, adaptive;
-                                     unstable_check = unstable_check, kwargs...)
-            if ensembleprob.reduction !== SciMLBase.DEFAULT_REDUCTION
-                u, _ = ensembleprob.reduction(u, batch_data, I)
-                return u
-            else
-                batch_data
-            end
-        end end
+        end
     else
-        time = @elapsed begin sols = pmap(1:num_batches) do i
-            if i == num_batches
-                I = (batch_size * (i - 1) + 1):gpu_trajectories
-            else
-                I = (batch_size * (i - 1) + 1):(batch_size * i)
+        time = @elapsed begin
+            sols = pmap(1:num_batches) do i
+                if i == num_batches
+                    I = (batch_size * (i - 1) + 1):gpu_trajectories
+                else
+                    I = (batch_size * (i - 1) + 1):(batch_size * i)
+                end
+                x = batch_solve(ensembleprob, alg, ensemblealg, I, adaptive;
+                    unstable_check = unstable_check, kwargs...)
+                yield()
+                if ensembleprob.reduction !== SciMLBase.DEFAULT_REDUCTION
+                    u, _ = ensembleprob.reduction(u, x, I)
+                else
+                    x
+                end
             end
-            x = batch_solve(ensembleprob, alg, ensemblealg, I, adaptive;
-                            unstable_check = unstable_check, kwargs...)
-            yield()
-            if ensembleprob.reduction !== SciMLBase.DEFAULT_REDUCTION
-                u, _ = ensembleprob.reduction(u, x, I)
-            else
-                x
-            end
-        end end
+        end
     end
 
     if ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
@@ -662,12 +837,34 @@ end
 diffeqgpunorm(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
 
 """
-A lower level API for EnsembleGPUArray. Avoid converting the GPUArrays back to CPU.
+Lower level API for `EnsembleArrayAlgorithm`. Avoids conversion of solution to CPU arrays.
+
+```julia
+vectorized_map_solve(probs, alg,
+                     ensemblealg::Union{EnsembleArrayAlgorithm}, I,
+                     adaptive)
+```
+
+## Arguments
+
+- `probs`: the GPU-setup problems generated by the ensemble.
+- `alg`: the kernel-based differential equation solver. Most of the solvers from OrdinaryDiffEq.jl
+         are supported.
+- `ensemblealg`: The `EnsembleGPUArray()` algorithm.
+- `I`: The iterator argument. Can be set to for e.g. 1:10_000 to simulate 10,000 trajectories.
+- `adaptive`: The Boolean argument for time-stepping. Use `true` to enable adaptive time-stepping.
+
+## Keyword Arguments
+
+Only a subset of the common solver arguments are supported.
+
 """
+function vectorized_map_solve end
+
 function vectorized_map_solve(probs, alg,
-                              ensemblealg::Union{EnsembleArrayAlgorithm}, I,
-                              adaptive;
-                              kwargs...)
+    ensemblealg::Union{EnsembleArrayAlgorithm}, I,
+    adaptive;
+    kwargs...)
 
     #    @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),probs[1]),probs)
     # u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
@@ -680,13 +877,13 @@ function vectorized_map_solve(probs, alg,
 
     prob = probs[1]
     sol = vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p;
-                                  adaptive = adaptive, kwargs...)
+        adaptive = adaptive, kwargs...)
 end
 
 function batch_solve(ensembleprob, alg,
-                     ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
-                     adaptive;
-                     kwargs...)
+    ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
+    adaptive;
+    kwargs...)
     if ensembleprob.safetycopy
         probs = map(I) do i
             ensembleprob.prob_func(deepcopy(ensembleprob.prob), i, 1)
@@ -704,8 +901,8 @@ function batch_solve(ensembleprob, alg,
         # because the dimension of CuMatrix is decided by it.
         # The columns of it are accessed at each thread.
         if !all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
-                          probs[1]),
-                probs)
+                probs[1]),
+            probs)
             if !iszero(ensemblealg.cpu_offload)
                 error("Different time spans in an Ensemble Simulation with CPU offloading is not supported yet.")
             end
@@ -714,10 +911,10 @@ function batch_solve(ensembleprob, alg,
                 error("Using different time-spans require either turning off save_everystep or using saveat. If using saveat, it should be of same length across the ensemble.")
             end
             if !all(Base.Fix2((prob1, prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
-                                                                   nothing)),
-                                                        sizeof(get(prob2.kwargs, :saveat,
-                                                                   nothing))), probs[1]),
-                    probs)
+                            nothing)),
+                        sizeof(get(prob2.kwargs, :saveat,
+                            nothing))), probs[1]),
+                probs)
                 error("Using different saveat in EnsembleGPUKernel requires all of them to be of same length. Use saveats of same size only.")
             end
         end
@@ -727,59 +924,89 @@ function batch_solve(ensembleprob, alg,
             _saveat = get(probs[1].kwargs, :saveat, nothing)
             saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
-                                                 adaptive; saveat = saveat, kwargs...)
+                adaptive; saveat = saveat, kwargs...)
             [begin
-                 ts = @view solts[:, i]
-                 us = @view solus[:, i]
-                 sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
-                 if sol_idx === nothing
-                     @error "No solution found" tspan=probs[i].tspan[1] ts
-                     error("Batch solve failed")
-                 end
-                 @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
-                                                                          alg,
-                                                                          ts[1:sol_idx],
-                                                                          us[1:sol_idx],
-                                                                          k = nothing,
-                                                                          stats = nothing,
-                                                                          calculate_error = false,
-                                                                          retcode = sol_idx !=
-                                                                                    length(ts) ?
-                                                                                    ReturnCode.Terminated :
-                                                                                    ReturnCode.Success),
-                                                 i)[1]
-             end
+                ts = @view solts[:, i]
+                us = @view solus[:, i]
+                sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
+                if sol_idx === nothing
+                    @error "No solution found" tspan=probs[i].tspan[1] ts
+                    error("Batch solve failed")
+                end
+                @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
+                        alg,
+                        ts[1:sol_idx],
+                        us[1:sol_idx],
+                        k = nothing,
+                        stats = nothing,
+                        calculate_error = false,
+                        retcode = sol_idx !=
+                                  length(ts) ?
+                                  ReturnCode.Terminated :
+                                  ReturnCode.Success),
+                    i)[1]
+            end
              for i in eachindex(probs)]
 
         else
             error("We don't have solvers implemented for this algorithm yet")
         end
     else
-        @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
-                              probs[1]),
-                    probs)
         u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
-        p = reduce(hcat,
-                   probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-                   for i in 1:length(I))
 
-        sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
-                                    adaptive = adaptive, kwargs...)
-        [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t, solus[i],
-                                                           stats = sol.stats,
-                                                           retcode = sol.retcode), i)[1]
-         for i in 1:length(probs)]
+        if !all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
+                probs[1]),
+            probs)
+
+            # Requires prob.p to be isbits otherwise it wouldn't work with ParamWrapper
+            @assert all(prob -> isbits(prob.p), probs)
+
+            # Remaking the problem to normalize time span values..."
+            p = reduce(hcat,
+                ParamWrapper(probs[i].p, probs[i].tspan)
+                for i in 1:length(I))
+
+            # Change the tspan of first problem to (0,1)
+            orig_prob = probs[1]
+            probs[1] = remake(probs[1];
+                tspan = (zero(probs[1].tspan[1]), one(probs[1].tspan[2])))
+
+            sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I,
+                u0, p; adaptive = adaptive, kwargs...)
+
+            probs[1] = orig_prob
+
+            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
+                    map(t -> probs[i].tspan[1] +
+                             (probs[i].tspan[2] -
+                              probs[i].tspan[1]) *
+                             t, sol.t), solus[i],
+                    stats = sol.stats,
+                    retcode = sol.retcode), i)[1]
+             for i in 1:length(probs)]
+        else
+            p = reduce(hcat,
+                probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
+                for i in 1:length(I))
+            sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
+                adaptive = adaptive, kwargs...)
+            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t,
+                    solus[i],
+                    stats = sol.stats,
+                    retcode = sol.retcode), i)[1]
+             for i in 1:length(probs)]
+        end
     end
 end
 
 function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptive;
-                               kwargs...)
+    kwargs...)
     _callback = CallbackSet(generate_callback(probs[1], length(I), ensemblealg; kwargs...))
 
     _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
-                                     _callback.discrete_callbacks)...,
-                            convert.(DiffEqGPU.GPUContinuousCallback,
-                                     _callback.continuous_callbacks)...)
+            _callback.discrete_callbacks)...,
+        convert.(DiffEqGPU.GPUContinuousCallback,
+            _callback.continuous_callbacks)...)
 
     dev = ensemblealg.dev
     probs = adapt(dev, probs)
@@ -787,10 +1014,10 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
     #Adaptive version only works with saveat
     if adaptive
         ts, us = vectorized_asolve(probs, ensembleprob.prob, alg;
-                                   kwargs..., callback = _callback)
+            kwargs..., callback = _callback)
     else
         ts, us = vectorized_solve(probs, ensembleprob.prob, alg;
-                                  kwargs..., callback = _callback)
+            kwargs..., callback = _callback)
     end
     solus = Array(us)
     solts = Array(ts)
@@ -835,7 +1062,7 @@ function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
     end
 
     sol = solve(prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
-                internalnorm = diffeqgpunorm)
+        internalnorm = diffeqgpunorm)
 end
 
 function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs...)
@@ -876,7 +1103,7 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
     end
 
     sol = solve(prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
-                internalnorm = diffeqgpunorm)
+        internalnorm = diffeqgpunorm)
 
     us = Array.(sol.u)
     solus = [[@view(us[i][:, j]) for i in 1:length(us)] for j in 1:length(probs)]
@@ -884,9 +1111,9 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
 end
 
 function seed_duals(x::Matrix{V}, ::Type{T},
-                    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(@view(x[:, 1]),
-                                                               typemax(Int64))) where {V, T,
-                                                                                       N}
+    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(@view(x[:, 1]),
+        typemax(Int64))) where {V, T,
+    N}
     seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, V})
     duals = [ForwardDiff.Dual{T}(x[i, j], seeds[i])
              for i in 1:size(x, 1), j in 1:size(x, 2)]
@@ -909,7 +1136,7 @@ end
 struct DiffEqGPUAdjTag end
 
 function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg,
-                              ensemblealg, I, u0, p; kwargs...)
+    ensemblealg, I, u0, p; kwargs...)
     pdual = seed_duals(p, DiffEqGPUAdjTag)
     u0 = convert.(eltype(pdual), u0)
 
@@ -949,7 +1176,7 @@ function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg
     end
 
     sol = solve(prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
-                internalnorm = diffeqgpunorm)
+        internalnorm = diffeqgpunorm)
 
     us = Array.(sol.u)
     solus = [[ForwardDiff.value.(@view(us[i][:, j])) for i in 1:length(us)]
@@ -980,7 +1207,7 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
             version = get_backend(u)
             wgs = workgroupsize(version, size(u, 2))
             kernel(version)(f, du, u, p, t; ndrange = size(u, 2),
-                            workgroupsize = wgs)
+                workgroupsize = wgs)
         end
     end
 
@@ -992,8 +1219,8 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
                 version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
                 kernel(version)(jac, W, u, p, gamma, t;
-                                ndrange = size(u, 2),
-                                workgroupsize = wgs)
+                    ndrange = size(u, 2),
+                    workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -1004,8 +1231,8 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
                 version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
                 kernel(version)(jac, W, u, p, gamma, t;
-                                ndrange = size(u, 2),
-                                workgroupsize = wgs)
+                    ndrange = size(u, 2),
+                    workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -1022,8 +1249,8 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
                 version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
                 kernel(version)(tgrad, J, u, p, t;
-                                ndrange = size(u, 2),
-                                workgroupsize = wgs)
+                    ndrange = size(u, 2),
+                    workgroupsize = wgs)
             end
         end
     else
@@ -1031,12 +1258,12 @@ function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
     end
 
     f_func = ODEFunction(_f, Wfact = _Wfact!,
-                         Wfact_t = _Wfact!_t,
-                         #colorvec=colorvec,
-                         jac_prototype = jac_prototype,
-                         tgrad = _tgrad)
+        Wfact_t = _Wfact!_t,
+        #colorvec=colorvec,
+        jac_prototype = jac_prototype,
+        tgrad = _tgrad)
     prob = ODEProblem(f_func, u0, prob.tspan, p;
-                      prob.kwargs...)
+        prob.kwargs...)
 end
 
 function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
@@ -1045,8 +1272,8 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             version = get_backend(u)
             wgs = workgroupsize(version, size(u, 2))
             kernel(version)(f, du, u, p, t;
-                            ndrange = size(u, 2),
-                            workgroupsize = wgs)
+                ndrange = size(u, 2),
+                workgroupsize = wgs)
         end
     end
 
@@ -1055,8 +1282,8 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
             version = get_backend(u)
             wgs = workgroupsize(version, size(u, 2))
             kernel(version)(f, du, u, p, t;
-                            ndrange = size(u, 2),
-                            workgroupsize = wgs)
+                ndrange = size(u, 2),
+                workgroupsize = wgs)
         end
     end
 
@@ -1068,8 +1295,8 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
                 version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
                 kernel(version)(jac, W, u, p, gamma, t;
-                                ndrange = size(u, 2),
-                                workgroupsize = wgs)
+                    ndrange = size(u, 2),
+                    workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -1080,8 +1307,8 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
                 version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
                 kernel(version)(jac, W, u, p, gamma, t;
-                                ndrange = size(u, 2),
-                                workgroupsize = wgs)
+                    ndrange = size(u, 2),
+                    workgroupsize = wgs)
                 lufact!(version, W)
             end
         end
@@ -1098,8 +1325,8 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
                 version = get_backend(u)
                 wgs = workgroupsize(version, size(u, 2))
                 kernel(version)(tgrad, J, u, p, t;
-                                ndrange = size(u, 2),
-                                workgroupsize = wgs)
+                    ndrange = size(u, 2),
+                    workgroupsize = wgs)
             end
         end
     else
@@ -1107,16 +1334,16 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
     end
 
     f_func = SDEFunction(_f, _g, Wfact = _Wfact!,
-                         Wfact_t = _Wfact!_t,
-                         #colorvec=colorvec,
-                         jac_prototype = jac_prototype,
-                         tgrad = _tgrad)
+        Wfact_t = _Wfact!_t,
+        #colorvec=colorvec,
+        jac_prototype = jac_prototype,
+        tgrad = _tgrad)
     prob = SDEProblem(f_func, _g, u0, prob.tspan, p;
-                      prob.kwargs...)
+        prob.kwargs...)
 end
 
 function generate_callback(callback::DiscreteCallback, I,
-                           ensemblealg)
+    ensemblealg)
     if ensemblealg isa EnsembleGPUArray
         backend = ensemblealg.backend
         cur = adapt(backend, [false for i in 1:I])
@@ -1132,8 +1359,8 @@ function generate_callback(callback::DiscreteCallback, I,
         version = get_backend(u)
         wgs = workgroupsize(version, size(u, 2))
         discrete_condition_kernel(version)(_condition, cur, u, t, integrator.p;
-                                           ndrange = size(u, 2),
-                                           workgroupsize = wgs)
+            ndrange = size(u, 2),
+            workgroupsize = wgs)
         any(cur)
     end
 
@@ -1141,9 +1368,9 @@ function generate_callback(callback::DiscreteCallback, I,
         version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         discrete_affect!_kernel(version)(_affect!, cur, integrator.u, integrator.t,
-                                         integrator.p;
-                                         ndrange = size(integrator.u, 2),
-                                         workgroupsize = wgs)
+            integrator.p;
+            ndrange = size(integrator.u, 2),
+            workgroupsize = wgs)
     end
     return DiscreteCallback(condition, affect!, save_positions = callback.save_positions)
 end
@@ -1160,8 +1387,8 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
         version = get_backend(u)
         wgs = workgroupsize(version, size(u, 2))
         continuous_condition_kernel(version)(_condition, out, u, t, integrator.p;
-                                             ndrange = size(u, 2),
-                                             workgroupsize = wgs)
+            ndrange = size(u, 2),
+            workgroupsize = wgs)
         nothing
     end
 
@@ -1169,28 +1396,28 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
         version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         continuous_affect!_kernel(version)(_affect!, event_idx, integrator.u,
-                                           integrator.t, integrator.p;
-                                           ndrange = size(integrator.u, 2),
-                                           workgroupsize = wgs)
+            integrator.t, integrator.p;
+            ndrange = size(integrator.u, 2),
+            workgroupsize = wgs)
     end
 
     affect_neg! = function (integrator, event_idx)
         version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
         continuous_affect!_kernel(version)(_affect_neg!, event_idx, integrator.u,
-                                           integrator.t, integrator.p;
-                                           ndrange = size(integrator.u, 2),
-                                           workgroupsize = wgs)
+            integrator.t, integrator.p;
+            ndrange = size(integrator.u, 2),
+            workgroupsize = wgs)
     end
 
     return VectorContinuousCallback(condition, affect!, affect_neg!, I,
-                                    save_positions = callback.save_positions)
+        save_positions = callback.save_positions)
 end
 
 function generate_callback(callback::CallbackSet, I, ensemblealg)
     return CallbackSet(map(cb -> generate_callback(cb, I, ensemblealg),
-                           (callback.continuous_callbacks...,
-                            callback.discrete_callbacks...))...)
+        (callback.continuous_callbacks...,
+            callback.discrete_callbacks...))...)
 end
 
 generate_callback(::Tuple{}, I, ensemblealg) = nothing
@@ -1209,7 +1436,7 @@ function generate_callback(prob, I, ensemblealg; kwargs...)
         return nothing
     else
         return CallbackSet(generate_callback(prob_cb, I, ensemblealg),
-                           generate_callback(kwarg_cb, I, ensemblealg))
+            generate_callback(kwarg_cb, I, ensemblealg))
     end
 end
 
@@ -1226,13 +1453,13 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 LinearSolve.needs_concrete_A(::LinSolveGPUSplitFactorize) = true
 
 function LinearSolve.init_cacheval(linsol::LinSolveGPUSplitFactorize, A, b, u, Pl, Pr,
-                                   maxiters::Int, abstol, reltol, verbose::Bool,
-                                   assumptions::LinearSolve.OperatorAssumptions)
+    maxiters::Int, abstol, reltol, verbose::Bool,
+    assumptions::LinearSolve.OperatorAssumptions)
     LinSolveGPUSplitFactorize(linsol.len, length(u) ÷ linsol.len)
 end
 
 function SciMLBase.solve!(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFactorize,
-                         args...; kwargs...)
+    args...; kwargs...)
     p = cache.cacheval
     A = cache.A
     b = cache.b
@@ -1242,8 +1469,8 @@ function SciMLBase.solve!(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitF
     wgs = workgroupsize(version, p.nfacts)
     # Note that the matrix is already factorized, only ldiv is needed.
     ldiv!_kernel(version)(A, x, p.len, p.nfacts;
-                          ndrange = p.nfacts,
-                          workgroupsize = wgs)
+        ndrange = p.nfacts,
+        workgroupsize = wgs)
     SciMLBase.build_linear_solution(alg, x, nothing, cache)
 end
 
@@ -1253,8 +1480,8 @@ function (p::LinSolveGPUSplitFactorize)(x, A, b, update_matrix = false; kwargs..
     copyto!(x, b)
     wgs = workgroupsize(version, p.nfacts)
     ldiv!_kernel(version)(A, x, p.len, p.nfacts;
-                          ndrange = p.nfacts,
-                          workgroupsize = wgs)
+        ndrange = p.nfacts,
+        workgroupsize = wgs)
     return nothing
 end
 
@@ -1330,10 +1557,10 @@ function naivesolve!(A::AbstractMatrix, x::AbstractVector, n)
 end
 
 function solve_batch(prob, alg, ensemblealg::EnsembleThreads, II, pmap_batch_size;
-                     kwargs...)
+    kwargs...)
     if length(II) == 1 || Threads.nthreads() == 1
         return SciMLBase.solve_batch(prob, alg, EnsembleSerial(), II, pmap_batch_size;
-                                     kwargs...)
+            kwargs...)
     end
 
     if typeof(prob.prob) <: SciMLBase.AbstractJumpProblem && length(II) != 1
@@ -1352,14 +1579,15 @@ function solve_batch(prob, alg, ensemblealg::EnsembleThreads, II, pmap_batch_siz
             I_local = II[(batch_size * (i - 1) + 1):(batch_size * i)]
         end
         SciMLBase.solve_batch(prob, alg, EnsembleSerial(), I_local, pmap_batch_size;
-                              kwargs...)
+            kwargs...)
     end
     SciMLBase.tighten_container_eltype(batch_data)
 end
 
 function tmap(f, args...)
     batch_data = Vector{Core.Compiler.return_type(f, Tuple{typeof.(getindex.(args, 1))...})
-                        }(undef, length(args[1]))
+    }(undef,
+        length(args[1]))
     Threads.@threads for i in 1:length(args[1])
         batch_data[i] = f(getindex.(args, i)...)
     end

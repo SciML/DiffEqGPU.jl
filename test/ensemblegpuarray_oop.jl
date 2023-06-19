@@ -17,8 +17,8 @@ function lorenz_jac(u, p, t)
     y = u[2]
     z = u[3]
     SA[-σ σ 0
-       ρ-z -1 -x
-       y x -β]
+        ρ-z -1 -x
+        y x -β]
 end
 
 function lorenz_tgrad(u, p, t)
@@ -33,10 +33,10 @@ prob = ODEProblem(func, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 @time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10_000,
-                  saveat = 1.0f0)
+    saveat = 1.0f0)
 @time sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend),
-                  trajectories = 10_000,
-                  saveat = 1.0f0)
+    trajectories = 10_000,
+    saveat = 1.0f0)
 @time sol = solve(monteprob, TRBDF2(), EnsembleGPUArray(backend),
-                  trajectories = 10_000,
-                  saveat = 1.0f0)
+    trajectories = 10_000,
+    saveat = 1.0f0)
