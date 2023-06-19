@@ -35,6 +35,14 @@ end
     include("gpu_kernel_de/stiff_ode/gpu_ode_discrete_callbacks.jl")
 end
 
+@time @safetestset "GPU Kernelized ForwardDiff tests" begin
+    include("gpu_kernel_de/forward_diff.jl")
+end
+
+@time @safetestset "GPU Kernelized FiniteDiff tests" begin
+    include("gpu_kernel_de/finite_diff.jl")
+end
+
 if GROUP in SUPPORTS_LUFACT
     @time @safetestset "EnsembleGPUArray" begin
         include("ensemblegpuarray.jl")
