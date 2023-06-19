@@ -40,33 +40,41 @@
     t = copy(tspan[1])
     n = length(tspan[1]:dt:tspan[2])
 
-    for j in 2:n
-        uprev = u
+    u_test = f.f(u, p, t)
 
-        if is_diagonal_noise
-            u = uprev + f(uprev, p, t) * dt +
-                sqdt * g(uprev, p, t) .* randn(typeof(u0))
-        else
-            u = uprev + f(uprev, p, t) * dt +
-                sqdt * g(uprev, p, t) * randn(typeof(prob.noise_rate_prototype[1, :]))
-        end
+    # KernelAbstractions.@print(typeof(@views prob.noise_rate_prototype[1, :]))
 
-        t += dt
+    # test = randn(SArray{Tuple{size(prob.noise_rate_prototype,1)}, eltype(prob.noise_rate_prototype)})
 
-        if saveat === nothing && save_everystep
-            @inbounds us[j] = u
-            @inbounds ts[j] = t
-        elseif saveat !== nothing
-            while cur_t <= length(saveat) && saveat[cur_t] <= t
-                savet = saveat[cur_t]
-                Θ = (savet - (t - dt)) / dt
-                # Linear Interpolation
-                @inbounds us[cur_t] = uprev + (u - uprev) * Θ
-                @inbounds ts[cur_t] = savet
-                cur_t += 1
-            end
-        end
-    end
+    # KernelAbstractions.@print(is_diagonal_noise)
+
+    # for j in 2:n
+    #     uprev = u
+
+    #     if is_diagonal_noise
+    #         u = uprev + f(uprev, p, t) * dt +
+    #             sqdt * g(uprev, p, t) .* randn(typeof(u0))
+    #     else
+    #         u = uprev + f(uprev, p, t) * dt +
+    #             sqdt * g(uprev, p, t) * randn(typeof(prob.noise_rate_prototype[1, :]))
+    #     end
+
+    #     t += dt
+
+    #     if saveat === nothing && save_everystep
+    #         @inbounds us[j] = u
+    #         @inbounds ts[j] = t
+    #     elseif saveat !== nothing
+    #         while cur_t <= length(saveat) && saveat[cur_t] <= t
+    #             savet = saveat[cur_t]
+    #             Θ = (savet - (t - dt)) / dt
+    #             # Linear Interpolation
+    #             @inbounds us[cur_t] = uprev + (u - uprev) * Θ
+    #             @inbounds ts[cur_t] = savet
+    #             cur_t += 1
+    #         end
+    #     end
+    # end
 
     if saveat === nothing && !save_everystep
         @inbounds us[2] = u
