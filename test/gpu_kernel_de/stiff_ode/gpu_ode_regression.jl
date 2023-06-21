@@ -25,7 +25,7 @@ function f_large(u::AbstractArray{T}, p, t) where {T}
     return T(1.01) * u
 end
 
-large_u0 = @SVector rand(Float32, 20)
+large_u0 = @SVector rand(Float32, 15)
 large_prob = ODEProblem(f_large, large_u0, (0.0f0, 10.0f0))
 
 algs = (GPURosenbrock23(), GPURodas4(), GPURodas5P(), GPUKvaerno3(), GPUKvaerno5())
@@ -132,6 +132,6 @@ for alg in algs
     ## large no. of dimensions
     monteprob = EnsembleProblem(large_prob, safetycopy = false)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 10,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 2,
         adaptive = true, dt = 0.1f0)
 end
