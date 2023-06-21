@@ -47,14 +47,14 @@
 
     # F = lu(W)
     F₀ = f(uprev, p, t)
-    k1 = W_fact \ (F₀ + γ * dT)
+    k1 = linear_solve(W_fact, F₀ + γ * dT)
 
     F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
     if mass_matrix === I
-        k2 = W_fact \ (F₁ - k1) + k1
+        k2 = linear_solve(W_fact, (F₁ - k1) + k1)
     else
-        k2 = W_fact \ (F₁ - mass_matrix * k1) + k1
+        k2 = linear_solve(W_fact, (F₁ - mass_matrix * k1) + k1)
     end
 
     integ.u = uprev + dt * k2
@@ -119,14 +119,14 @@ end
 
         # F = lu(W)
         F₀ = f(uprev, p, t)
-        k1 = W_fact \ (F₀ + γ * dT)
+        k1 = linear_solve(W_fact, F₀ + γ * dT)
 
         F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
         if mass_matrix === I
-            k2 = W_fact \ (F₁ - k1) + k1
+            k2 = linear_solve(W_fact, (F₁ - k1) + k1)
         else
-            k2 = W_fact \ (F₁ - mass_matrix * k1) + k1
+            k2 = linear_solve(W_fact, (F₁ - mass_matrix * k1) + k1)
         end
 
         u = uprev + dt * k2
@@ -135,11 +135,12 @@ end
         F₂ = f(u, p, t + dt)
 
         if mass_matrix === I
-            k3 = W_fact \ (F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
+            k3 = linear_solve(W_fact, F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
 
         else
-            k3 = W_fact \ (F₂ - mass_matrix * (e32 * k2 + 2 * k1) +
-                  e32 * F₁ + 2 * F₀ + dt * dT)
+            k3 = linear_solve(W_fact,
+                F₂ - mass_matrix * (e32 * k2 + 2 * k1) +
+                e32 * F₁ + 2 * F₀ + dt * dT)
         end
 
         tmp = dto6 * (k1 - 2 * k2 + k3)

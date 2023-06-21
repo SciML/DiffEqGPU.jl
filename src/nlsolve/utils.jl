@@ -14,7 +14,7 @@
         W_eval = nlsolver.W(tmp + γ * z_i, p, t + c * dt)
         f_eval = integrator.f(tmp + γ * z_i, p, t + c * dt)
         f_rhs = dt * f_eval - z_i
-        Δz = W_eval \ f_rhs
+        Δz = linear_solve(W_eval, f_rhs)
         z_i = z_i - Δz
 
         if norm(dt * integrator.f(tmp + γ * z_i, p, t + c * dt) - z_i) < abstol
