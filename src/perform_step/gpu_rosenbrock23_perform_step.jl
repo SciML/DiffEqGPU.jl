@@ -52,9 +52,9 @@
     F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
     if mass_matrix === I
-        k2 = linear_solve(W_fact, (F₁ - k1) + k1)
+        k2 = linear_solve(W_fact, (F₁ - k1)) + k1
     else
-        k2 = linear_solve(W_fact, (F₁ - mass_matrix * k1) + k1)
+        k2 = linear_solve(W_fact, (F₁ - mass_matrix * k1)) + k1
     end
 
     integ.u = uprev + dt * k2
@@ -124,9 +124,9 @@ end
         F₁ = f(uprev + dto2 * k1, p, t + dto2)
 
         if mass_matrix === I
-            k2 = linear_solve(W_fact, (F₁ - k1) + k1)
+            k2 = linear_solve(W_fact, F₁ - k1) + k1
         else
-            k2 = linear_solve(W_fact, (F₁ - mass_matrix * k1) + k1)
+            k2 = linear_solve(W_fact, F₁ - mass_matrix * k1) + k1
         end
 
         u = uprev + dt * k2
