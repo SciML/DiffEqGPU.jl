@@ -21,6 +21,12 @@ p = @SVector [1.0f0]
 func = ODEFunction(f, jac = f_jac, tgrad = f_tgrad)
 prob = ODEProblem{false}(func, u0, tspan, p)
 
+function f_large(u::AbstractArray{T}, p, t) where {T}
+    return T(1.01) * u
+end
+
+large_prob = ODEProblem(f_large, @SVector rand(Float32, 20), (0.0f0, 10.0f0))
+
 algs = (GPURosenbrock23(), GPURodas4(), GPURodas5P(), GPUKvaerno3(), GPUKvaerno5())
 for alg in algs
     prob_func = (prob, i, repeat) -> remake(prob, p = p)
@@ -121,4 +127,10 @@ for alg in algs
         adaptive = false, dt = 0.1f0)
     asol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 10,
         adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
+
+    ## large no. of dimensions
+    monteprob = EnsembleProblem(large_prob, safetycopy = false)
+
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 10,
+        adaptive = true, dt = 0.1f0)
 end
