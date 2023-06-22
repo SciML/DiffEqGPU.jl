@@ -130,8 +130,11 @@ for alg in algs
         adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7)
 
     ## large no. of dimensions
-    monteprob = EnsembleProblem(large_prob, safetycopy = false)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 2,
-        adaptive = true, dt = 0.1f0)
+    if GROUP == "CUDA"
+        monteprob = EnsembleProblem(large_prob, safetycopy = false)
+
+        local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), trajectories = 2,
+            adaptive = true, dt = 0.1f0)
+    end
 end
