@@ -82,51 +82,51 @@
 
     # Step 1
     linsolve_tmp = du + dtd1 * dT
-    k1 = W \ -linsolve_tmp
+    k1 = linear_solve(W, -linsolve_tmp)
     u = uprev + a21 * k1
     du = f(u, p, t + c2 * dt)
 
     # Step 2
     linsolve_tmp = du + dtd2 * dT + dtC21 * k1
-    k2 = W \ -linsolve_tmp
+    k2 = linear_solve(W, -linsolve_tmp)
     u = uprev + a31 * k1 + a32 * k2
     du = f(u, p, t + c3 * dt)
 
     # Step 3
     linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
-    k3 = W \ -linsolve_tmp
+    k3 = linear_solve(W, -linsolve_tmp)
     u = uprev + a41 * k1 + a42 * k2 + a43 * k3
     du = f(u, p, t + c4 * dt)
 
     # Step 4
     linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
-    k4 = W \ -linsolve_tmp
+    k4 = linear_solve(W, -linsolve_tmp)
     u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
     du = f(u, p, t + c5 * dt)
 
     # Step 5
     linsolve_tmp = du + dtd5 * dT + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
-    k5 = W \ -linsolve_tmp
+    k5 = linear_solve(W, -linsolve_tmp)
     u = uprev + a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5
     du = f(u, p, t + dt)
 
     # Step 6
     linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC63 * k3 + dtC64 * k4 + dtC65 * k5)
-    k6 = W \ -linsolve_tmp
+    k6 = linear_solve(W, -linsolve_tmp)
     u = u + k6
     du = f(u, p, t + dt)
 
     # Step 7
     linsolve_tmp = du + (dtC71 * k1 + dtC72 * k2 + dtC73 * k3 + dtC74 * k4 + dtC75 * k5 +
                     dtC76 * k6)
-    k7 = W \ -linsolve_tmp
+    k7 = linear_solve(W, -linsolve_tmp)
     u = u + k7
     du = f(u, p, t + dt)
 
     # Step 8
     linsolve_tmp = du + (dtC81 * k1 + dtC82 * k2 + dtC83 * k3 + dtC84 * k4 + dtC85 * k5 +
                     dtC86 * k6 + dtC87 * k7)
-    k8 = W \ -linsolve_tmp
+    k8 = linear_solve(W, -linsolve_tmp)
     integ.u = u + k8
 
     @inbounds begin # Necessary for interpolation
@@ -230,37 +230,37 @@ end
 
         # Step 1
         linsolve_tmp = du + dtd1 * dT
-        k1 = W \ -linsolve_tmp
+        k1 = linear_solve(W, -linsolve_tmp)
         u = uprev + a21 * k1
         du = f(u, p, t + c2 * dt)
 
         # Step 2
         linsolve_tmp = du + dtd2 * dT + dtC21 * k1
-        k2 = W \ -linsolve_tmp
+        k2 = linear_solve(W, -linsolve_tmp)
         u = uprev + a31 * k1 + a32 * k2
         du = f(u, p, t + c3 * dt)
 
         # Step 3
         linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
-        k3 = W \ -linsolve_tmp
+        k3 = linear_solve(W, -linsolve_tmp)
         u = uprev + a41 * k1 + a42 * k2 + a43 * k3
         du = f(u, p, t + c4 * dt)
 
         # Step 4
         linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
-        k4 = W \ -linsolve_tmp
+        k4 = linear_solve(W, -linsolve_tmp)
         u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
         du = f(u, p, t + c5 * dt)
 
         # Step 5
         linsolve_tmp = du + dtd5 * dT + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
-        k5 = W \ -linsolve_tmp
+        k5 = linear_solve(W, -linsolve_tmp)
         u = uprev + a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5
         du = f(u, p, t + dt)
 
         # Step 6
         linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC63 * k3 + dtC64 * k4 + dtC65 * k5)
-        k6 = W \ -linsolve_tmp
+        k6 = linear_solve(W, -linsolve_tmp)
         u = u + k6
         du = f(u, p, t + dt)
 
@@ -268,7 +268,7 @@ end
         linsolve_tmp = du +
                        (dtC71 * k1 + dtC72 * k2 + dtC73 * k3 + dtC74 * k4 + dtC75 * k5 +
                         dtC76 * k6)
-        k7 = W \ -linsolve_tmp
+        k7 = linear_solve(W, -linsolve_tmp)
         u = u + k7
         du = f(u, p, t + dt)
 
@@ -276,7 +276,7 @@ end
         linsolve_tmp = du +
                        (dtC81 * k1 + dtC82 * k2 + dtC83 * k3 + dtC84 * k4 + dtC85 * k5 +
                         dtC86 * k6 + dtC87 * k7)
-        k8 = W \ -linsolve_tmp
+        k8 = linear_solve(W, -linsolve_tmp)
         u = u + k8
 
         tmp = k8 ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)

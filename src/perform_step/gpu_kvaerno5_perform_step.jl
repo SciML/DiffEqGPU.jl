@@ -231,8 +231,9 @@ end
 
         W_eval = nlsolver.W(nlsolver.tmp + nlsolver.γ * z₇, p, t + nlsolver.c * dt)
 
-        err = (btilde1 * z₁ + btilde3 * z₃ + btilde4 * z₄ + btilde5 * z₅ + btilde6 * z₆ +
-               btilde7 * z₇)
+        err = linear_solve(W_eval,
+            btilde1 * z₁ + btilde3 * z₃ + btilde4 * z₄ + btilde5 * z₅ + btilde6 * z₆ +
+            btilde7 * z₇)
 
         tmp = (err) ./
               (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)

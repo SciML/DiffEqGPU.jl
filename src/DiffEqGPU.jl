@@ -20,6 +20,9 @@ using Parameters, MuladdMacro
 using Random
 using Setfield
 using ForwardDiff
+import StaticArrays: StaticVecOrMat, @_inline_meta
+# import LinearAlgebra: \
+import StaticArrays: LU, StaticLUMatrix, arithmetic_closure
 
 """
 Wrapper for modifying parameters to contain additional data. Useful for simulating
@@ -1594,6 +1597,8 @@ function tmap(f, args...)
     reduce(vcat, batch_data)
 end
 
+include("linalg/lu.jl")
+include("linalg/linsolve.jl")
 include("alg_utils.jl")
 include("integrators/types.jl")
 include("integrators/stiff/types.jl")
