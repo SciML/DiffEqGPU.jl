@@ -13,4 +13,3 @@ A more complex discussion is the following:
   - `EnsembleGPUKernel` requires equations to be written in out-of-place form, along with a
     few other restrictions, and thus in some cases can be less automatic than
     `EnsembleGPUArray` depending on how the code was originally written.
-  - Currently, `EnsembleGPUKernel` does not support methods for stiff equations.
