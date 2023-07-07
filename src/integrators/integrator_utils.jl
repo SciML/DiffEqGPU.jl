@@ -26,8 +26,8 @@ end
     if saveat === nothing && save_everystep
         saved = true
         savedexactly = true
-        @inbounds us[integrator.step_idx] = integrator.u
-        @inbounds ts[integrator.step_idx] = integrator.t
+        @inbounds us[integrator.step_idx] = convert(eltype(us), integrator.u)
+        @inbounds ts[integrator.step_idx] = convert(eltype(ts), integrator.t)
         integrator.step_idx += 1
     elseif saveat !== nothing
         saved = true
@@ -35,9 +35,10 @@ end
         while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= integrator.t
             savet = saveat[integrator.cur_t]
             Θ = (savet - integrator.tprev) / integrator.dt
-            @inbounds us[integrator.cur_t] = _ode_interpolant(Θ, integrator.dt,
-                integrator.uprev, integrator)
-            @inbounds ts[integrator.cur_t] = savet
+            @inbounds us[integrator.cur_t] = convert(eltype(us),
+                _ode_interpolant(Θ, integrator.dt,
+                    integrator.uprev, integrator))
+            @inbounds ts[integrator.cur_t] = convert(eltype(ts), savet)
             integrator.cur_t += 1
         end
     end

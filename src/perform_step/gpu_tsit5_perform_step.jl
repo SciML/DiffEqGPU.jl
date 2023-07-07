@@ -1,3 +1,84 @@
+@inline function step!(integ::GPUT5I{true, S, T}, ts, us) where {T, S}
+    c1, c2, c3, c4, c5, c6 = integ.cs
+    dt = integ.dt
+    t = integ.t
+    p = integ.p
+    a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
+
+    k1 = integ.k1
+    k2 = integ.k2
+    k3 = integ.k3
+    k4 = integ.k4
+    k5 = integ.k5
+    k6 = integ.k6
+    k7 = integ.k7
+
+    tmp = integ.tmp
+    f! = integ.f
+    integ.uprev .= integ.u
+    uprev = integ.u
+
+    L = length(integ.u)
+
+    integ.tprev = t
+    saved_in_cb = false
+    adv_integ = true
+    ## Check if tstops are within the range of time-series
+    if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
+       (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
+        integ.t = integ.tstops[integ.tstops_idx]
+        ## Set correct dt
+        dt = integ.t - integ.tprev
+        integ.tstops_idx += 1
+    else
+        ##Advance the integrator
+        integ.t += dt
+    end
+
+    if integ.u_modified
+        f!(k1, uprev, p, t)
+        integ.u_modified = false
+    else
+        @inbounds k1 .= k7
+    end
+
+    @inbounds begin
+        for i in 1:L
+            tmp[i] = uprev[i] + dt * a21 * k1[i]
+        end
+        f!(k2, tmp, p, t + c1 * dt)
+        for i in 1:L
+            tmp[i] = uprev[i] + dt * (a31 * k1[i] + a32 * k2[i])
+        end
+        f!(k3, tmp, p, t + c2 * dt)
+        for i in 1:L
+            tmp[i] = uprev[i] + dt * (a41 * k1[i] + a42 * k2[i] + a43 * k3[i])
+        end
+        f!(k4, tmp, p, t + c3 * dt)
+        for i in 1:L
+            tmp[i] = uprev[i] + dt * (a51 * k1[i] + a52 * k2[i] + a53 * k3[i] + a54 * k4[i])
+        end
+        f!(k5, tmp, p, t + c4 * dt)
+        for i in 1:L
+            tmp[i] = uprev[i] +
+                     dt *
+                     (a61 * k1[i] + a62 * k2[i] + a63 * k3[i] + a64 * k4[i] + a65 * k5[i])
+        end
+        f!(k6, tmp, p, t + dt)
+        for i in 1:L
+            integ.u[i] = uprev[i] +
+                         dt * (a71 * k1[i] + a72 * k2[i] + a73 * k3[i] + a74 * k4[i] +
+                          a75 * k5[i] + a76 * k6[i])
+        end
+    end
+    f!(k7, integ.u, p, t + dt)
+
+    _, saved_in_cb = handle_callbacks!(integ, ts, us)
+
+    return saved_in_cb
+end
+
 @inline function step!(integ::GPUT5I{false, S, T}, ts, us) where {T, S}
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dt
