@@ -883,6 +883,16 @@ function vectorized_map_solve(probs, alg,
         adaptive = adaptive, kwargs...)
 end
 
+function handle_iip_prob(prob)
+    if DiffEqBase.isinplace(prob)
+        remake(prob;
+            u0 = convert(SArray, prob.u0),
+            p = prob.p isa SciMLBase.NullParameters ? prob.p : convert(SArray, prob.p))
+    else
+        prob
+    end
+end
+
 function batch_solve(ensembleprob, alg,
     ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
     adaptive;
@@ -926,6 +936,7 @@ function batch_solve(ensembleprob, alg,
             # Get inner saveat if global one isn't specified
             _saveat = get(probs[1].kwargs, :saveat, nothing)
             saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
+            # probs = handle_iip_prob.(probs)
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
                 adaptive; saveat = saveat, kwargs...)
             [begin

@@ -34,6 +34,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
     nsteps = length(timeseries)
 
+    prob = handle_iip_prob(prob)
+
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
@@ -208,17 +210,26 @@ end
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
-    prob = @inbounds probs[i]
+    _prob = @inbounds probs[i]
 
     # get the input/output arrays for this thread
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
 
-    _saveat = get(prob.kwargs, :saveat, nothing)
+    _saveat = get(_prob.kwargs, :saveat, nothing)
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
+    prob = if DiffEqBase.isinplace(_prob)
+        remake(_prob;
+            u0 = convert(MArray, _prob.u0),
+            p = _prob.p isa SciMLBase.NullParameters ? _prob.p : convert(MArray, _prob.p))
+    else
+        _prob
+    end
+
+    integ = init(alg, prob.f, DiffEqBase.isinplace(prob), prob.u0, prob.tspan[1], dt,
+        prob.p, tstops,
         callback, save_everystep, saveat)
 
     u0 = prob.u0
@@ -232,8 +243,8 @@ end
             @inbounds us[1] = u0
         end
     else
-        @inbounds ts[integ.step_idx] = prob.tspan[1]
-        @inbounds us[integ.step_idx] = prob.u0
+        @inbounds ts[integ.step_idx] = convert(eltype(ts), prob.tspan[1])
+        @inbounds us[integ.step_idx] = convert(eltype(us), prob.u0)
     end
 
     integ.step_idx += 1
@@ -244,13 +255,13 @@ end
     end
     if integ.t > tspan[2] && saveat === nothing
         ## Intepolate to tf
-        @inbounds us[end] = integ(tspan[2])
-        @inbounds ts[end] = tspan[2]
+        @inbounds us[end] = convert(eltype(us), integ(tspan[2]))
+        @inbounds ts[end] = convert(eltype(ts), tspan[2])
     end
 
     if saveat === nothing && !save_everystep
-        @inbounds us[2] = integ.u
-        @inbounds ts[2] = integ.t
+        @inbounds us[2] = convert(eltype(us), integ.u)
+        @inbounds ts[2] = convert(eltype(ts), integ.t)
     end
 end
 

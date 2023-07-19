@@ -318,7 +318,6 @@ end
     TS, CB, ST}
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
-    !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
@@ -347,7 +346,7 @@ end
     saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(T)
 
-    !IIP && @assert S <: SArray
+    @assert S <: SArray
 
     qoldinit = T(1e-4)
     event_last_time = 1
