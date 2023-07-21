@@ -34,6 +34,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
     nsteps = length(timeseries)
 
+    dt = convert(eltype(prob.tspan), dt)
+
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
@@ -82,6 +84,9 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
     kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
+
+    dt = convert(eltype(prob.tspan), dt)
+
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
@@ -148,6 +153,10 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
+
+    dt = convert(eltype(prob.tspan), dt)
+    abstol = convert(eltype(prob.tspan), abstol)
+    reltol = convert(eltype(prob.tspan), reltol)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
     if saveat === nothing
