@@ -389,8 +389,6 @@ function generic_lufact!(A::AbstractMatrix{T}, minmn) where {T}
     return nothing
 end
 
-
-
 struct MyL{T} # UnitLowerTriangular
     data::T
 end

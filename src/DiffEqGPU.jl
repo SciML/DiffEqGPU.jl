@@ -32,23 +32,22 @@ abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
 abstract type GPUSDEAlgorithm <: DiffEqBase.AbstractSDEAlgorithm end
 abstract type GPUODEImplicitAlgorithm{AD} <: GPUODEAlgorithm end
 
-include("algorithms.jl")
-include("solve.jl")
-
 include("ensemblegpuarray/callbacks.jl")
 include("ensemblegpuarray/kernels.jl")
 include("ensemblegpuarray/problem_generation.jl")
 include("ensemblegpuarray/lowerlevel_solve.jl")
 
+include("ensemblegpukernel/callbacks.jl")
 include("ensemblegpukernel/lowerlevel_solve.jl")
 include("ensemblegpukernel/gpukernel_algorithms.jl")
 include("ensemblegpukernel/linalg/lu.jl")
 include("ensemblegpukernel/linalg/linsolve.jl")
 include("ensemblegpukernel/alg_utils.jl")
-include("ensemblegpukernel/integrators/types.jl")
+include("ensemblegpukernel/integrators/nonstiff/types.jl")
 include("ensemblegpukernel/integrators/stiff/types.jl")
 include("ensemblegpukernel/integrators/integrator_utils.jl")
-include("ensemblegpukernel/integrators/interpolants.jl")
+include("ensemblegpukernel/integrators/stiff/interpolants.jl")
+include("ensemblegpukernel/integrators/nonstiff/interpolants.jl")
 include("ensemblegpukernel/nlsolve/type.jl")
 include("ensemblegpukernel/nlsolve/utils.jl")
 
@@ -66,6 +65,9 @@ include("ensemblegpukernel/perform_step/gpu_kvaerno5_perform_step.jl")
 include("ensemblegpukernel/tableaus/verner_tableaus.jl")
 include("ensemblegpukernel/tableaus/rodas_tableaus.jl")
 include("ensemblegpukernel/tableaus/kvaerno_tableaus.jl")
+
+include("algorithms.jl")
+include("solve.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
