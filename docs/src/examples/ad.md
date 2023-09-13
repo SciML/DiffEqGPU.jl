@@ -40,7 +40,7 @@ println("Starting to train")
 
 l1 = loss()
 
-Flux.@epochs 10 Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
+Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
 ```
 
 Forward-mode automatic differentiation works as well, as demonstrated by its capability

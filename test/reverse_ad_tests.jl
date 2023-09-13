@@ -34,7 +34,9 @@ println("Starting to train")
 
 l1 = loss()
 
-Flux.@epochs 10 Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
+for epoch in 1:10
+    Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
+end
 
 l2 = loss()
 @test 3l2 < l1
