@@ -21,7 +21,7 @@ StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 [compat]
 Adapt = "3"
 BenchmarkTools = "1"
-CUDA = "4"
+CUDA = "4, 5"
 DiffEqBase = "6.120"
 DiffEqGPU = "1,2"
 Documenter = "0.27"
