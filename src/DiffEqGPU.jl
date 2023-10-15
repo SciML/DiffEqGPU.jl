@@ -1,7 +1,7 @@
 """
 $(DocStringExtensions.README)
 """
-module DiffEqGPU
+module DiffEqGPU 
 
 using DocStringExtensions
 using KernelAbstractions
