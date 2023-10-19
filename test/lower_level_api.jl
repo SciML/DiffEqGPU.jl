@@ -48,7 +48,7 @@ prob = ODEProblem{false}(func, u0, tspan, p)
 ## Building different problems for different parameters
 batch = 1:trajectories
 probs = map(batch) do i
-    remake(prob, p = (@SVector rand(Float32, 3)) .* p)
+    DiffEqGPU.make_prob_compatible(remake(prob, p = (@SVector rand(Float32, 3)) .* p))
 end
 
 ## Move the arrays to the GPU
