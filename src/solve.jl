@@ -124,19 +124,21 @@ function batch_solve(ensembleprob, alg,
     ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
     adaptive;
     kwargs...)
-    if ensembleprob.safetycopy
-        probs = map(I) do i
-            ensembleprob.prob_func(deepcopy(ensembleprob.prob), i, 1)
-        end
-    else
-        probs = map(I) do i
-            ensembleprob.prob_func(ensembleprob.prob, i, 1)
-        end
-    end
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
     if ensemblealg isa EnsembleGPUKernel
+        if ensembleprob.safetycopy
+            probs = map(I) do i
+                make_prob_compatible(ensembleprob.prob_func(deepcopy(ensembleprob.prob),
+                    i,
+                    1))
+            end
+        else
+            probs = map(I) do i
+                make_prob_compatible(ensembleprob.prob_func(ensembleprob.prob, i, 1))
+            end
+        end
         # Using inner saveat requires all of them to be of same size,
         # because the dimension of CuMatrix is decided by it.
         # The columns of it are accessed at each thread.
@@ -192,6 +194,15 @@ function batch_solve(ensembleprob, alg,
             error("We don't have solvers implemented for this algorithm yet")
         end
     else
+        if ensembleprob.safetycopy
+            probs = map(I) do i
+                ensembleprob.prob_func(deepcopy(ensembleprob.prob), i, 1)
+            end
+        else
+            probs = map(I) do i
+                ensembleprob.prob_func(ensembleprob.prob, i, 1)
+            end
+        end
         u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
 
         if !all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
