@@ -1,4 +1,4 @@
-function generate_problem(prob::ODEProblem, u0, p, jac_prototype, colorvec)
+function generate_problem(prob::AbstractODEProblem, u0, p, jac_prototype, colorvec)
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
             version = get_backend(u)
