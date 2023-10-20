@@ -95,11 +95,17 @@ function ImmutableODEProblem(f, u0, tspan, p = NullParameters(); kwargs...)
     ImmutableODEProblem(_f, _u0, _tspan, p; kwargs...)
 end
 
+staticarray_itize(x) = x
+staticarray_itize(x::Vector) = SVector{length(x)}(x)
+staticarray_itize(x::SizedVector) = SVector{length(x)}(x)
+staticarray_itize(x::Matrix) = SMatrix{size(x)...}(x)
+staticarray_itize(x::SizedMatrix) = SMatrix{size(x)...}(x)
+
 function Base.convert(::Type{ImmutableODEProblem}, prob::T) where {T <: ODEProblem}
     ImmutableODEProblem(prob.f,
-        prob.u0,
+        staticarray_itize(prob.u0),
         prob.tspan,
-        prob.p,
+        staticarray_itize(prob.p),
         prob.problem_type;
         prob.kwargs...)
 end

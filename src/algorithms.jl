@@ -99,8 +99,8 @@ imparts some extra limitations on the use.
 ## Positional Arguments
 
   - `backend`: the KernelAbstractions backend for performing the computation.
-  - `cpu_offload`: the percentage of trajectories to offload to the CPU. Default is 0.2 or
-    20% of trajectories.
+  - `cpu_offload`: the percentage of trajectories to offload to the CPU. Default is 0.0 or
+    0% of trajectories.
 
 ## Limitations
 
@@ -165,7 +165,7 @@ function EnsembleGPUArray(dev)
 end
 
 function EnsembleGPUKernel(dev)
-    EnsembleGPUKernel(dev, 0.2)
+    EnsembleGPUKernel(dev, 0.0)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})

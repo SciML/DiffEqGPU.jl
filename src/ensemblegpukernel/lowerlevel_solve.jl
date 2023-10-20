@@ -34,6 +34,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     timeseries = prob.tspan[1]:dt:prob.tspan[2]
     nsteps = length(timeseries)
 
+    prob = convert(ImmutableODEProblem, prob)
+
     dt = convert(eltype(prob.tspan), dt)
 
     if saveat === nothing
@@ -153,6 +155,8 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
+
+    prob = convert(ImmutableODEProblem, prob)
 
     dt = convert(eltype(prob.tspan), dt)
     abstol = convert(eltype(prob.tspan), abstol)
