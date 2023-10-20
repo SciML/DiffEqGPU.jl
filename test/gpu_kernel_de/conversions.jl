@@ -1,4 +1,4 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
+using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, Test
 include("../utils.jl")
 
 function lorenz(u, p, t)
@@ -17,30 +17,27 @@ p = [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
-    trajectories = 10_000,
-    saveat = 1.0f0);
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = 1.0);
+    saveat = 1.0)[1].t == 0f0:1f0:10f0
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = [1f0, 5f0, 10f0]);
+    saveat = [1f0, 5f0, 10f0])[1].t == [1f0, 5f0, 10f0]
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = [1.0, 5.0, 10.0]);
+    saveat = [1.0, 5.0, 10.0])[1].t == [1f0, 5f0, 10f0]
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = 1:10);
+    saveat = 1:10)[1].t == Float32.(1:10)
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = 1:0.1:10);
+    saveat = 1:0.1:10)[1].t == 1:1f-1:10
 
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = 1:(1f0):10);
+    saveat = 1:(1f0):10)[1].t == 1:1f0:10

@@ -53,8 +53,10 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     else
         saveat = if saveat isa AbstractRange
             range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
-        else
+        elseif saveat isa AbstractVector
             convert.(eltype(prob.tspan),adapt(backend, saveat))
+        else
+            prob.tspan[1]:convert(eltype(prob.tspan),saveat):prob.tspan[end]
         end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
@@ -104,8 +106,10 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
     else
         saveat = if saveat isa AbstractRange
             range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
-        else
+        elseif saveat isa AbstractVector
             convert.(eltype(prob.tspan),adapt(backend, saveat))
+        else
+            prob.tspan[1]:convert(eltype(prob.tspan),saveat):prob.tspan[end]
         end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
@@ -185,8 +189,10 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     else
         saveat = if saveat isa AbstractRange
             range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
-        else
+        elseif saveat isa AbstractVector
             convert.(eltype(prob.tspan),adapt(backend, saveat))
+        else
+            prob.tspan[1]:convert(eltype(prob.tspan),saveat):prob.tspan[end]
         end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
