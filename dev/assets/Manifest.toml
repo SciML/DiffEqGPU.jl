@@ -2,7 +2,7 @@
 
 julia_version = "1.9.3"
 manifest_format = "2.0"
-project_hash = "3afc6a82a930acaecc9f474467cad008d77854df"
+project_hash = "118b18706ee7a5c993d7252b3dc1283898fcb222"
 
 [[deps.ADTypes]]
 git-tree-sha1 = "5d2e21d7b0d8c22f67483ef95ebdc39c0e6b6003"
@@ -409,9 +409,9 @@ version = "2.33.1"
 
 [[deps.DiffEqGPU]]
 deps = ["Adapt", "ChainRulesCore", "DiffEqBase", "Distributed", "DocStringExtensions", "ForwardDiff", "KernelAbstractions", "LinearAlgebra", "LinearSolve", "MuladdMacro", "Parameters", "Random", "RecursiveArrayTools", "Requires", "SciMLBase", "Setfield", "SimpleDiffEq", "StaticArrays", "TOML", "ZygoteRules"]
-path = "/var/lib/buildkite-agent/builds/gpuci-15/julialang/diffeqgpu-dot-jl"
+path = "/var/lib/buildkite-agent/builds/gpuci-13/julialang/diffeqgpu-dot-jl"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
-version = "2.5.1"
+version = "3.0.0"
 
     [deps.DiffEqGPU.extensions]
     AMDGPUExt = ["AMDGPU"]
