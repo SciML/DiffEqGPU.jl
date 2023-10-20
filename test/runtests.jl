@@ -43,6 +43,10 @@ end
     include("gpu_kernel_de/finite_diff.jl")
 end
 
+@time @safetestset "GPU Kernelized Auto-Conversion tests" begin
+    include("gpu_kernel_de/conversions.jl")
+end
+
 if GROUP in SUPPORTS_LUFACT
     @time @safetestset "EnsembleGPUArray" begin
         include("ensemblegpuarray.jl")
