@@ -35,7 +35,6 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     nsteps = length(timeseries)
 
     prob = convert(ImmutableODEProblem, prob)
-
     dt = convert(eltype(prob.tspan), dt)
 
     if saveat === nothing
@@ -52,7 +51,11 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = adapt(backend, saveat)
+        saveat = if saveat isa AbstractRange
+            range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
+        else
+            convert.(eltype(prob.tspan),adapt(backend, saveat))
+        end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
@@ -99,7 +102,11 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = adapt(backend, saveat)
+        saveat = if saveat isa AbstractRange
+            range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
+        else
+            convert.(eltype(prob.tspan),adapt(backend, saveat))
+        end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
@@ -176,7 +183,11 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = adapt(backend, saveat)
+        saveat = if saveat isa AbstractRange
+            range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
+        else
+            convert.(eltype(prob.tspan),adapt(backend, saveat))
+        end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))

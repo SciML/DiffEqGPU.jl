@@ -20,3 +20,27 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
     saveat = 1.0f0);
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1.0);
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = [1f0, 5f0, 10f0]);
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = [1.0, 5.0, 10.0]);
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1:10);
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1:0.1:10);
+
+sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1:(1f0):10);
