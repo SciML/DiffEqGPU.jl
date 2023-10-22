@@ -27,7 +27,7 @@ if ENV["GROUP"] ∉ ("Metal", "oneAPI")
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
-        saveat = 1:0.1:10)[1].t == StepRangeLen{Float32, Float32, Float32, Int32}(1.0f0, 0.1f0, 91)
+        saveat = 1:0.1:10)[1].t == 1.0f0:0.1f0:10.0f0
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
