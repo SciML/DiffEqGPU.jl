@@ -52,11 +52,27 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         saveat = if saveat isa AbstractRange
-            range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
+            _saveat = range(convert(eltype(prob.tspan), first(saveat)),
+                convert(eltype(prob.tspan), last(saveat)),
+                length = length(saveat))
+            convert(StepRangeLen{
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat) === Float32 ? Int32 : Int64,
+                },
+                _saveat)
         elseif saveat isa AbstractVector
-            convert.(eltype(prob.tspan),adapt(backend, saveat))
+            adapt(backend, convert.(eltype(prob.tspan), saveat))
         else
-            prob.tspan[1]:convert(eltype(prob.tspan),saveat):prob.tspan[end]
+            _saveat = prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
+            convert(StepRangeLen{
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat) === Float32 ? Int32 : Int64,
+                },
+                _saveat)
         end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
@@ -105,11 +121,13 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         saveat = if saveat isa AbstractRange
-            range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
+            range(convert(eltype(prob.tspan), first(saveat)),
+                convert(eltype(prob.tspan), last(saveat)),
+                length = length(saveat))
         elseif saveat isa AbstractVector
-            convert.(eltype(prob.tspan),adapt(backend, saveat))
+            convert.(eltype(prob.tspan), adapt(backend, saveat))
         else
-            prob.tspan[1]:convert(eltype(prob.tspan),saveat):prob.tspan[end]
+            prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
         end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
@@ -188,11 +206,27 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         saveat = if saveat isa AbstractRange
-            range(convert(eltype(prob.tspan),first(saveat)), convert(eltype(prob.tspan),last(saveat)), length = length(saveat))
+            _saveat = range(convert(eltype(prob.tspan), first(saveat)),
+                convert(eltype(prob.tspan), last(saveat)),
+                length = length(saveat))
+            convert(StepRangeLen{
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat) === Float32 ? Int32 : Int64,
+                },
+                _saveat)
         elseif saveat isa AbstractVector
-            convert.(eltype(prob.tspan),adapt(backend, saveat))
+            adapt(backend, convert.(eltype(prob.tspan), saveat))
         else
-            prob.tspan[1]:convert(eltype(prob.tspan),saveat):prob.tspan[end]
+            _saveat = prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
+            convert(StepRangeLen{
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat),
+                    eltype(_saveat) === Float32 ? Int32 : Int64,
+                },
+                _saveat)
         end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
@@ -227,118 +261,4 @@ function vectorized_asolve(probs, prob::SDEProblem, alg;
     debug = false,
     kwargs...)
     error("Adaptive time-stepping is not supported yet with GPUEM.")
-end
-
-# saveat is just a bool here:
-#  true: ts is a vector of timestamps to read from
-#  false: each ODE has its own timestamps, so ts is a vector to write to
-@kernel function ode_solve_kernel(@Const(probs), alg, _us, _ts, dt, callback,
-    tstops, nsteps,
-    saveat, ::Val{save_everystep}) where {save_everystep}
-    i = @index(Global, Linear)
-
-    # get the actual problem for this thread
-    prob = @inbounds probs[i]
-
-    # get the input/output arrays for this thread
-    ts = @inbounds view(_ts, :, i)
-    us = @inbounds view(_us, :, i)
-
-    _saveat = get(prob.kwargs, :saveat, nothing)
-
-    saveat = _saveat === nothing ? saveat : _saveat
-
-    integ = init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
-        callback, save_everystep, saveat)
-
-    u0 = prob.u0
-    tspan = prob.tspan
-
-    integ.cur_t = 0
-    if saveat !== nothing
-        integ.cur_t = 1
-        if prob.tspan[1] == saveat[1]
-            integ.cur_t += 1
-            @inbounds us[1] = u0
-        end
-    else
-        @inbounds ts[integ.step_idx] = prob.tspan[1]
-        @inbounds us[integ.step_idx] = prob.u0
-    end
-
-    integ.step_idx += 1
-    # FSAL
-    while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
-        saved_in_cb = step!(integ, ts, us)
-        !saved_in_cb && savevalues!(integ, ts, us)
-    end
-    if integ.t > tspan[2] && saveat === nothing
-        ## Intepolate to tf
-        @inbounds us[end] = integ(tspan[2])
-        @inbounds ts[end] = tspan[2]
-    end
-
-    if saveat === nothing && !save_everystep
-        @inbounds us[2] = integ.u
-        @inbounds ts[2] = integ.t
-    end
-end
-
-@kernel function ode_asolve_kernel(probs, alg, _us, _ts, dt, callback, tstops,
-    abstol, reltol,
-    saveat,
-    ::Val{save_everystep}) where {save_everystep}
-    i = @index(Global, Linear)
-
-    # get the actual problem for this thread
-    prob = @inbounds probs[i]
-    # get the input/output arrays for this thread
-    ts = @inbounds view(_ts, :, i)
-    us = @inbounds view(_us, :, i)
-    # TODO: optimize contiguous view to return a CuDeviceArray
-
-    _saveat = get(prob.kwargs, :saveat, nothing)
-
-    saveat = _saveat === nothing ? saveat : _saveat
-
-    u0 = prob.u0
-    tspan = prob.tspan
-    f = prob.f
-    p = prob.p
-
-    t = tspan[1]
-    tf = prob.tspan[2]
-
-    integ = init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt,
-        prob.p,
-        abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
-        saveat)
-
-    integ.cur_t = 0
-    if saveat !== nothing
-        integ.cur_t = 1
-        if tspan[1] == saveat[1]
-            integ.cur_t += 1
-            @inbounds us[1] = u0
-        end
-    else
-        @inbounds ts[1] = tspan[1]
-        @inbounds us[1] = u0
-    end
-
-    while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
-        saved_in_cb = step!(integ, ts, us)
-        !saved_in_cb && savevalues!(integ, ts, us)
-    end
-
-    if integ.t > tspan[2] && saveat === nothing
-        ## Intepolate to tf
-        @inbounds us[end] = integ(tspan[2])
-        @inbounds ts[end] = tspan[2]
-    end
-
-    if saveat === nothing && !save_everystep
-        @inbounds us[2] = integ.u
-        @inbounds ts[2] = integ.t
-    end
 end

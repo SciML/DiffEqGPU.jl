@@ -20,15 +20,15 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = 1.0)[1].t == 0f0:1f0:10f0
+    saveat = 1.0)[1].t == 0.0f0:1.0f0:10.0f0
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = [1f0, 5f0, 10f0])[1].t == [1f0, 5f0, 10f0]
+    saveat = [1.0f0, 5.0f0, 10.0f0])[1].t == [1.0f0, 5.0f0, 10.0f0]
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = [1.0, 5.0, 10.0])[1].t == [1f0, 5f0, 10f0]
+    saveat = [1.0, 5.0, 10.0])[1].t == [1.0f0, 5.0f0, 10.0f0]
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
@@ -36,8 +36,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = 1:0.1:10)[1].t == 1:1f-1:10
+    saveat = 1:0.1:10)[1].t == StepRangeLen{Float32, Float32, Float32, Int32}(1.0f0, 0.1f0, 91)
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = 1:(1f0):10)[1].t == 1:1f0:10
+    saveat = 1:(1.0f0):10)[1].t == 1:1.0f0:10
