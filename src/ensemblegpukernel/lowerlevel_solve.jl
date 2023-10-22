@@ -206,27 +206,13 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         saveat = if saveat isa AbstractRange
-            _saveat = range(convert(eltype(prob.tspan), first(saveat)),
+            range(convert(eltype(prob.tspan), first(saveat)),
                 convert(eltype(prob.tspan), last(saveat)),
                 length = length(saveat))
-            convert(StepRangeLen{
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat) === Float32 ? Int32 : Int64,
-                },
-                _saveat)
         elseif saveat isa AbstractVector
             adapt(backend, convert.(eltype(prob.tspan), saveat))
         else
-            _saveat = prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
-            convert(StepRangeLen{
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat) === Float32 ? Int32 : Int64,
-                },
-                _saveat)
+            prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
         end
         ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
         fill!(ts, prob.tspan[1])
