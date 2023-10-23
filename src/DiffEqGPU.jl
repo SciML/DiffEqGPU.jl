@@ -50,6 +50,7 @@ include("ensemblegpukernel/integrators/stiff/interpolants.jl")
 include("ensemblegpukernel/integrators/nonstiff/interpolants.jl")
 include("ensemblegpukernel/nlsolve/type.jl")
 include("ensemblegpukernel/nlsolve/utils.jl")
+include("ensemblegpukernel/kernels.jl")
 
 include("ensemblegpukernel/perform_step/gpu_tsit5_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_vern7_perform_step.jl")
