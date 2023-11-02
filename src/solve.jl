@@ -23,13 +23,13 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 
     if cpu_trajectories != 0 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
         cpu_II = (gpu_trajectories + 1):trajectories
-        _alg = if typeof(alg) <: GPUODEAlgorithm
+        _alg = if alg isa GPUODEAlgorithm
             if adaptive == false
                 cpu_alg[typeof(alg)][1]
             else
                 cpu_alg[typeof(alg)][2]
             end
-        elseif typeof(alg) <: GPUSDEAlgorithm
+        elseif alg isa GPUSDEAlgorithm
             if adaptive == false
                 SimpleEM()
             else
@@ -418,7 +418,7 @@ function solve_batch(prob, alg, ensemblealg::EnsembleThreads, II, pmap_batch_siz
             kwargs...)
     end
 
-    if typeof(prob.prob) <: SciMLBase.AbstractJumpProblem && length(II) != 1
+    if prob.prob isa SciMLBase.AbstractJumpProblem && length(II) != 1
         probs = [deepcopy(prob.prob) for i in 1:Threads.nthreads()]
     else
         probs = prob.prob
