@@ -80,7 +80,7 @@ function __lu(A::StaticMatrix{1, 1, T}, ::Val{Pivot}) where {T, Pivot}
 end
 
 function __lu(A::LinearAlgebra.HermOrSym{T, <:StaticMatrix{1, 1, T}},
-    ::Val{Pivot}) where {T, Pivot}
+        ::Val{Pivot}) where {T, Pivot}
     (SMatrix{1, 1}(one(T)), A.data, SVector(1))
 end
 

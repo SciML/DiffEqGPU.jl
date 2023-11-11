@@ -1,11 +1,11 @@
 function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
-    alg::Union{SciMLBase.DEAlgorithm, Nothing,
-        DiffEqGPU.GPUODEAlgorithm, DiffEqGPU.GPUSDEAlgorithm},
-    ensemblealg::Union{EnsembleArrayAlgorithm,
-        EnsembleKernelAlgorithm};
-    trajectories, batch_size = trajectories,
-    unstable_check = (dt, u, p, t) -> false, adaptive = true,
-    kwargs...)
+        alg::Union{SciMLBase.DEAlgorithm, Nothing,
+            DiffEqGPU.GPUODEAlgorithm, DiffEqGPU.GPUSDEAlgorithm},
+        ensemblealg::Union{EnsembleArrayAlgorithm,
+            EnsembleKernelAlgorithm};
+        trajectories, batch_size = trajectories,
+        unstable_check = (dt, u, p, t) -> false, adaptive = true,
+        kwargs...)
     if trajectories == 1
         return SciMLBase.__solve(ensembleprob, alg, EnsembleSerial(); trajectories = 1,
             kwargs...)
@@ -121,9 +121,9 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 end
 
 function batch_solve(ensembleprob, alg,
-    ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
-    adaptive;
-    kwargs...)
+        ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
+        adaptive;
+        kwargs...)
     @assert !isempty(I)
     #@assert all(p->p.f === probs[1].f,probs)
 
@@ -251,7 +251,7 @@ function batch_solve(ensembleprob, alg,
 end
 
 function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptive;
-    kwargs...)
+        kwargs...)
     _callback = CallbackSet(generate_callback(probs[1], length(I), ensemblealg; kwargs...))
 
     _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
@@ -321,9 +321,9 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
 end
 
 function seed_duals(x::Matrix{V}, ::Type{T},
-    ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(@view(x[:, 1]),
-        typemax(Int64))) where {V, T,
-    N}
+        ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk(@view(x[:, 1]),
+            typemax(Int64))) where {V, T,
+        N}
     seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, V})
     duals = [ForwardDiff.Dual{T}(x[i, j], seeds[i])
              for i in 1:size(x, 1), j in 1:size(x, 2)]
@@ -346,7 +346,7 @@ end
 struct DiffEqGPUAdjTag end
 
 function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg,
-    ensemblealg, I, u0, p; kwargs...)
+        ensemblealg, I, u0, p; kwargs...)
     pdual = seed_duals(p, DiffEqGPUAdjTag)
     u0 = convert.(eltype(pdual), u0)
 
@@ -412,7 +412,7 @@ function ChainRulesCore.rrule(::typeof(batch_solve_up), ensembleprob, probs, alg
 end
 
 function solve_batch(prob, alg, ensemblealg::EnsembleThreads, II, pmap_batch_size;
-    kwargs...)
+        kwargs...)
     if length(II) == 1 || Threads.nthreads() == 1
         return SciMLBase.solve_batch(prob, alg, EnsembleSerial(), II, pmap_batch_size;
             kwargs...)

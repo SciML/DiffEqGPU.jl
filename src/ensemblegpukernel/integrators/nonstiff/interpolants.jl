@@ -1,14 +1,14 @@
 # Default: Hermite Interpolation
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-    integ::DiffEqBase.AbstractODEIntegrator{AlgType,
-        IIP, S, T,
-    }) where {
-    AlgType <:
-    GPUODEAlgorithm,
-    IIP,
-    S,
-    T,
-}
+        integ::DiffEqBase.AbstractODEIntegrator{AlgType,
+            IIP, S, T,
+        }) where {
+        AlgType <:
+        GPUODEAlgorithm,
+        IIP,
+        S,
+        T,
+    }
     y₁ = integ.u
     k1 = integ.k1
     k2 = integ.k2
@@ -43,8 +43,8 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-    integ::T) where {T <:
-         Union{GPUV7I, GPUAV7I}}
+        integ::T) where {T <:
+             Union{GPUV7I, GPUAV7I}}
     b1Θ, b4Θ, b5Θ, b6Θ, b7Θ, b8Θ, b9Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b16Θ = bΘs(integ, Θ)
 
     @unpack c11, a1101, a1104, a1105, a1106, a1107, a1108, a1109, c12, a1201, a1204,
@@ -127,8 +127,8 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-    integ::T) where {T <:
-         Union{GPUV9I, GPUAV9I}}
+        integ::T) where {T <:
+             Union{GPUV9I, GPUAV9I}}
     b1Θ, b8Θ, b9Θ, b10Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b17Θ, b18Θ, b19Θ, b20Θ,
     b21Θ, b22Θ, b23Θ, b24Θ, b25Θ, b26Θ = bΘs(integ, Θ)
 
@@ -206,8 +206,8 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-    integ::T) where {T <:
-         Union{GPUT5I, GPUAT5I}}
+        integ::T) where {T <:
+             Union{GPUT5I, GPUAT5I}}
     b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integ.rs, Θ)
     return y₀ +
            dt *
@@ -217,8 +217,8 @@ end
 end
 
 @inline @muladd function _ode_interpolant(Θ, dt, y₀,
-    integ::T) where {T <:
-         Union{GPURB23I, GPUARB23I}}
+        integ::T) where {T <:
+             Union{GPURB23I, GPUARB23I}}
     c1 = Θ * (1 - Θ) / (1 - 2 * integ.d)
     c2 = Θ * (Θ - 2 * integ.d) / (1 - 2 * integ.d)
     return y₀ + dt * (c1 * integ.k1 + c2 * integ.k2)

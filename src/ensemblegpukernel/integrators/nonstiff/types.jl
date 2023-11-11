@@ -311,11 +311,11 @@ end
 # Initialization of Integrators
 #######################################################################################
 @inline function init(alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T, S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T, S,
+        TS, CB, ST}
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
@@ -340,11 +340,11 @@ end
 end
 
 @inline function init(alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
-    p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
+        p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(T)
 
     !IIP && @assert S <: SArray
@@ -398,11 +398,11 @@ end
 end
 
 @inline function init(alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T, S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T, S,
+        TS, CB, ST}
     tab = Vern7Tableau(T, T)
 
     !IIP && @assert S <: SArray
@@ -437,11 +437,11 @@ end
 end
 
 @inline function init(alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
-    p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
+        p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern7Tableau(T, T)
@@ -495,11 +495,11 @@ end
 end
 
 @inline function init(alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T, S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T, S,
+        TS, CB, ST}
     tab = Vern9Tableau(T, T)
 
     !IIP && @assert S <: SArray
@@ -534,11 +534,11 @@ end
 end
 
 @inline function init(alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
-    p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
+        p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern9Tableau(T, T)

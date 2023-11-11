@@ -23,10 +23,10 @@ Only a subset of the common solver arguments are supported.
 function vectorized_solve end
 
 function vectorized_solve(probs, prob::ODEProblem, alg;
-    dt, saveat = nothing,
-    save_everystep = true,
-    debug = false, callback = CallbackSet(nothing), tstops = nothing,
-    kwargs...)
+        dt, saveat = nothing,
+        save_everystep = true,
+        debug = false, callback = CallbackSet(nothing), tstops = nothing,
+        kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
@@ -101,10 +101,10 @@ end
 
 # SDEProblems over GPU cannot support u0 as a Number type, because GPU kernels compiled only through u0 being StaticArrays
 function vectorized_solve(probs, prob::SDEProblem, alg;
-    dt, saveat = nothing,
-    save_everystep = true,
-    debug = false,
-    kwargs...)
+        dt, saveat = nothing,
+        save_everystep = true,
+        debug = false,
+        kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
 
@@ -177,11 +177,11 @@ Only a subset of the common solver arguments are supported.
 function vectorized_asolve end
 
 function vectorized_asolve(probs, prob::ODEProblem, alg;
-    dt = 0.1f0, saveat = nothing,
-    save_everystep = false,
-    abstol = 1.0f-6, reltol = 1.0f-3,
-    debug = false, callback = CallbackSet(nothing), tstops = nothing,
-    kwargs...)
+        dt = 0.1f0, saveat = nothing,
+        save_everystep = false,
+        abstol = 1.0f-6, reltol = 1.0f-3,
+        debug = false, callback = CallbackSet(nothing), tstops = nothing,
+        kwargs...)
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
 
@@ -242,9 +242,9 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
 end
 
 function vectorized_asolve(probs, prob::SDEProblem, alg;
-    dt, saveat = nothing,
-    save_everystep = true,
-    debug = false,
-    kwargs...)
+        dt, saveat = nothing,
+        save_everystep = true,
+        debug = false,
+        kwargs...)
     error("Adaptive time-stepping is not supported yet with GPUEM.")
 end

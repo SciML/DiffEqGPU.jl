@@ -1,7 +1,7 @@
 
 @kernel function ode_solve_kernel(@Const(probs), alg, _us, _ts, dt, callback,
-    tstops, nsteps,
-    saveat, ::Val{save_everystep}) where {save_everystep}
+        tstops, nsteps,
+        saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread
@@ -52,9 +52,9 @@
 end
 
 @kernel function ode_asolve_kernel(@Const(probs), alg, _us, _ts, dt, callback, tstops,
-    abstol, reltol,
-    saveat,
-    ::Val{save_everystep}) where {save_everystep}
+        abstol, reltol,
+        saveat,
+        ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread

@@ -24,9 +24,9 @@ Only a subset of the common solver arguments are supported.
 function vectorized_map_solve end
 
 function vectorized_map_solve(probs, alg,
-    ensemblealg::Union{EnsembleArrayAlgorithm}, I,
-    adaptive;
-    kwargs...)
+        ensemblealg::Union{EnsembleArrayAlgorithm}, I,
+        adaptive;
+        kwargs...)
 
     #    @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),probs[1]),probs)
     # u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))

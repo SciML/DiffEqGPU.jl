@@ -1,25 +1,25 @@
 @inline function (integrator::DiffEqBase.AbstractODEIntegrator{
-    AlgType,
-    IIP,
-    S,
-    T,
-})(t) where {
-    AlgType <:
-    GPUODEAlgorithm,
-    IIP,
-    S,
-    T,
-}
+        AlgType,
+        IIP,
+        S,
+        T,
+    })(t) where {
+        AlgType <:
+        GPUODEAlgorithm,
+        IIP,
+        S,
+        T,
+    }
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 @inline function DiffEqBase.u_modified!(integrator::DiffEqBase.AbstractODEIntegrator{
-        AlgType,
-        IIP, S,
-        T},
-    bool::Bool) where {AlgType <: GPUODEAlgorithm, IIP,
-    S, T}
+            AlgType,
+            IIP, S,
+            T},
+        bool::Bool) where {AlgType <: GPUODEAlgorithm, IIP,
+        S, T}
     integrator.u_modified = bool
 end
 
@@ -55,12 +55,12 @@ end
 const GPURB23I = GPURosenbrock23Integrator
 
 @inline function init(alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T,
-    S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T,
+        S,
+        TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -135,12 +135,12 @@ end
 const GPUARB23I = GPUARosenbrock23Integrator
 
 @inline function init(alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-    dt::T, p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS,
-    CB, ST}
+        dt::T, p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS,
+        CB, ST}
     !IIP && @assert S <: SArray
 
     qoldinit = T(1e-4)
@@ -223,12 +223,12 @@ end
 const GPURodas4I = GPURodas4Integrator
 
 @inline function init(alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T,
-    S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T,
+        S,
+        TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -311,12 +311,12 @@ end
 const GPUARodas4I = GPUARodas4Integrator
 
 @inline function init(alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-    dt::T, p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS,
-    CB, ST}
+        dt::T, p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS,
+        CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
@@ -397,12 +397,12 @@ end
 const GPURodas5PI = GPURodas5PIntegrator
 
 @inline function init(alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T,
-    S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T,
+        S,
+        TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -476,12 +476,12 @@ end
 const GPUARodas5PI = GPUARodas5PIntegrator
 
 @inline function init(alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-    dt::T, p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS,
-    CB, ST}
+        dt::T, p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS,
+        CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
@@ -562,12 +562,12 @@ end
 const GPUKvaerno3I = GPUKvaerno3Integrator
 
 @inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T,
-    S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T,
+        S,
+        TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -641,12 +641,12 @@ end
 const GPUAKvaerno3I = GPUAKvaerno3Integrator
 
 @inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-    dt::T, p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS,
-    CB, ST}
+        dt::T, p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS,
+        CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
@@ -727,12 +727,12 @@ end
 const GPUKvaerno5I = GPUKvaerno5Integrator
 
 @inline function init(alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
-    p::P, tstops::TS,
-    callback::CB,
-    save_everystep::Bool,
-    saveat::ST) where {F, P, T,
-    S,
-    TS, CB, ST}
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST) where {F, P, T,
+        S,
+        TS, CB, ST}
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -806,12 +806,12 @@ end
 const GPUAKvaerno5I = GPUAKvaerno5Integrator
 
 @inline function init(alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, tf::T,
-    dt::T, p::P,
-    abstol::TOL, reltol::TOL,
-    internalnorm::N, tstops::TS,
-    callback::CB,
-    saveat::ST) where {F, P, S, T, N, TOL, TS,
-    CB, ST}
+        dt::T, p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST) where {F, P, S, T, N, TOL, TS,
+        CB, ST}
     !IIP && @assert S <: SArray
     qoldinit = T(1e-4)
     event_last_time = 1
