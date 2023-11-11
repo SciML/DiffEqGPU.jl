@@ -62,7 +62,7 @@ function SIEAConstantCache(::Type{T}, ::Type{T2}) where {T, T2}
 end
 
 @kernel function siea_kernel(@Const(probs), _us, _ts, dt,
-    saveat, ::Val{save_everystep}) where {save_everystep}
+        saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
 
     # get the actual problem for this thread

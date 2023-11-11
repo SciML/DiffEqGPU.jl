@@ -5,8 +5,8 @@ struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCall
     finalize::F4
     save_positions::F5
     function GPUDiscreteCallback(condition::F1, affect!::F2,
-        initialize::F3, finalize::F4,
-        save_positions::F5) where {F1, F2, F3, F4, F5}
+            initialize::F3, finalize::F4,
+            save_positions::F5) where {F1, F2, F3, F4, F5}
         if save_positions != (false, false)
             error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
         end
@@ -15,9 +15,9 @@ struct GPUDiscreteCallback{F1, F2, F3, F4, F5} <: SciMLBase.AbstractDiscreteCall
     end
 end
 function GPUDiscreteCallback(condition, affect!;
-    initialize = SciMLBase.INITIALIZE_DEFAULT,
-    finalize = SciMLBase.FINALIZE_DEFAULT,
-    save_positions = (false, false))
+        initialize = SciMLBase.INITIALIZE_DEFAULT,
+        finalize = SciMLBase.FINALIZE_DEFAULT,
+        save_positions = (false, false))
     GPUDiscreteCallback(condition, affect!, initialize, finalize, save_positions)
 end
 
@@ -42,12 +42,12 @@ struct GPUContinuousCallback{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R} <:
     reltol::T2
     repeat_nudge::T3
     function GPUContinuousCallback(condition::F1, affect!::F2, affect_neg!::F3,
-        initialize::F4, finalize::F5, idxs::I, rootfind,
-        interp_points, save_positions::F6, dtrelax::R, abstol::T,
-        reltol::T2,
-        repeat_nudge::T3) where {F1, F2, F3, F4, F5, F6, T, T2,
-        T3, I, R,
-    }
+            initialize::F4, finalize::F5, idxs::I, rootfind,
+            interp_points, save_positions::F6, dtrelax::R, abstol::T,
+            reltol::T2,
+            repeat_nudge::T3) where {F1, F2, F3, F4, F5, F6, T, T2,
+            T3, I, R,
+        }
         if save_positions != (false, false)
             error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
         end
@@ -61,15 +61,15 @@ struct GPUContinuousCallback{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R} <:
 end
 
 function GPUContinuousCallback(condition, affect!, affect_neg!;
-    initialize = SciMLBase.INITIALIZE_DEFAULT,
-    finalize = SciMLBase.FINALIZE_DEFAULT,
-    idxs = nothing,
-    rootfind = LeftRootFind,
-    save_positions = (false, false),
-    interp_points = 10,
-    dtrelax = 1,
-    abstol = 10eps(Float32), reltol = 0,
-    repeat_nudge = 1 // 100)
+        initialize = SciMLBase.INITIALIZE_DEFAULT,
+        finalize = SciMLBase.FINALIZE_DEFAULT,
+        idxs = nothing,
+        rootfind = LeftRootFind,
+        save_positions = (false, false),
+        interp_points = 10,
+        dtrelax = 1,
+        abstol = 10eps(Float32), reltol = 0,
+        repeat_nudge = 1 // 100)
     GPUContinuousCallback(condition, affect!, affect_neg!, initialize, finalize,
         idxs,
         rootfind, interp_points,
@@ -78,15 +78,15 @@ function GPUContinuousCallback(condition, affect!, affect_neg!;
 end
 
 function GPUContinuousCallback(condition, affect!;
-    initialize = SciMLBase.INITIALIZE_DEFAULT,
-    finalize = SciMLBase.FINALIZE_DEFAULT,
-    idxs = nothing,
-    rootfind = LeftRootFind,
-    save_positions = (false, false),
-    affect_neg! = affect!,
-    interp_points = 10,
-    dtrelax = 1,
-    abstol = 10eps(Float32), reltol = 0, repeat_nudge = 1 // 100)
+        initialize = SciMLBase.INITIALIZE_DEFAULT,
+        finalize = SciMLBase.FINALIZE_DEFAULT,
+        idxs = nothing,
+        rootfind = LeftRootFind,
+        save_positions = (false, false),
+        affect_neg! = affect!,
+        interp_points = 10,
+        dtrelax = 1,
+        abstol = 10eps(Float32), reltol = 0, repeat_nudge = 1 // 100)
     GPUContinuousCallback(condition, affect!, affect_neg!, initialize, finalize, idxs,
         rootfind, interp_points,
         save_positions,
@@ -101,7 +101,7 @@ function Base.convert(::Type{GPUContinuousCallback}, x::T) where {T <: Continuou
 end
 
 function generate_callback(callback::DiscreteCallback, I,
-    ensemblealg)
+        ensemblealg)
     if ensemblealg isa EnsembleGPUArray
         backend = ensemblealg.backend
         cur = adapt(backend, [false for i in 1:I])

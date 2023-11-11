@@ -13,8 +13,8 @@ function Adapt.adapt_structure(to, ps::ParamWrapper{P, T}) where {P, T}
 end
 
 @kernel function gpu_kernel(f, du, @Const(u),
-    @Const(params::AbstractArray{ParamWrapper{P, T}}),
-    @Const(t)) where {P, T}
+        @Const(params::AbstractArray{ParamWrapper{P, T}}),
+        @Const(t)) where {P, T}
     i = @index(Global, Linear)
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
@@ -25,8 +25,8 @@ end
 end
 
 @kernel function gpu_kernel_oop(f, du, @Const(u),
-    @Const(params::AbstractArray{ParamWrapper{P, T}}),
-    @Const(t)) where {P, T}
+        @Const(params::AbstractArray{ParamWrapper{P, T}}),
+        @Const(t)) where {P, T}
     i = @index(Global, Linear)
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
@@ -59,8 +59,8 @@ end
 end
 
 @kernel function jac_kernel(f, J, @Const(u),
-    @Const(params::AbstractArray{ParamWrapper{P, T}}),
-    @Const(t)) where {P, T}
+        @Const(params::AbstractArray{ParamWrapper{P, T}}),
+        @Const(t)) where {P, T}
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
     @inbounds p = params[i + 1].params
@@ -73,8 +73,8 @@ end
 end
 
 @kernel function jac_kernel_oop(f, J, @Const(u),
-    @Const(params::AbstractArray{ParamWrapper{P, T}}),
-    @Const(t)) where {P, T}
+        @Const(params::AbstractArray{ParamWrapper{P, T}}),
+        @Const(t)) where {P, T}
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
 
@@ -122,7 +122,7 @@ end
 end
 
 @kernel function continuous_condition_kernel(condition, out, @Const(u), @Const(t),
-    @Const(p))
+        @Const(p))
     i = @index(Global, Linear)
     @views @inbounds out[i] = condition(u[:, i], t, FakeIntegrator(u[:, i], t, p[:, i]))
 end
@@ -141,8 +141,8 @@ function workgroupsize(backend, n)
 end
 
 @kernel function W_kernel(jac, W, @Const(u),
-    @Const(params::AbstractArray{ParamWrapper{P, T}}), @Const(gamma),
-    @Const(t)) where {P, T}
+        @Const(params::AbstractArray{ParamWrapper{P, T}}), @Const(gamma),
+        @Const(t)) where {P, T}
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
@@ -176,9 +176,9 @@ end
 end
 
 @kernel function W_kernel_oop(jac, W, @Const(u),
-    @Const(params::AbstractArray{ParamWrapper{P, T}}),
-    @Const(gamma),
-    @Const(t)) where {P, T}
+        @Const(params::AbstractArray{ParamWrapper{P, T}}),
+        @Const(gamma),
+        @Const(t)) where {P, T}
     i = @index(Global, Linear)
     len = size(u, 1)
 
@@ -218,7 +218,7 @@ end
 end
 
 @kernel function Wt_kernel(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
-    @Const(t)) where {T}
+        @Const(t)) where {T}
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
@@ -240,7 +240,7 @@ end
 end
 
 @kernel function Wt_kernel_oop(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
-    @Const(t)) where {T}
+        @Const(t)) where {T}
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
@@ -268,7 +268,7 @@ end
 end
 
 @kernel function gpu_kernel_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
-    @Const(t)) where {T}
+        @Const(t)) where {T}
     i = @index(Global, Linear)
     @inbounds f = f[i].tgrad
     if eltype(p) <: Number
@@ -279,7 +279,7 @@ end
 end
 
 @kernel function gpu_kernel_oop_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
-    @Const(t)) where {T}
+        @Const(t)) where {T}
     i = @index(Global, Linear)
     @inbounds f = f[i].tgrad
     if eltype(p) <: Number
@@ -320,13 +320,13 @@ LinSolveGPUSplitFactorize() = LinSolveGPUSplitFactorize(0, 0)
 LinearSolve.needs_concrete_A(::LinSolveGPUSplitFactorize) = true
 
 function LinearSolve.init_cacheval(linsol::LinSolveGPUSplitFactorize, A, b, u, Pl, Pr,
-    maxiters::Int, abstol, reltol, verbose::Bool,
-    assumptions::LinearSolve.OperatorAssumptions)
+        maxiters::Int, abstol, reltol, verbose::Bool,
+        assumptions::LinearSolve.OperatorAssumptions)
     LinSolveGPUSplitFactorize(linsol.len, length(u) ÷ linsol.len)
 end
 
 function SciMLBase.solve!(cache::LinearSolve.LinearCache, alg::LinSolveGPUSplitFactorize,
-    args...; kwargs...)
+        args...; kwargs...)
     p = cache.cacheval
     A = cache.A
     b = cache.b
