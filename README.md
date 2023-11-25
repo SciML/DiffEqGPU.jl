@@ -86,10 +86,13 @@ Curious about our claims? See [https://github.com/utkarsh530/GPUODEBenchmarks](h
 If you are using `DiffEqGPU.jl` in your work, consider citing our paper:
 
 ```
-@article{utkarsh2023automated,
-  title={Automated Translation and Accelerated Solving of Differential Equations on Multiple GPU Platforms},
-  author={Utkarsh, Utkarsh and Churavy, Valentin and Ma, Yingbo and Besard, Tim and Gymnich, Tim and Gerlach, Adam R and Edelman, Alan and Rackauckas, Christopher},
-  journal={arXiv preprint arXiv:2304.06835},
-  year={2023}
+@article{utkarsh2024automated,
+  title={Automated translation and accelerated solving of differential equations on multiple GPU platforms},
+  author={Utkarsh, Utkarsh and Churavy, Valentin and Ma, Yingbo and Besard, Tim and Srisuma, Prakitr and Gymnich, Tim and Gerlach, Adam R and Edelman, Alan and Barbastathis, George and Braatz, Richard D and others},
+  journal={Computer Methods in Applied Mechanics and Engineering},
+  volume={419},
+  pages={116591},
+  year={2024},
+  publisher={Elsevier}
 }
 ```
