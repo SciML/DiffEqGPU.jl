@@ -39,7 +39,7 @@ oneAPIExt = ["oneAPI"]
 
 [compat]
 AMDGPU = "0.4.9"
-Adapt = "3"
+Adapt = "3, 4"
 CUDA = "4.1.0, 5"
 ChainRulesCore = "1"
 DiffEqBase = "6.122"
