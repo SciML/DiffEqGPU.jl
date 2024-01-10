@@ -31,7 +31,7 @@ steps:
       setup:
         version:
           # Known issues on 1.8
-          - "1.9-nightly"
+          - "1"
     env:
       GROUP: AMDGPU
     plugins:
