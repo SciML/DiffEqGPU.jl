@@ -35,11 +35,11 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 @time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10_000,
     saveat = 1.0f0)
 
-GROUP == "AMDGPU" && return
-
-@time sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend),
-    trajectories = 10_000,
-    saveat = 1.0f0)
-@time sol = solve(monteprob, TRBDF2(), EnsembleGPUArray(backend),
-    trajectories = 10_000,
-    saveat = 1.0f0)
+if GROUP == "CUDA"
+    @time sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend),
+        trajectories = 10_000,
+        saveat = 1.0f0)
+    @time sol = solve(monteprob, TRBDF2(), EnsembleGPUArray(backend),
+        trajectories = 10_000,
+        saveat = 1.0f0)
+end
