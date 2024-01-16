@@ -54,7 +54,7 @@ end
         IIP,
         S,
         T,
-    }
+}
     integrator.retcode = retcode
 end
 
@@ -156,7 +156,7 @@ end
         S,
         T,
         T1,
-    }
+}
     # Can get rid of an allocation here with a function
     # get_tmp_arr(integrator.cache) which gives a pointer to some
     # cache array which can be modified.
@@ -185,7 +185,7 @@ end
         S,
         T,
         T1,
-    }
+}
     _change_t_via_interpolation!(integrator, t, modify_save_endpoint)
 end
 
@@ -322,7 +322,7 @@ end
         IIP,
         S,
         T,
-    }
+}
     return nothing
 end
 
@@ -333,7 +333,7 @@ end
         },
         callback,
         abst) where {AlgType <: GPUODEAlgorithm, IIP, S, T
-    }
+}
     if abst == integrator.t
         tmp = integrator.u
     elseif abst == integrator.tprev

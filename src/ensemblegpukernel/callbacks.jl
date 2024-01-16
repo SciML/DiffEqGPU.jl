@@ -47,7 +47,7 @@ struct GPUContinuousCallback{F1, F2, F3, F4, F5, F6, T, T2, T3, I, R} <:
             reltol::T2,
             repeat_nudge::T3) where {F1, F2, F3, F4, F5, F6, T, T2,
             T3, I, R,
-        }
+    }
         if save_positions != (false, false)
             error("Callback `save_positions` are incompatible with kernel-based GPU ODE solvers due requiring static sizing. Please ensure `save_positions = (false,false)` is set in all callback definitions used with such solvers.")
         end

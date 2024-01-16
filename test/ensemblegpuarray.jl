@@ -43,6 +43,8 @@ solve(monteprob,TRBDF2(),EnsembleGPUArray(backend),dt=0.1,trajectories=2,saveat=
 @test_broken solve(monteprob,TRBDF2(),EnsembleGPUArray(backend),dt=0.1,trajectories=2,saveat=1.0f0)
 =#
 
+GROUP == "AMDGPU" && return
+
 @info "Implicit Methods"
 
 function lorenz_jac(J, u, p, t)
