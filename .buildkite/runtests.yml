@@ -70,10 +70,10 @@ steps:
       - |
         julia --project=test -e '
           import Pkg
-          Pkg.develop(; name="oneAPI")
+          Pkg.add(; name="oneAPI")
 
           println("+++ :julia: Building support library")
-          include(joinpath(Pkg.devdir(), "oneAPI", "deps", "build_ci.jl"))
+          include(joinpath(dirname(dirname(Base.find_package("oneAPI"))), "deps", "build_ci.jl"))
           Pkg.activate()'
         julia --project -e '
           import Pkg
