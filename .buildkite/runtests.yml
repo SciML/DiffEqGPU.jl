@@ -4,6 +4,7 @@ steps:
       setup:
         version:
           - "1"
+          - "1.9"
     env:
       GROUP: CUDA
     plugins:
@@ -31,7 +32,7 @@ steps:
       setup:
         version:
           # Known issues on 1.8
-          - "1.9-nightly"
+          - "1"
     env:
       GROUP: AMDGPU
     plugins:
@@ -59,7 +60,7 @@ steps:
       setup:
         version:
           - "1"
-          - "1.9-nightly"
+          - "1.9"
     env:
       GROUP: oneAPI
     plugins:
@@ -69,8 +70,11 @@ steps:
       - |
         julia --project=test -e '
           import Pkg
-          Pkg.add(; name = "oneAPI")'
-        rm test/Manifest.toml
+          Pkg.add(; name="oneAPI")
+
+          println("+++ :julia: Building support library")
+          include(joinpath(dirname(dirname(Base.find_package("oneAPI"))), "deps", "build_ci.jl"))
+          Pkg.activate()'
         julia --project -e '
           import Pkg
           println("+++ :julia: Running tests")
@@ -86,8 +90,7 @@ steps:
     matrix:
       setup:
         version:
-          - "1"
-          - "1.9-nightly"
+          - "1.9"
     env:
       GROUP: Metal
     plugins:

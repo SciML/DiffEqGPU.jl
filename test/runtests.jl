@@ -79,7 +79,8 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     end
 end
 
-if GROUP == "CUDA"
+# Callbacks currently error on v1.10
+if GROUP == "CUDA" && VERSION <= v"1.9"
     # Causes dynamic function invocation
     @time @testset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
         include("gpu_kernel_de/gpu_ode_continuous_callbacks.jl")

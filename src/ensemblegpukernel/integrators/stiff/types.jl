@@ -3,13 +3,13 @@
         IIP,
         S,
         T,
-    })(t) where {
+})(t) where {
         AlgType <:
         GPUODEAlgorithm,
         IIP,
         S,
         T,
-    }
+}
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end

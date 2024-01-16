@@ -8,7 +8,7 @@
         IIP,
         S,
         T,
-    }
+}
     y₁ = integ.u
     k1 = integ.k1
     k2 = integ.k2

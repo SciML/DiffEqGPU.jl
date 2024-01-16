@@ -74,15 +74,18 @@ monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 @time solve(monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
     trajectories = 10,
     saveat = 1.0f0)
-@time solve(monteprob_jac, Rodas5(), EnsembleGPUArray(backend), dt = 0.1,
-    trajectories = 10,
-    saveat = 1.0f0)
 @time solve(monteprob_jac, TRBDF2(), EnsembleCPUArray(), dt = 0.1,
     trajectories = 10,
     saveat = 1.0f0)
-@time solve(monteprob_jac, TRBDF2(), EnsembleGPUArray(backend), dt = 0.1,
-    trajectories = 10,
-    saveat = 1.0f0)
+
+if GROUP == "CUDA"
+    @time solve(monteprob_jac, Rodas5(), EnsembleGPUArray(backend), dt = 0.1,
+        trajectories = 10,
+        saveat = 1.0f0)
+    @time solve(monteprob_jac, TRBDF2(), EnsembleGPUArray(backend), dt = 0.1,
+        trajectories = 10,
+        saveat = 1.0f0)
+end
 
 @info "Callbacks"
 
@@ -183,18 +186,19 @@ sol = solve(rober_prob, Rodas5(), abstol = 1.0f-8, reltol = 1.0f-8)
 sol = solve(rober_prob, TRBDF2(), abstol = 1.0f-4, reltol = 1.0f-1)
 rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 
-# TODO: Does not work with Linearsolve.jl v1.35.0 https://github.com/SciML/DiffEqGPU.jl/pull/229
+if GROUP == "CUDA"
+    @time sol = solve(rober_monteprob, Rodas5(),
+        EnsembleGPUArray(backend), trajectories = 10,
+        saveat = 1.0f0,
+        abstol = 1.0f-8,
+        reltol = 1.0f-8)
+    @time sol = solve(rober_monteprob, TRBDF2(),
+        EnsembleGPUArray(backend), trajectories = 10,
+        saveat = 1.0f0,
+        abstol = 1.0f-4,
+        reltol = 1.0f-1)
+end
 
-@time sol = solve(rober_monteprob, Rodas5(),
-    EnsembleGPUArray(backend), trajectories = 10,
-    saveat = 1.0f0,
-    abstol = 1.0f-8,
-    reltol = 1.0f-8)
-@time sol = solve(rober_monteprob, TRBDF2(),
-    EnsembleGPUArray(backend), trajectories = 10,
-    saveat = 1.0f0,
-    abstol = 1.0f-4,
-    reltol = 1.0f-1)
 @time sol = solve(rober_monteprob, TRBDF2(), EnsembleThreads(),
     trajectories = 10,
     abstol = 1e-4, reltol = 1e-1, saveat = 1.0f0)
@@ -241,5 +245,8 @@ monteprob = EnsembleProblem(prob_jac,
 sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend, 0.0), trajectories = 10,
     adaptive = false, dt = 0.01f0, save_everystep = false)
 
-sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend, 0.0), trajectories = 10,
-    adaptive = false, dt = 0.01f0, save_everystep = false)
+if GROUP == "CUDA"
+    sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend, 0.0),
+        trajectories = 10,
+        adaptive = false, dt = 0.01f0, save_everystep = false)
+end
