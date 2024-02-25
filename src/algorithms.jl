@@ -16,7 +16,7 @@ struct EnsembleCPUArray <: EnsembleArrayAlgorithm end
 
 """
 ```julia
-EnsembleGPUArray(backend,cpu_offload = 0.2)
+EnsembleGPUArray(backend, cpu_offload = 0.2)
 ```
 
 An `EnsembleArrayAlgorithm` which utilizes the GPU kernels to parallelize each ODE solve
@@ -73,13 +73,14 @@ function lorenz(du, u, p, t)
     du[3] = u[1] * u[2] - p[3] * u[3]
 end
 
-u0 = Float32[1.0;0.0;0.0]
-tspan = (0.0f0,100.0f0)
-p = [10.0f0,28.0f0,8/3f0]
-prob = ODEProblem(lorenz,u0,tspan,p)
-prob_func = (prob,i,repeat) -> remake(prob,p=rand(Float32,3).*p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy=false)
-@time sol = solve(monteprob,Tsit5(),EnsembleGPUArray(CUDADevice()),trajectories=10_000,saveat=1.0f0)
+u0 = Float32[1.0; 0.0; 0.0]
+tspan = (0.0f0, 100.0f0)
+p = [10.0f0, 28.0f0, 8 / 3.0f0]
+prob = ODEProblem(lorenz, u0, tspan, p)
+prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()),
+    trajectories = 10_000, saveat = 1.0f0)
 ```
 """
 struct EnsembleGPUArray{Backend} <: EnsembleArrayAlgorithm
@@ -89,7 +90,7 @@ end
 
 """
 ```julia
-EnsembleGPUKernel(backend,cpu_offload = 0.2)
+EnsembleGPUKernel(backend, cpu_offload = 0.2)
 ```
 
 A massively-parallel ensemble algorithm which generates a unique GPU kernel for the entire
@@ -146,7 +147,7 @@ prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .*
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 @time sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(), trajectories = 10_000,
-                  adaptive = false, dt = 0.1f0)
+    adaptive = false, dt = 0.1f0)
 ```
 """
 struct EnsembleGPUKernel{Dev} <: EnsembleKernelAlgorithm

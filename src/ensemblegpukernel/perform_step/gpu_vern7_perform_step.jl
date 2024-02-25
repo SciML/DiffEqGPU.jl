@@ -42,8 +42,10 @@
     k6 = f(uprev + dt * (a061 * k1 + a063 * k3 + a064 * k4 + a065 * k5), p, t + c6 * dt)
     k7 = f(uprev + dt * (a071 * k1 + a073 * k3 + a074 * k4 + a075 * k5 + a076 * k6), p,
         t + c7 * dt)
-    k8 = f(uprev +
-           dt * (a081 * k1 + a083 * k3 + a084 * k4 + a085 * k5 + a086 * k6 + a087 * k7), p,
+    k8 = f(
+        uprev +
+        dt * (a081 * k1 + a083 * k3 + a084 * k4 + a085 * k5 + a086 * k6 + a087 * k7),
+        p,
         t + c8 * dt)
     g9 = uprev +
          dt *
@@ -77,7 +79,8 @@ end
 #############################Adaptive Version#####################################
 
 @inline function step!(integ::GPUAV7I{false, S, T}, ts, us) where {S, T}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
+    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+        integ.alg,
         T)
 
     dt = integ.dtnew
@@ -121,8 +124,9 @@ end
         k6 = f(uprev + dt * (a061 * k1 + a063 * k3 + a064 * k4 + a065 * k5), p, t + c6 * dt)
         k7 = f(uprev + dt * (a071 * k1 + a073 * k3 + a074 * k4 + a075 * k5 + a076 * k6), p,
             t + c7 * dt)
-        k8 = f(uprev +
-               dt * (a081 * k1 + a083 * k3 + a084 * k4 + a085 * k5 + a086 * k6 + a087 * k7),
+        k8 = f(
+            uprev +
+            dt * (a081 * k1 + a083 * k3 + a084 * k4 + a085 * k5 + a086 * k6 + a087 * k7),
             p,
             t + c8 * dt)
         g9 = uprev +

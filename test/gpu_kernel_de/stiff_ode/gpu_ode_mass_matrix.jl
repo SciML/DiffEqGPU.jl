@@ -14,12 +14,12 @@ function rober_jac(u, p, t)
     y₁, y₂, y₃ = u
     k₁, k₂, k₃ = p
     return @SMatrix[(k₁*-1) (y₃*k₃) (k₃*y₂)
-        k₁ (y₂ * k₂ * -2+y₃ * k₃ * -1) (k₃*y₂*-1)
-        0 (y₂*2*k₂) (0)]
+                    k₁ (y₂ * k₂ * -2+y₃ * k₃ * -1) (k₃*y₂*-1)
+                    0 (y₂*2*k₂) (0)]
 end
 M = @SMatrix [1.0f0 0.0f0 0.0f0
-    0.0f0 1.0f0 0.0f0
-    0.0f0 0.0f0 0.0f0]
+              0.0f0 1.0f0 0.0f0
+              0.0f0 0.0f0 0.0f0]
 ff = ODEFunction(rober, mass_matrix = M)
 prob = ODEProblem(ff, @SVector([1.0f0, 0.0f0, 0.0f0]), (0.0f0, 1.0f5),
     (0.04f0, 3.0f7, 1.0f4))

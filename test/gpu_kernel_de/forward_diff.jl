@@ -15,13 +15,13 @@ function lorenz(u, p, t)
 end
 
 u0 = @SVector [ForwardDiff.Dual(1.0f0, (1.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0));
-    ForwardDiff.Dual(0.0f0, (0.0f0, 1.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0));
-    ForwardDiff.Dual(0.0f0, (0.0f0, 0.0f0, 1.0f0, 0.0f0, 0.0f0, 0.0f0))]
+               ForwardDiff.Dual(0.0f0, (0.0f0, 1.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0));
+               ForwardDiff.Dual(0.0f0, (0.0f0, 0.0f0, 1.0f0, 0.0f0, 0.0f0, 0.0f0))]
 
 p = @SVector [
     ForwardDiff.Dual(10.0f0, (0.0f0, 0.0f0, 0.0f0, 1.0f0, 0.0f0, 0.0f0)),
     ForwardDiff.Dual(28.0f0, (0.0f0, 0.0f0, 0.0f0, 0.0f0, 1.0f0, 0.0f0)),
-    ForwardDiff.Dual(8 / 3.0f0, (0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 1.0f0)),
+    ForwardDiff.Dual(8 / 3.0f0, (0.0f0, 0.0f0, 0.0f0, 0.0f0, 0.0f0, 1.0f0))
 ]
 
 tspan = (0.0f0, 10.0f0)

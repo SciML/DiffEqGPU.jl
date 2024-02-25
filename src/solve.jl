@@ -64,8 +64,10 @@ function SciMLBase.__solve(ensembleprob::SciMLBase.AbstractEnsembleProblem,
 
     converged::Bool = false
     u = ensembleprob.u_init === nothing ?
-        similar(batch_solve(ensembleprob, alg, ensemblealg, 1:batch_size, adaptive;
-            unstable_check = unstable_check, kwargs...), 0) :
+        similar(
+        batch_solve(ensembleprob, alg, ensemblealg, 1:batch_size, adaptive;
+            unstable_check = unstable_check, kwargs...),
+        0) :
         ensembleprob.u_init
 
     if nprocs() == 1
@@ -152,10 +154,13 @@ function batch_solve(ensembleprob, alg,
                get(kwargs, :save_everystep, true)
                 error("Using different time-spans require either turning off save_everystep or using saveat. If using saveat, it should be of same length across the ensemble.")
             end
-            if !all(Base.Fix2((prob1, prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
+            if !all(
+                Base.Fix2(
+                    (prob1, prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
                             nothing)),
                         sizeof(get(prob2.kwargs, :saveat,
-                            nothing))), probs[1]),
+                            nothing))),
+                    probs[1]),
                 probs)
                 error("Using different saveat in EnsembleGPUKernel requires all of them to be of same length. Use saveats of same size only.")
             end
@@ -168,26 +173,27 @@ function batch_solve(ensembleprob, alg,
             solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
                 adaptive; saveat = saveat, kwargs...)
             [begin
-                ts = @view solts[:, i]
-                us = @view solus[:, i]
-                sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
-                if sol_idx === nothing
-                    @error "No solution found" tspan=probs[i].tspan[1] ts
-                    error("Batch solve failed")
-                end
-                @views ensembleprob.output_func(SciMLBase.build_solution(probs[i],
-                        alg,
-                        ts[1:sol_idx],
-                        us[1:sol_idx],
-                        k = nothing,
-                        stats = nothing,
-                        calculate_error = false,
-                        retcode = sol_idx !=
-                                  length(ts) ?
-                                  ReturnCode.Terminated :
-                                  ReturnCode.Success),
-                    i)[1]
-            end
+                 ts = @view solts[:, i]
+                 us = @view solus[:, i]
+                 sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
+                 if sol_idx === nothing
+                     @error "No solution found" tspan=probs[i].tspan[1] ts
+                     error("Batch solve failed")
+                 end
+                 @views ensembleprob.output_func(
+                     SciMLBase.build_solution(probs[i],
+                         alg,
+                         ts[1:sol_idx],
+                         us[1:sol_idx],
+                         k = nothing,
+                         stats = nothing,
+                         calculate_error = false,
+                         retcode = sol_idx !=
+                                   length(ts) ?
+                                   ReturnCode.Terminated :
+                                   ReturnCode.Success),
+                     i)[1]
+             end
              for i in eachindex(probs)]
 
         else
@@ -227,13 +233,17 @@ function batch_solve(ensembleprob, alg,
 
             probs[1] = orig_prob
 
-            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg,
-                    map(t -> probs[i].tspan[1] +
-                             (probs[i].tspan[2] -
-                              probs[i].tspan[1]) *
-                             t, sol.t), solus[i],
-                    stats = sol.stats,
-                    retcode = sol.retcode), i)[1]
+            [ensembleprob.output_func(
+                 SciMLBase.build_solution(probs[i], alg,
+                     map(
+                         t -> probs[i].tspan[1] +
+                              (probs[i].tspan[2] -
+                               probs[i].tspan[1]) *
+                              t,
+                         sol.t), solus[i],
+                     stats = sol.stats,
+                     retcode = sol.retcode),
+                 i)[1]
              for i in 1:length(probs)]
         else
             p = reduce(hcat,
@@ -241,10 +251,12 @@ function batch_solve(ensembleprob, alg,
                 for i in 1:length(I))
             sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
                 adaptive = adaptive, kwargs...)
-            [ensembleprob.output_func(SciMLBase.build_solution(probs[i], alg, sol.t,
-                    solus[i],
-                    stats = sol.stats,
-                    retcode = sol.retcode), i)[1]
+            [ensembleprob.output_func(
+                 SciMLBase.build_solution(probs[i], alg, sol.t,
+                     solus[i],
+                     stats = sol.stats,
+                     retcode = sol.retcode),
+                 i)[1]
              for i in 1:length(probs)]
         end
     end
@@ -254,7 +266,8 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
         kwargs...)
     _callback = CallbackSet(generate_callback(probs[1], length(I), ensemblealg; kwargs...))
 
-    _callback = CallbackSet(convert.(DiffEqGPU.GPUDiscreteCallback,
+    _callback = CallbackSet(
+        convert.(DiffEqGPU.GPUDiscreteCallback,
             _callback.discrete_callbacks)...,
         convert.(DiffEqGPU.GPUContinuousCallback,
             _callback.continuous_callbacks)...)

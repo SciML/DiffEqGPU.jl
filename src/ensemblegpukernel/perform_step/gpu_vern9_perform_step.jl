@@ -51,22 +51,32 @@
     k9 = f(uprev + dt * (a0901 * k1 + a0906 * k6 + a0907 * k7 + a0908 * k8), p, t + c8 * dt)
     k10 = f(uprev + dt * (a1001 * k1 + a1006 * k6 + a1007 * k7 + a1008 * k8 + a1009 * k9),
         p, t + c9 * dt)
-    k11 = f(uprev +
-            dt *
-            (a1101 * k1 + a1106 * k6 + a1107 * k7 + a1108 * k8 + a1109 * k9 + a1110 * k10),
+    k11 = f(
+        uprev +
+        dt *
+        (a1101 * k1 + a1106 * k6 + a1107 * k7 + a1108 * k8 + a1109 * k9 + a1110 * k10),
         p, t + c10 * dt)
-    k12 = f(uprev +
-            dt *
-            (a1201 * k1 + a1206 * k6 + a1207 * k7 + a1208 * k8 + a1209 * k9 + a1210 * k10 +
-             a1211 * k11), p, t + c11 * dt)
-    k13 = f(uprev +
-            dt *
-            (a1301 * k1 + a1306 * k6 + a1307 * k7 + a1308 * k8 + a1309 * k9 + a1310 * k10 +
-             a1311 * k11 + a1312 * k12), p, t + c12 * dt)
-    k14 = f(uprev +
-            dt *
-            (a1401 * k1 + a1406 * k6 + a1407 * k7 + a1408 * k8 + a1409 * k9 + a1410 * k10 +
-             a1411 * k11 + a1412 * k12 + a1413 * k13), p, t + c13 * dt)
+    k12 = f(
+        uprev +
+        dt *
+        (a1201 * k1 + a1206 * k6 + a1207 * k7 + a1208 * k8 + a1209 * k9 + a1210 * k10 +
+         a1211 * k11),
+        p,
+        t + c11 * dt)
+    k13 = f(
+        uprev +
+        dt *
+        (a1301 * k1 + a1306 * k6 + a1307 * k7 + a1308 * k8 + a1309 * k9 + a1310 * k10 +
+         a1311 * k11 + a1312 * k12),
+        p,
+        t + c12 * dt)
+    k14 = f(
+        uprev +
+        dt *
+        (a1401 * k1 + a1406 * k6 + a1407 * k7 + a1408 * k8 + a1409 * k9 + a1410 * k10 +
+         a1411 * k11 + a1412 * k12 + a1413 * k13),
+        p,
+        t + c13 * dt)
     g15 = uprev +
           dt *
           (a1501 * k1 + a1506 * k6 + a1507 * k7 + a1508 * k8 + a1509 * k9 + a1510 * k10 +
@@ -104,7 +114,8 @@ end
 #############################Adaptive Version#####################################
 
 @inline function step!(integ::GPUAV9I{false, S, T}, ts, us) where {S, T}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
+    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+        integ.alg,
         T)
 
     dt = integ.dtnew
@@ -155,29 +166,40 @@ end
         k8 = f(uprev + dt * (a0801 * k1 + a0806 * k6 + a0807 * k7), p, t + c7 * dt)
         k9 = f(uprev + dt * (a0901 * k1 + a0906 * k6 + a0907 * k7 + a0908 * k8), p,
             t + c8 * dt)
-        k10 = f(uprev +
-                dt * (a1001 * k1 + a1006 * k6 + a1007 * k7 + a1008 * k8 + a1009 * k9),
+        k10 = f(
+            uprev +
+            dt * (a1001 * k1 + a1006 * k6 + a1007 * k7 + a1008 * k8 + a1009 * k9),
             p, t + c9 * dt)
-        k11 = f(uprev +
-                dt *
-                (a1101 * k1 + a1106 * k6 + a1107 * k7 + a1108 * k8 + a1109 * k9 +
-                 a1110 * k10),
+        k11 = f(
+            uprev +
+            dt *
+            (a1101 * k1 + a1106 * k6 + a1107 * k7 + a1108 * k8 + a1109 * k9 +
+             a1110 * k10),
             p, t + c10 * dt)
-        k12 = f(uprev +
-                dt *
-                (a1201 * k1 + a1206 * k6 + a1207 * k7 + a1208 * k8 + a1209 * k9 +
-                 a1210 * k10 +
-                 a1211 * k11), p, t + c11 * dt)
-        k13 = f(uprev +
-                dt *
-                (a1301 * k1 + a1306 * k6 + a1307 * k7 + a1308 * k8 + a1309 * k9 +
-                 a1310 * k10 +
-                 a1311 * k11 + a1312 * k12), p, t + c12 * dt)
-        k14 = f(uprev +
-                dt *
-                (a1401 * k1 + a1406 * k6 + a1407 * k7 + a1408 * k8 + a1409 * k9 +
-                 a1410 * k10 +
-                 a1411 * k11 + a1412 * k12 + a1413 * k13), p, t + c13 * dt)
+        k12 = f(
+            uprev +
+            dt *
+            (a1201 * k1 + a1206 * k6 + a1207 * k7 + a1208 * k8 + a1209 * k9 +
+             a1210 * k10 +
+             a1211 * k11),
+            p,
+            t + c11 * dt)
+        k13 = f(
+            uprev +
+            dt *
+            (a1301 * k1 + a1306 * k6 + a1307 * k7 + a1308 * k8 + a1309 * k9 +
+             a1310 * k10 +
+             a1311 * k11 + a1312 * k12),
+            p,
+            t + c12 * dt)
+        k14 = f(
+            uprev +
+            dt *
+            (a1401 * k1 + a1406 * k6 + a1407 * k7 + a1408 * k8 + a1409 * k9 +
+             a1410 * k10 +
+             a1411 * k11 + a1412 * k12 + a1413 * k13),
+            p,
+            t + c13 * dt)
         g15 = uprev +
               dt *
               (a1501 * k1 + a1506 * k6 + a1507 * k7 + a1508 * k8 + a1509 * k9 +

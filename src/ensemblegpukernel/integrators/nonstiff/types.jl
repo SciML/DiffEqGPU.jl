@@ -354,7 +354,8 @@ end
     vector_event_last_time = 0
     last_event_error = zero(T)
 
-    integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(alg,
+    integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(
+        alg,
         f,
         copy(u0),
         copy(u0),
