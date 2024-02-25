@@ -17,8 +17,8 @@ function lorenz_jac(u, p, t)
     y = u[2]
     z = u[3]
     SA[-σ σ 0
-        ρ-z -1 -x
-        y x -β]
+       ρ-z -1 -x
+       y x -β]
 end
 
 function lorenz_tgrad(u, p, t)

@@ -2,19 +2,20 @@
         AlgType,
         IIP,
         S,
-        T,
+        T
 })(t) where {
         AlgType <:
         GPUODEAlgorithm,
         IIP,
         S,
-        T,
+        T
 }
     Θ = (t - integrator.tprev) / integrator.dt
     _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
-@inline function DiffEqBase.u_modified!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function DiffEqBase.u_modified!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP, S,
             T},
@@ -94,7 +95,7 @@ mutable struct GPUARosenbrock23Integrator{
     Q,
     TS,
     CB,
-    AlgType,
+    AlgType
 } <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
@@ -151,7 +152,8 @@ const GPUARB23I = GPUARosenbrock23Integrator
     d = T(2)
     d = 1 / (d + sqrt(d))
 
-    integ = GPUARB23I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(alg,
+    integ = GPUARB23I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(
+        alg,
         f,
         copy(u0),
         copy(u0),
@@ -271,7 +273,7 @@ mutable struct GPUARodas4Integrator{
     TS,
     CB,
     TabType,
-    AlgType,
+    AlgType
 } <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
@@ -435,7 +437,7 @@ end
 
 # Adaptive Step
 mutable struct GPUARodas5PIntegrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-    AlgType,
+    AlgType
 } <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
@@ -490,7 +492,8 @@ const GPUARodas5PI = GPUARodas5PIntegrator
 
     tab = Rodas5PTableau(T, T)
 
-    integ = GPUARodas5PI{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
+    integ = GPUARodas5PI{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
         typeof(alg)}(alg,
         f,
         copy(u0),
@@ -601,7 +604,7 @@ end
 
 # Adaptive Step
 mutable struct GPUAKvaerno3Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-    AlgType,
+    AlgType
 } <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
@@ -766,7 +769,7 @@ end
 
 # Adaptive Step
 mutable struct GPUAKvaerno5Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-    AlgType,
+    AlgType
 } <:
                DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType

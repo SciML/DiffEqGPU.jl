@@ -66,7 +66,8 @@ end
 #############################Adaptive Version#####################################
 
 @inline function step!(integ::GPUAT5I{false, S, T}, ts, us) where {S, T}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
+    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+        integ.alg,
         T)
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dtnew

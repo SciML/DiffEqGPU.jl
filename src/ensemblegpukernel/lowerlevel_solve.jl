@@ -1,9 +1,9 @@
 """
 ```julia
 vectorized_solve(probs, prob::Union{ODEProblem, SDEProblem}alg;
-                 dt, saveat = nothing,
-                 save_everystep = true,
-                 debug = false, callback = CallbackSet(nothing), tstops = nothing)
+    dt, saveat = nothing,
+    save_everystep = true,
+    debug = false, callback = CallbackSet(nothing), tstops = nothing)
 ```
 
 A lower level interface to the kernel generation solvers of EnsembleGPUKernel with fixed
@@ -55,22 +55,24 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
             _saveat = range(convert(eltype(prob.tspan), first(saveat)),
                 convert(eltype(prob.tspan), last(saveat)),
                 length = length(saveat))
-            convert(StepRangeLen{
+            convert(
+                StepRangeLen{
                     eltype(_saveat),
                     eltype(_saveat),
                     eltype(_saveat),
-                    eltype(_saveat) === Float32 ? Int32 : Int64,
+                    eltype(_saveat) === Float32 ? Int32 : Int64
                 },
                 _saveat)
         elseif saveat isa AbstractVector
             adapt(backend, convert.(eltype(prob.tspan), saveat))
         else
             _saveat = prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
-            convert(StepRangeLen{
+            convert(
+                StepRangeLen{
                     eltype(_saveat),
                     eltype(_saveat),
                     eltype(_saveat),
-                    eltype(_saveat) === Float32 ? Int32 : Int64,
+                    eltype(_saveat) === Float32 ? Int32 : Int64
                 },
                 _saveat)
         end
@@ -154,10 +156,10 @@ end
 """
 ```julia
 vectorized_asolve(probs, prob::ODEProblem, alg;
-                  dt = 0.1f0, saveat = nothing,
-                  save_everystep = false,
-                  abstol = 1.0f-6, reltol = 1.0f-3,
-                  callback = CallbackSet(nothing), tstops = nothing)
+    dt = 0.1f0, saveat = nothing,
+    save_everystep = false,
+    abstol = 1.0f-6, reltol = 1.0f-3,
+    callback = CallbackSet(nothing), tstops = nothing)
 ```
 
 A lower level interface to the kernel generation solvers of EnsembleGPUKernel with adaptive

@@ -10,11 +10,12 @@ function build_adaptive_controller_cache(alg::A, ::Type{T}) where {A, T}
     return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
 end
 
-@inline function savevalues!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function savevalues!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
-            T,
+            T
         }, ts,
         us,
         force = false) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
@@ -45,7 +46,8 @@ end
     saved, savedexactly
 end
 
-@inline function DiffEqBase.terminate!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
+@inline function DiffEqBase.terminate!(
+        integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
             IIP, S,
             T},
         retcode = ReturnCode.Terminated) where {
@@ -53,15 +55,16 @@ end
         GPUODEAlgorithm,
         IIP,
         S,
-        T,
+        T
 }
     integrator.retcode = retcode
 end
 
-@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function apply_discrete_callback!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
-            S, T,
+            S, T
         },
         ts, us,
         callback::GPUDiscreteCallback) where {
@@ -79,10 +82,11 @@ end
     integrator.u_modified, saved_in_cb
 end
 
-@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function apply_discrete_callback!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
-            S, T,
+            S, T
         },
         ts, us,
         callback::GPUDiscreteCallback,
@@ -93,10 +97,11 @@ end
         args...)
 end
 
-@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function apply_discrete_callback!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
-            S, T,
+            S, T
         },
         ts, us,
         discrete_modified::Bool,
@@ -110,10 +115,11 @@ end
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-@inline function apply_discrete_callback!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function apply_discrete_callback!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
-            S, T,
+            S, T
         },
         ts, us,
         discrete_modified::Bool,
@@ -126,11 +132,12 @@ end
     discrete_modified || bool, saved_in_cb || saved_in_cb2
 end
 
-@inline function interpolate(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function interpolate(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
-            T,
+            T
         },
         t) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     θ = (t - integrator.tprev) / integrator.dt
@@ -142,11 +149,12 @@ end
             b7θ * integrator.k7)
 end
 
-@inline function _change_t_via_interpolation!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function _change_t_via_interpolation!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
-            T,
+            T
         },
         t,
         modify_save_endpoint::Type{Val{T1}}) where {
@@ -155,7 +163,7 @@ end
         IIP,
         S,
         T,
-        T1,
+        T1
 }
     # Can get rid of an allocation here with a function
     # get_tmp_arr(integrator.cache) which gives a pointer to some
@@ -169,11 +177,12 @@ end
         #integrator.dt = integrator.t - integrator.tprev
     end
 end
-@inline function DiffEqBase.change_t_via_interpolation!(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function DiffEqBase.change_t_via_interpolation!(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
-            T,
+            T
         },
         t,
         modify_save_endpoint::Type{Val{T1}} = Val{
@@ -184,12 +193,13 @@ end
         IIP,
         S,
         T,
-        T1,
+        T1
 }
     _change_t_via_interpolation!(integrator, t, modify_save_endpoint)
 end
 
-@inline function apply_callback!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP,
+@inline function apply_callback!(
+        integrator::DiffEqBase.AbstractODEIntegrator{AlgType, IIP,
             S, T},
         callback::GPUContinuousCallback,
         cb_time, prev_sign, event_idx, ts,
@@ -219,7 +229,8 @@ end
     true, saved_in_cb
 end
 
-@inline function handle_callbacks!(integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
+@inline function handle_callbacks!(
+        integrator::DiffEqBase.AbstractODEIntegrator{AlgType,
             IIP, S, T},
         ts, us) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
     discrete_callbacks = integrator.callback.discrete_callbacks
@@ -232,7 +243,8 @@ end
     if !(continuous_callbacks isa Tuple{})
         event_occurred = false
 
-        time, upcrossing, event_occurred, event_idx, idx, counter = DiffEqBase.find_first_continuous_callback(integrator,
+        time, upcrossing, event_occurred, event_idx, idx, counter = DiffEqBase.find_first_continuous_callback(
+            integrator,
             continuous_callbacks...)
 
         if event_occurred
@@ -256,16 +268,18 @@ end
     return false, saved_in_cb
 end
 
-@inline function DiffEqBase.find_callback_time(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function DiffEqBase.find_callback_time(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
-            T,
+            T
         },
         callback::DiffEqGPU.GPUContinuousCallback,
         counter) where {AlgType <: GPUODEAlgorithm,
         IIP, S, T}
-    event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(integrator,
+    event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(
+        integrator,
         callback,
         counter)
 
@@ -321,15 +335,16 @@ end
         GPUODEAlgorithm,
         IIP,
         S,
-        T,
+        T
 }
     return nothing
 end
 
-@inline function DiffEqBase.get_condition(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function DiffEqBase.get_condition(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
-            S, T,
+            S, T
         },
         callback,
         abst) where {AlgType <: GPUODEAlgorithm, IIP, S, T
@@ -345,11 +360,12 @@ end
 end
 
 # interp_points = 0 or equivalently nothing
-@inline function DiffEqBase.determine_event_occurance(integrator::DiffEqBase.AbstractODEIntegrator{
+@inline function DiffEqBase.determine_event_occurance(
+        integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
-            T,
+            T
         },
         callback::DiffEqGPU.GPUContinuousCallback,
         counter) where {

@@ -25,7 +25,8 @@ Changing this to being GPU-parallelized is as simple as changing the ensemble me
 `EnsembleGPUArray`:
 
 ```@example lorenz
-sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,
+sol = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,
     saveat = 1.0f0);
 ```
 

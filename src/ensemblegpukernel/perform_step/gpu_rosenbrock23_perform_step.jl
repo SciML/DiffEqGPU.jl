@@ -72,7 +72,8 @@ end
 #############################Adaptive Version#####################################
 
 @inline function step!(integ::GPUARB23I{false, S, T}, ts, us) where {S, T}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(integ.alg,
+    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+        integ.alg,
         T)
     dt = integ.dtnew
     t = integ.t

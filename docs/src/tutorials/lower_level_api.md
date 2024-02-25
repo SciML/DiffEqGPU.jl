@@ -89,12 +89,14 @@ end
 
 ## Finally use the lower API for faster solves! (Fixed time-stepping)
 
-@time CUDA.@sync sol = DiffEqGPU.vectorized_map_solve(probs, Tsit5(), EnsembleGPUArray(0.0),
+@time CUDA.@sync sol = DiffEqGPU.vectorized_map_solve(
+    probs, Tsit5(), EnsembleGPUArray(0.0),
     batch, false, dt = 0.001f0,
     save_everystep = false, dense = false)
 
 ## Adaptive time-stepping (Notice the boolean argument)
-@time CUDA.@sync sol = DiffEqGPU.vectorized_map_solve(probs, Tsit5(), EnsembleGPUArray(0.0),
+@time CUDA.@sync sol = DiffEqGPU.vectorized_map_solve(
+    probs, Tsit5(), EnsembleGPUArray(0.0),
     batch, true, dt = 0.001f0,
     save_everystep = false, dense = false)
 ```
