@@ -91,6 +91,7 @@ steps:
       setup:
         version:
           - "1.9"
+          - "1"
     env:
       GROUP: Metal
     plugins:
