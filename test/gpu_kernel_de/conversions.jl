@@ -18,25 +18,21 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
-## Don't test the problems in which GPUs don't support FP64 completely yet
-## Creating StepRangeLen causes some param types to be FP64 inferred by `float` function
-if ENV["GROUP"] ∉ ("Metal", "oneAPI")
-    @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
-        trajectories = 10_000,
-        saveat = 1:10)[1].t == Float32.(1:10)
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1:10)[1].t == Float32.(1:10)
 
-    @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
-        trajectories = 10_000,
-        saveat = 1:0.1:10)[1].t == 1.0f0:0.1f0:10.0f0
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1:0.1:10)[1].t == 1.0f0:0.1f0:10.0f0
 
-    @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
-        trajectories = 10_000,
-        saveat = 1:(1.0f0):10)[1].t == 1:1.0f0:10
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1:(1.0f0):10)[1].t == 1:1.0f0:10
 
-    @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
-        trajectories = 10_000,
-        saveat = 1.0)[1].t == 0.0f0:1.0f0:10.0f0
-end
+@test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
+    trajectories = 10_000,
+    saveat = 1.0)[1].t == 0.0f0:1.0f0:10.0f0
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
