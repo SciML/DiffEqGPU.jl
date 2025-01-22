@@ -59,7 +59,7 @@ StaticArrays = "1"
 TOML = "1"
 ZygoteRules = "0.2"
 julia = "1.6"
-oneAPI = "1.2"
+oneAPI = "1.2, 2"
 
 [extras]
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
