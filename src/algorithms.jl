@@ -90,7 +90,7 @@ end
 
 """
 ```julia
-EnsembleGPUKernel(backend, cpu_offload = 0.2)
+EnsembleGPUKernel(backend, cpu_offload = 0.0)
 ```
 
 A massively-parallel ensemble algorithm which generates a unique GPU kernel for the entire
