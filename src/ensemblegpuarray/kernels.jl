@@ -12,12 +12,15 @@ function Adapt.adapt_structure(to, ps::ParamWrapper{P, T}) where {P, T}
         adapt(to, ps.data))
 end
 
+# The reparameterization is adapted from:https://github.com/rtqichen/torchdiffeq/issues/122#issuecomment-738978844
 @kernel function gpu_kernel(f, du, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(t)) where {P, T}
     i = @index(Global, Linear)
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
+    # reparameterization t->(t_0, t_f) from t->(0, 1).
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
     @views @inbounds f(du[:, i], u[:, i], p, t)
     @inbounds for j in 1:size(du, 1)
         du[j, i] = du[j, i] * (tspan[2] - tspan[1])
@@ -30,7 +33,8 @@ end
     i = @index(Global, Linear)
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
-
+    # reparameterization
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
     @views @inbounds x = f(u[:, i], p, t)
     @inbounds for j in 1:size(du, 1)
         du[j, i] = x[j] * (tspan[2] - tspan[1])
@@ -66,6 +70,9 @@ end
     @inbounds p = params[i + 1].params
     @inbounds tspan = params[i + 1].data
 
+    # reparameterization
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
+
     @views @inbounds f(J[section, section], u[:, i + 1], p, t)
     @inbounds for j in section, k in section
         J[k, j] = J[k, j] * (tspan[2] - tspan[1])
@@ -80,6 +87,9 @@ end
 
     @inbounds p = params[i + 1].params
     @inbounds tspan = params[i + 1].data
+
+    # reparameterization
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
 
     @views @inbounds x = f(u[:, i + 1], p, t)
 
@@ -150,6 +160,9 @@ end
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
 
+    # reparameterization
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
+
     @views @inbounds jac(_W, u[:, i], p, t)
 
     @inbounds for i in eachindex(_W)
@@ -187,6 +200,9 @@ end
 
     _W = @inbounds @view(W[:, :, i])
 
+    # reparameterization
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
+
     @views @inbounds x = jac(u[:, i], p, t)
     @inbounds for j in 1:length(_W)
         _W[j] = x[j] * (tspan[2] - tspan[1])
@@ -217,13 +233,41 @@ end
     end
 end
 
-@kernel function Wt_kernel(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
-        @Const(t)) where {T}
+@kernel function Wt_kernel(
+        jac, W, @Const(u), @Const(params::AbstractArray{ParamWrapper{P, T}}),
+        @Const(gamma), @Const(t)) where {P, T}
     i = @index(Global, Linear)
     len = size(u, 1)
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    # reparameterization
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
+
     _W = @inbounds @view(W[:, :, i])
-    @inbounds jac = f[i].tgrad
-    @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @views @inbounds jac(_W, u[:, i], p, t)
+    @inbounds for i in 1:len
+        _W[i, i] = -inv(gamma) + _W[i, i] * (tspan[2] - tspan[1])
+    end
+end
+
+@kernel function Wt_kernel_oop(
+        jac, W, @Const(u), @Const(params::AbstractArray{ParamWrapper{P, T}}),
+        @Const(gamma), @Const(t)) where {P, T}
+    i = @index(Global, Linear)
+    len = size(u, 1)
+
+    @inbounds p = params[i].params
+    @inbounds tspan = params[i].data
+
+    # reparameterization
+    t = (tspan[2] - tspan[1]) * t + tspan[1]
+
+    _W = @inbounds @view(W[:, :, i])
+    @views @inbounds x = jac(u[:, i], p, t)
+    @inbounds for j in 1:length(_W)
+        _W[j] = x[j] * (tspan[2] - tspan[1])
+    end
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
@@ -234,21 +278,6 @@ end
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
     @views @inbounds jac(_W, u[:, i], p[:, i], t)
-    @inbounds for i in 1:len
-        _W[i, i] = -inv(gamma) + _W[i, i]
-    end
-end
-
-@kernel function Wt_kernel_oop(f::AbstractArray{T}, W, @Const(u), @Const(p), @Const(gamma),
-        @Const(t)) where {T}
-    i = @index(Global, Linear)
-    len = size(u, 1)
-    _W = @inbounds @view(W[:, :, i])
-    @inbounds jac = f[i].tgrad
-    @views @inbounds x = jac(u[:, i], p[:, i], t)
-    @inbounds for j in 1:length(_W)
-        _W[j] = x[j]
-    end
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
@@ -267,30 +296,30 @@ end
     end
 end
 
-@kernel function gpu_kernel_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
-        @Const(t)) where {T}
-    i = @index(Global, Linear)
-    @inbounds f = f[i].tgrad
-    if eltype(p) <: Number
-        @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
-    else
-        @views @inbounds f(du[:, i], u[:, i], p[i], t)
-    end
-end
+# @kernel function gpu_kernel_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+#         @Const(t)) where {T}
+#     i = @index(Global, Linear)
+#     @inbounds f = f[i].tgrad
+#     if eltype(p) <: Number
+#         @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
+#     else
+#         @views @inbounds f(du[:, i], u[:, i], p[i], t)
+#     end
+# end
 
-@kernel function gpu_kernel_oop_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
-        @Const(t)) where {T}
-    i = @index(Global, Linear)
-    @inbounds f = f[i].tgrad
-    if eltype(p) <: Number
-        @views @inbounds x = f(u[:, i], p[:, i], t)
-    else
-        @views @inbounds x = f(u[:, i], p[i], t)
-    end
-    @inbounds for j in 1:size(du, 1)
-        du[j, i] = x[j]
-    end
-end
+# @kernel function gpu_kernel_oop_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+#         @Const(t)) where {T}
+#     i = @index(Global, Linear)
+#     @inbounds f = f[i].tgrad
+#     if eltype(p) <: Number
+#         @views @inbounds x = f(u[:, i], p[:, i], t)
+#     else
+#         @views @inbounds x = f(u[:, i], p[i], t)
+#     end
+#     @inbounds for j in 1:size(du, 1)
+#         du[j, i] = x[j]
+#     end
+# end
 
 function lufact!(::CPU, W)
     len = size(W, 1)
