@@ -31,8 +31,13 @@ prob_func = (prob, i, repeat) -> begin
 end
 
 ensemble_prob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
+```
 
+# Solving on GPU and CPU
 
+Here we solve the ensemble problem on both GPU and CPU. We use 10,000 trajectories with a fixed time step to facilitate performance comparison.
+
+```julia
 # Number of trajectories
 num_trajectories = 10_000
 
@@ -52,6 +57,14 @@ cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
                 trajectories = num_trajectories, dt = 0.01f0, adaptive = false)
 
 
+```
+
+# Performance Comparison
+
+We measure the performance of each simulation. (Note: The first run may include compilation time.)
+
+```julia
+
 # Warm-up (first run) for GPU if applicable
 if gpu_sol !== nothing
     @time solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
@@ -60,8 +73,12 @@ end
 
 @time cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
                       trajectories = num_trajectories, dt = 0.01f0, adaptive = false)
+```
 
+# Statistical Analysis and Visualization
+We analyze the ensemble by computing the mean and standard deviation of u(t)u(t) across trajectories, and then visualize the results.
 
+```julia
 
 # Assuming all solutions have the same time points (fixed dt & saveat)
 t_vals = cpu_sol[1].t
