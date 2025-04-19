@@ -10,7 +10,9 @@ pages = ["index.md",
             "tutorials/weak_order_conv_sde.md"],
         "Within-Method GPU" => Any["tutorials/within_method_gpu.md"]],
     "Examples" => Any[
-        "GPU Ensembles" => Any["examples/sde.md",
+        "GPU Ensembles" => Any[
+            "examples/gpu_ensemble_random_decay.md",
+            "examples/sde.md",
             "examples/ad.md",
             "examples/reductions.md"],
         "Within-Method GPU" => Any["examples/reaction_diffusion.md",
