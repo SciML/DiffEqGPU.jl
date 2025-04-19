@@ -9,6 +9,11 @@ with the twist that each trajectory uses a random decay rate \(\lambda\) sampled
 We first define the ODE and set up an `EnsembleProblem` that randomizes the decay rate for each trajectory.
 
 ```julia
+# Make sure you have the necessary packages installed
+# using Pkg
+# Pkg.add(["OrdinaryDiffEq", "DiffEqGPU", "CUDA", "Random", "Statistics", "Plots"])
+# # Depending on your system, you might need to configure CUDA.jl:
+# # import Pkg; Pkg.build("CUDA")
 using OrdinaryDiffEq, DiffEqGPU, CUDA, Random, Statistics, Plots
 
 # Set a random seed for reproducibility
