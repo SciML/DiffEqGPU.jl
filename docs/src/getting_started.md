@@ -90,6 +90,6 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
     trajectories = 10_000)
 ```
-  * [GPU Ensemble Simulation with Random Decay Rates](tutorials/gpu_ensemble_random_decay.md)
-  
+[GPU Ensemble Simulation with Random Decay Rates](tutorials/gpu_ensemble_random_decay.md)
+
 To dig more into this example, see the [ensemble GPU solving tutorial](@ref lorenz).
