@@ -52,3 +52,34 @@ cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
                 trajectories = num_trajectories, dt = 0.01f0, adaptive = false)
 
 
+# Warm-up (first run) for GPU if applicable
+if gpu_sol !== nothing
+    @time solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
+                trajectories = num_trajectories, dt = 0.01f0, adaptive = false)
+end
+
+@time cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+                      trajectories = num_trajectories, dt = 0.01f0, adaptive = false)
+
+
+
+# Assuming all solutions have the same time points (fixed dt & saveat)
+t_vals = cpu_sol[1].t
+num_times = length(t_vals)
+ensemble_vals = reduce(hcat, [sol.u for sol in cpu_sol])  # each column corresponds to one trajectory
+
+# Compute ensemble statistics
+mean_u = [mean(ensemble_vals[i, :]) for i in 1:num_times]
+std_u  = [std(ensemble_vals[i, :]) for i in 1:num_times]
+
+# Plot the mean trajectory with ±1 standard deviation
+p1 = plot(t_vals, mean_u, ribbon = std_u, xlabel = "Time", ylabel = "u(t)",
+          title = "Ensemble Mean and ±1σ", label = "Mean ± σ", legend = :topright)
+
+# Histogram of final values (u at t=5)
+final_vals = ensemble_vals[end, :]
+p2 = histogram(final_vals, bins = 30, xlabel = "Final u", ylabel = "Frequency",
+               title = "Distribution of Final Values", label = "")
+plot(p1, p2, layout = (1,2), size = (900,400))
+
+
