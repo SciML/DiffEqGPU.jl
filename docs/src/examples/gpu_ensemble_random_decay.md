@@ -57,7 +57,7 @@ ensemble_prob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 Here we solve the ensemble problem on both GPU and CPU. We use 10,000 trajectories with a fixed time step to facilitate performance comparison. For performance benchmarking, we initially solve without saving every step (save_everystep=false).
 
-```julia
+```@example decay
 # Number of trajectories
 num_trajectories = 10_000
 
