@@ -93,7 +93,7 @@ cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
 
 We re-run the simulations using @time to get a cleaner measurement of the execution time, excluding the initial compilation overhead.
 
-```julia
+```@example decay
 
 # --- GPU Timing (Second Run) ---
 if gpu_sol_perf !== nothing
