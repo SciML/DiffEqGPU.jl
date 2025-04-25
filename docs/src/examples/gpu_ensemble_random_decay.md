@@ -62,6 +62,7 @@ Here we solve the ensemble problem on both GPU and CPU. We use 10,000 trajectori
 num_trajectories = 10_000
 
 # --- GPU Simulation ---
+gpu_sol_perf = nothing # Initialize variable for performance run
 if CUDA.has_cuda() && CUDA.functional()
     @info "Running GPU simulation (initial run for performance, includes compilation)..."
     # Use EnsembleGPUKernel with the CUDABackend.
