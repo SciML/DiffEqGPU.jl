@@ -294,5 +294,5 @@ if gpu_sol_perf !== nothing && CUDA.has_cuda() && CUDA.functional()
 else
     @warn "Skipping GPU analysis section because initial GPU performance run failed or CUDA is unavailable."
 end
-
+```
 
