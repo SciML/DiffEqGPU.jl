@@ -185,7 +185,7 @@ end
 # GPU Statistical Analysis and Visualization
 Similarly, we can analyze the results from the *GPU simulation*. This requires re-running the simulation to save the time series data and then transferring the data from the GPU memory to the CPU RAM for analysis and plotting using standard tools. Note that this data transfer can be a significant bottleneck for large numbers of trajectories or time steps.
 
-```julia
+```@example decay
 # Check if GPU simulation was successful initially before proceeding
 gpu_analysis_plot = nothing # Initialize plot variable
 if gpu_sol_perf !== nothing && CUDA.has_cuda() && CUDA.functional()
