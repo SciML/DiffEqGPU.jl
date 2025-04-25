@@ -295,6 +295,5 @@ else
     @warn "Skipping GPU analysis section because initial GPU performance run failed or CUDA is unavailable."
 end
 
-
 @info "Tutorial Finished."
 
