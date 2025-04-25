@@ -8,7 +8,7 @@ with the twist that each trajectory uses a random decay rate \(\lambda\) sampled
 
 We first load the necessary packages, define the ODE using `StaticArrays`, and set up an `EnsembleProblem` that randomizes the decay rate for each trajectory.
 
-```julia
+```@example decay
 # Make sure you have the necessary packages installed
 # using Pkg
 # Pkg.add(["OrdinaryDiffEq", "DiffEqGPU", "CUDA",  "StaticArrays", "Random", "Statistics", "Plots"])
