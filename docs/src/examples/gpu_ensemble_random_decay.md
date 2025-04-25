@@ -119,7 +119,7 @@ end
 # CPU Statistical Analysis and Visualization
 To visualize the evolution of the ensemble statistics (mean and standard deviation) over time using the *CPU results*, we need the solutions at multiple time points. We re-solve the problem on the CPU, this time saving the results at each step (save_everystep=true). We then process the results and plot them.
 
-```julia
+```@example decay
 # Re-solve on CPU, saving all steps for plotting
 @info "Re-solving CPU simulation to collect data for plotting..."
 cpu_sol_plot = solve(ensemble_prob, Tsit5(), EnsembleThreads();
