@@ -58,10 +58,12 @@ function generate_problem(prob::SciMLBase.AbstractODEProblem,
         _tgrad = nothing
     end
 
+
     f_func = ODEFunction(_f, Wfact = _Wfact!,
         Wfact_t = _Wfact!_t,
         #colorvec=colorvec,
         jac_prototype = jac_prototype,
+        sparsity = nothing,
         tgrad = _tgrad)
     prob = ODEProblem(f_func, u0, prob.tspan, p;
         prob.kwargs...)
@@ -138,6 +140,7 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
         Wfact_t = _Wfact!_t,
         #colorvec=colorvec,
         jac_prototype = jac_prototype,
+        sparsity = nothing,
         tgrad = _tgrad)
     prob = SDEProblem(f_func, _g, u0, prob.tspan, p;
         prob.kwargs...)
