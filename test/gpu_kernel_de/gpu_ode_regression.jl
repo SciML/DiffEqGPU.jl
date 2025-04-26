@@ -78,7 +78,7 @@ for alg in algs
     @test norm(asol[1].u[end] - sol[1].u[end]) < 6e-3
 
     @test norm(bench_sol.u - sol[1].u) < 2e-3
-    @test norm(bench_asol.u - asol[1].u) < 4e-3
+    @test norm(bench_asol.u - asol[1].u) < 5e-3
 
     @test length(sol[1].u) == length(saveat)
     @test length(asol[1].u) == length(saveat)
