@@ -85,18 +85,20 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
 end
 
 if GROUP == "CUDA"
-    # Causes dynamic function invocation
-    @time @testset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
-        include("gpu_kernel_de/gpu_ode_continuous_callbacks.jl")
-    end
-    @time @testset "GPU Kernelized Stiff ODE ContinuousCallback" begin
-        include("gpu_kernel_de/stiff_ode/gpu_ode_continuous_callbacks.jl")
-    end
-    # device Random not implemented yet
-    @time @testset "GPU Kernelized SDE Regression" begin
-        include("gpu_kernel_de/gpu_sde_regression.jl")
-    end
-    @time @testset "GPU Kernelized SDE Convergence" begin
-        include("gpu_kernel_de/gpu_sde_convergence.jl")
+    @testset "Callbacks" begin
+        # Causes dynamic function invocation
+        @time @testset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
+            include("gpu_kernel_de/gpu_ode_continuous_callbacks.jl")
+        end
+        @time @testset "GPU Kernelized Stiff ODE ContinuousCallback" begin
+            include("gpu_kernel_de/stiff_ode/gpu_ode_continuous_callbacks.jl")
+        end
+        # device Random not implemented yet
+        @time @testset "GPU Kernelized SDE Regression" begin
+            include("gpu_kernel_de/gpu_sde_regression.jl")
+        end
+        @time @testset "GPU Kernelized SDE Convergence" begin
+            include("gpu_kernel_de/gpu_sde_convergence.jl")
+        end
     end
 end
