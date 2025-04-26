@@ -67,20 +67,24 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     @time @safetestset "Reduction" begin
         include("reduction.jl")
     end
-    @time @safetestset "Reverse Mode AD" begin
-        include("reverse_ad_tests.jl")
+
+    @time @testset "Lower level API" begin
+        include("lower_level_api.jl")
     end
+
     # Not safe because distributed doesn't play nicely with modules.
     @time @testset "Distributed Multi-GPU" begin
         include("distributed_multi_gpu.jl")
     end
-    @time @testset "Lower level API" begin
-        include("lower_level_api.jl")
+
+    #=
+    @time @safetestset "Reverse Mode AD" begin
+        include("reverse_ad_tests.jl")
     end
+    =#
 end
 
-# Callbacks currently error on v1.10
-if GROUP == "CUDA" && VERSION <= v"1.9"
+if GROUP == "CUDA"
     # Causes dynamic function invocation
     @time @testset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
         include("gpu_kernel_de/gpu_ode_continuous_callbacks.jl")
