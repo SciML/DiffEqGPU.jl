@@ -4,7 +4,7 @@ steps:
       setup:
         version:
           - "1"
-          - "1.9"
+          - "1.10"
     env:
       GROUP: CUDA
     plugins:
@@ -31,8 +31,8 @@ steps:
     matrix:
       setup:
         version:
-          # Known issues on 1.8
           - "1"
+          - "1.10"
     env:
       GROUP: AMDGPU
     plugins:
@@ -60,7 +60,7 @@ steps:
       setup:
         version:
           - "1"
-          - "1.9"
+          - "1.10"
     env:
       GROUP: oneAPI
     plugins:
@@ -90,7 +90,8 @@ steps:
     matrix:
       setup:
         version:
-          - "1.9"
+          - "1"
+          - "1.10"
     env:
       GROUP: Metal
     plugins:
