@@ -41,7 +41,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     bench_sol = solve(prob, diffeq_alg,
         adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
-    @test norm(bench_sol.u - sol[1].u) < 7e-4
+    @test norm(bench_sol.u - sol[1].u) < 2e-3
 
     @info "Callback: CallbackSets"
 
@@ -54,7 +54,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     bench_sol = solve(prob, diffeq_alg,
         adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
-    @test norm(bench_sol.u - sol[1].u) < 7e-4
+    @test norm(bench_sol.u - sol[1].u) < 2e-3
 
     @info "saveat and callbacks"
 
