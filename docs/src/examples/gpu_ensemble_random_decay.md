@@ -85,7 +85,6 @@ cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
     trajectories = num_trajectories,
     save_everystep = false, # Match GPU setting
     dt = 0.01f0, adaptive = false)
-
 ```
 
 # Performance Comparison
@@ -93,7 +92,6 @@ cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
 We re-run the simulations using @time to get a cleaner measurement of the execution time, excluding the initial compilation overhead.
 
 ```@example decay
-
 # --- GPU Timing (Second Run) ---
 if gpu_sol_perf !== nothing
     @info "Timing GPU simulation (second run, no data saving)..."
