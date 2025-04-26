@@ -296,30 +296,29 @@ end
     end
 end
 
-# @kernel function gpu_kernel_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
-#         @Const(t)) where {T}
-#     i = @index(Global, Linear)
-#     @inbounds f = f[i].tgrad
-#     if eltype(p) <: Number
-#         @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
-#     else
-#         @views @inbounds f(du[:, i], u[:, i], p[i], t)
-#     end
-# end
-
-# @kernel function gpu_kernel_oop_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
-#         @Const(t)) where {T}
-#     i = @index(Global, Linear)
-#     @inbounds f = f[i].tgrad
-#     if eltype(p) <: Number
-#         @views @inbounds x = f(u[:, i], p[:, i], t)
-#     else
-#         @views @inbounds x = f(u[:, i], p[i], t)
-#     end
-#     @inbounds for j in 1:size(du, 1)
-#         du[j, i] = x[j]
-#     end
-# end
+@kernel function gpu_kernel_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+        @Const(t)) where {T}
+    i = @index(Global, Linear)
+    @inbounds f = f[i].tgrad
+    if eltype(p) <: Number
+        @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
+    else
+        @views @inbounds f(du[:, i], u[:, i], p[i], t)
+    end
+end
+@kernel function gpu_kernel_oop_tgrad(f::AbstractArray{T}, du, @Const(u), @Const(p),
+        @Const(t)) where {T}
+    i = @index(Global, Linear)
+    @inbounds f = f[i].tgrad
+    if eltype(p) <: Number
+        @views @inbounds x = f(u[:, i], p[:, i], t)
+    else
+        @views @inbounds x = f(u[:, i], p[i], t)
+    end
+    @inbounds for j in 1:size(du, 1)
+        du[j, i] = x[j]
+    end
+end
 
 function lufact!(::CPU, W)
     len = size(W, 1)
