@@ -5,6 +5,7 @@ pages = ["index.md",
     "Tutorials" => Any[
         "GPU Ensembles" => Any["tutorials/gpu_ensemble_basic.md",
             "tutorials/parallel_callbacks.md",
+            "tutorials/modelingtoolkit.md",
             "tutorials/multigpu.md",
             "tutorials/lower_level_api.md",
             "tutorials/weak_order_conv_sde.md"],
