@@ -70,6 +70,10 @@ function generate_problem(prob::SciMLBase.AbstractODEProblem,
 end
 
 function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
+    if prob.noise_rate_prototype !== nothing
+        error("Incompatible problem detected. EnsembleGPUArray currently requires `prob.noise_rate_prototype === nothing`, i.e. only diagonal noise is currently supported. Track https://github.com/SciML/DiffEqGPU.jl/issues/331 for more information.")
+    end
+
     _f = let f = prob.f.f, kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
         function (du, u, p, t)
             version = get_backend(u)
