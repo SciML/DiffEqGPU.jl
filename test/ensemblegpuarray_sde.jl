@@ -1,4 +1,4 @@
-using DiffEqGPU, StochasticDiffEq, Test
+using DiffEqGPU, StochasticDiffEq, SparseArrays, Test
 
 include("utils.jl")
 
