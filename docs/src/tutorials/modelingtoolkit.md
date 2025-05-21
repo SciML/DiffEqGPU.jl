@@ -7,6 +7,11 @@ the simplest set of equations to solve and exploiting things that normally canno
 by hand. Those exact features are also potentially useful for GPU computing, and thus this
 tutorial showcases how to effectively use MTK with DiffEqGPU.jl.
 
+!!! warn
+    This tutorial currently only works for ODEs defined by ModelingToolkit. More work
+    will be required to support DAEs in full. This is work that is ongoing and expected
+    to be completed by the summer of 2025.
+
 The core aspect to doing this right is two things. First of all, MTK respects the types
 chosen by the user, and thus in order for GPU kernel generation to work the user needs
 to ensure that the problem that is built uses static structures. For example this means
@@ -24,7 +29,6 @@ eqs = [D(D(x)) ~ σ * (y - x),
     D(z) ~ x * y - β * z]
 
 @mtkbuild sys = ODESystem(eqs, t)
-
 u0 = SA[D(x) => 2f0,
     x => 1f0,
     y => 0f0,
@@ -72,6 +76,7 @@ function prob_func2(prob, i, repeat)
     u0, p = sym_setter(prob,@SVector(rand(Float32,3)))
     remake(prob, u0 = u0, p = p)
 end
+
 monteprob = EnsembleProblem(prob, prob_func = prob_func2, safetycopy = false)
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
     trajectories = 10_000)

@@ -37,6 +37,7 @@ include("ensemblegpuarray/kernels.jl")
 include("ensemblegpuarray/problem_generation.jl")
 include("ensemblegpuarray/lowerlevel_solve.jl")
 
+include("ensemblegpukernel/problems/ode_problems.jl")
 include("ensemblegpukernel/callbacks.jl")
 include("ensemblegpukernel/lowerlevel_solve.jl")
 include("ensemblegpukernel/gpukernel_algorithms.jl")
@@ -67,7 +68,7 @@ include("ensemblegpukernel/tableaus/verner_tableaus.jl")
 include("ensemblegpukernel/tableaus/rodas_tableaus.jl")
 include("ensemblegpukernel/tableaus/kvaerno_tableaus.jl")
 
-include("ensemblegpukernel/problems/ode_problems.jl")
+
 
 include("utils.jl")
 include("algorithms.jl")
