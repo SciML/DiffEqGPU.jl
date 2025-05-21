@@ -23,6 +23,7 @@ using ForwardDiff
 import StaticArrays: StaticVecOrMat, @_inline_meta
 # import LinearAlgebra: \
 import StaticArrays: LU, StaticLUMatrix, arithmetic_closure
+import SciMLBase: ImmutableODEProblem
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
@@ -37,7 +38,6 @@ include("ensemblegpuarray/kernels.jl")
 include("ensemblegpuarray/problem_generation.jl")
 include("ensemblegpuarray/lowerlevel_solve.jl")
 
-include("ensemblegpukernel/problems/ode_problems.jl")
 include("ensemblegpukernel/callbacks.jl")
 include("ensemblegpukernel/lowerlevel_solve.jl")
 include("ensemblegpukernel/gpukernel_algorithms.jl")
