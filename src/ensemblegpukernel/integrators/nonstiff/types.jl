@@ -1,11 +1,22 @@
 ## Fixed TimeStep Integrator
 
-function Adapt.adapt_structure(to, prob::ODEProblem{<:Any, <:Any, iip}) where {iip}
-    ODEProblem{iip, true}(adapt(to, prob.f),
+function Adapt.adapt_structure(to, prob::Union{ODEProblem{<:Any, <:Any, iip}, ImmutableODEProblem{<:Any, <:Any, iip}}) where {iip}
+    ImmutableODEProblem{iip, true}(adapt(to, prob.f),
         adapt(to, prob.u0),
         adapt(to, prob.tspan),
         adapt(to, prob.p);
         adapt(to, prob.kwargs)...)
+end
+
+function Adapt.adapt_structure(to, f::ODEFunction{iip}) where {iip}
+    if f.mass_matrix !== I && f.initialization_data !== nothing
+        error("Adaptation to GPU failed: DAEs of ModelingToolkit currently not supported.")
+    end
+    ODEFunction{iip, SciMLBase.FullSpecialize}(f.f, jac = f.jac, mass_matrix = f.mass_matrix,
+    initializeprobmap = f.initializeprobmap, 
+    initializeprobpmap = f.initializeprobpmap, 
+    update_initializeprob! = f.update_initializeprob!, 
+    initialization_data = nothing, initializeprob = nothing)
 end
 
 mutable struct GPUTsit5Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <:
