@@ -38,7 +38,7 @@ MetalExt = ["Metal"]
 oneAPIExt = ["oneAPI"]
 
 [compat]
-AMDGPU = "1"
+AMDGPU = "1, 2"
 Adapt = "3, 4"
 CUDA = "4.1.0, 5"
 ChainRulesCore = "1"
