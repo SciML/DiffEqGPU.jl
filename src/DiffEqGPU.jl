@@ -83,4 +83,4 @@ export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
 export terminate!
 
 # This symbol is only defined on Julia versions that support extensions
-@static end # module
+end # module
