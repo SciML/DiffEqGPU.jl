@@ -1,5 +1,5 @@
 module CUDAExt
-isdefined(Base, :get_extension) ? (using CUDA) : (using ..CUDA)
+using CUDA
 import DiffEqGPU
 
 using .CUDA

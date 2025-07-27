@@ -83,17 +83,4 @@ export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
 export terminate!
 
 # This symbol is only defined on Julia versions that support extensions
-if !isdefined(Base, :get_extension)
-    using Requires
-end
-
-@static if !isdefined(Base, :get_extension)
-    function __init__()
-        @require CUDA="052768ef-5323-5732-b1bb-66c8b64840ba" include("../ext/CUDAExt.jl")
-        @require AMDGPU="21141c5a-9bdb-4563-92ae-f87d6854732e" include("../ext/AMDGPUExt.jl")
-        @require oneAPI="8f75cd03-7ff8-4ecb-9b8f-daf728133b1b" include("../ext/oneAPIExt.jl")
-        @require Metal="dde4c033-4e86-420c-a63e-0dd931031962" include("../ext/MetalExt.jl")
-    end
-end
-
 end # module

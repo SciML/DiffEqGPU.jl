@@ -1,5 +1,5 @@
 module MetalExt
-isdefined(Base, :get_extension) ? (using Metal) : (using ..Metal)
+using Metal
 import DiffEqGPU
 
 using .Metal
