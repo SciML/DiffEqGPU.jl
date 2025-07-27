@@ -1,5 +1,5 @@
 module oneAPIExt
-isdefined(Base, :get_extension) ? (using oneAPI) : (using ..oneAPI)
+using oneAPI
 import DiffEqGPU
 
 using .oneAPI

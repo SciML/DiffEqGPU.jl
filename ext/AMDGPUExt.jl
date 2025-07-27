@@ -1,5 +1,5 @@
 module AMDGPUExt
-isdefined(Base, :get_extension) ? (using AMDGPU) : (using ..AMDGPU)
+using AMDGPU
 import DiffEqGPU
 
 using .AMDGPU
