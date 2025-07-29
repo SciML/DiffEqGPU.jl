@@ -40,7 +40,7 @@
         !saved_in_cb && savevalues!(integ, ts, us)
     end
     if integ.t > tspan[2] && saveat === nothing
-        ## Intepolate to tf
+        ## Interpolate to tf
         @inbounds us[end] = integ(tspan[2])
         @inbounds ts[end] = tspan[2]
     end
@@ -99,7 +99,7 @@ end
     end
 
     if integ.t > tspan[2] && saveat === nothing
-        ## Intepolate to tf
+        ## Interpolate to tf
         @inbounds us[end] = integ(tspan[2])
         @inbounds ts[end] = tspan[2]
     end

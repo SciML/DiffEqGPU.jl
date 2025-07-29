@@ -37,5 +37,5 @@ using Plots
 plot(ts, us_expect, lw = 5,
     xaxis = "Time (t)", yaxis = "y(t)", label = "True Expected value")
 
-plot!(ts, us_calc, lw = 3, ls = :dash, label = "Caculated Expected value")
+plot!(ts, us_calc, lw = 3, ls = :dash, label = "Calculated Expected value")
 ```
