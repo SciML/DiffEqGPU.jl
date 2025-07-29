@@ -1,4 +1,4 @@
-# [Using the Lower Level API for Decreased Overhead with GPU acclerated Ensembles](@id lowerlevel)
+# [Using the Lower Level API for Decreased Overhead with GPU accelerated Ensembles](@id lowerlevel)
 
 `EnsembleGPUKernel` is designed to match the SciML ensemble interface in order to allow for directly
 converting CPU code to GPU code without any code changes. However, this hiding of the GPU aspects
