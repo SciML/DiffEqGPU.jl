@@ -166,8 +166,9 @@ function rober_jac(internal_var___J, internal_var___u, internal_var___p, t)
         internal_var___J[1, 2] = internal_var___p[3] * internal_var___u[3]
         internal_var___J[1, 3] = internal_var___p[3] * internal_var___u[2]
         internal_var___J[2, 1] = internal_var___p[1] * 1
-        internal_var___J[2, 2] = -2 * internal_var___p[2] * internal_var___u[2] -
-                                 internal_var___p[3] * internal_var___u[3]
+        internal_var___J[2,
+            2] = -2 * internal_var___p[2] * internal_var___u[2] -
+                 internal_var___p[3] * internal_var___u[3]
         internal_var___J[2, 3] = -(internal_var___p[3]) * internal_var___u[2]
         internal_var___J[3, 1] = 0 * 1
         internal_var___J[3, 2] = 2 * internal_var___p[2] * internal_var___u[2]

@@ -19,10 +19,12 @@ kernel_u! = let N = N, xyd = xyd_brusselator, dx = step(xyd_brusselator)
         im1 = limit(i - 1, N)
         jp1 = limit(j + 1, N)
         jm1 = limit(j - 1, N)
-        du[II[i, j, 1]] = α * (u[II[im1, j, 1]] + u[II[ip1, j, 1]] + u[II[i, jp1, 1]] +
-                           u[II[i, jm1, 1]] - 4u[II[i, j, 1]]) +
-                          B + u[II[i, j, 1]]^2 * u[II[i, j, 2]] - (A + 1) * u[II[i, j, 1]] +
-                          brusselator_f(x, y, t)
+        du[II[i,
+            j,
+            1]] = α * (u[II[im1, j, 1]] + u[II[ip1, j, 1]] + u[II[i, jp1, 1]] +
+                   u[II[i, jm1, 1]] - 4u[II[i, j, 1]]) +
+                  B + u[II[i, j, 1]]^2 * u[II[i, j, 2]] - (A + 1) * u[II[i, j, 1]] +
+                  brusselator_f(x, y, t)
     end
 end
 kernel_v! = let N = N, xyd = xyd_brusselator, dx = step(xyd_brusselator)
@@ -32,9 +34,11 @@ kernel_v! = let N = N, xyd = xyd_brusselator, dx = step(xyd_brusselator)
         im1 = limit(i - 1, N)
         jp1 = limit(j + 1, N)
         jm1 = limit(j - 1, N)
-        du[II[i, j, 2]] = α * (u[II[im1, j, 2]] + u[II[ip1, j, 2]] + u[II[i, jp1, 2]] +
-                           u[II[i, jm1, 2]] - 4u[II[i, j, 2]]) +
-                          A * u[II[i, j, 1]] - u[II[i, j, 1]]^2 * u[II[i, j, 2]]
+        du[II[i,
+            j,
+            2]] = α * (u[II[im1, j, 2]] + u[II[ip1, j, 2]] + u[II[i, jp1, 2]] +
+                   u[II[i, jm1, 2]] - 4u[II[i, j, 2]]) +
+                  A * u[II[i, j, 1]] - u[II[i, j, 1]]^2 * u[II[i, j, 2]]
     end
 end
 brusselator_2d = let N = N, xyd = xyd_brusselator, dx = step(xyd_brusselator)

@@ -108,7 +108,8 @@ end
         saved_in_cb::Bool, callback::GPUDiscreteCallback,
         args...) where {AlgType <: GPUODEAlgorithm, IIP,
         S, T}
-    bool, saved_in_cb2 = apply_discrete_callback!(integrator, ts, us,
+    bool,
+    saved_in_cb2 = apply_discrete_callback!(integrator, ts, us,
         apply_discrete_callback!(integrator, ts,
             us, callback)...,
         args...)
@@ -243,14 +244,19 @@ end
     if !(continuous_callbacks isa Tuple{})
         event_occurred = false
 
-        time, upcrossing, event_occurred, event_idx, idx, counter = DiffEqBase.find_first_continuous_callback(
+        time, upcrossing,
+        event_occurred,
+        event_idx,
+        idx,
+        counter = DiffEqBase.find_first_continuous_callback(
             integrator,
             continuous_callbacks...)
 
         if event_occurred
             integrator.event_last_time = idx
             integrator.vector_event_last_time = event_idx
-            continuous_modified, saved_in_cb = apply_callback!(integrator,
+            continuous_modified,
+            saved_in_cb = apply_callback!(integrator,
                 continuous_callbacks[1],
                 time, upcrossing,
                 event_idx, ts, us)
@@ -260,7 +266,8 @@ end
         end
     end
     if !(discrete_callbacks isa Tuple{})
-        discrete_modified, saved_in_cb = apply_discrete_callback!(integrator, ts, us,
+        discrete_modified,
+        saved_in_cb = apply_discrete_callback!(integrator, ts, us,
             discrete_callbacks...)
         return discrete_modified, saved_in_cb
     end
@@ -278,7 +285,10 @@ end
         callback::DiffEqGPU.GPUContinuousCallback,
         counter) where {AlgType <: GPUODEAlgorithm,
         IIP, S, T}
-    event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(
+    event_occurred, interp_index,
+    prev_sign,
+    prev_sign_index,
+    event_idx = DiffEqBase.determine_event_occurance(
         integrator,
         callback,
         counter)

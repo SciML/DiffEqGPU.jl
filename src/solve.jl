@@ -156,7 +156,8 @@ function batch_solve(ensembleprob, alg,
             end
             if !all(
                 Base.Fix2(
-                    (prob1, prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
+                    (prob1,
+                        prob2) -> isequal(sizeof(get(prob1.kwargs, :saveat,
                             nothing)),
                         sizeof(get(prob2.kwargs, :saveat,
                             nothing))),
@@ -170,7 +171,8 @@ function batch_solve(ensembleprob, alg,
             # Get inner saveat if global one isn't specified
             _saveat = get(probs[1].kwargs, :saveat, nothing)
             saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
-            solts, solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
+            solts,
+            solus = batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I,
                 adaptive; saveat = saveat, kwargs...)
             [begin
                  ts = @view solts[:, i]
@@ -228,7 +230,8 @@ function batch_solve(ensembleprob, alg,
             probs[1] = remake(probs[1];
                 tspan = (zero(probs[1].tspan[1]), one(probs[1].tspan[2])))
 
-            sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I,
+            sol,
+            solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I,
                 u0, p; adaptive = adaptive, kwargs...)
 
             probs[1] = orig_prob
@@ -249,7 +252,8 @@ function batch_solve(ensembleprob, alg,
             p = reduce(hcat,
                 probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
                 for i in 1:length(I))
-            sol, solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
+            sol,
+            solus = batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p;
                 adaptive = adaptive, kwargs...)
             [ensembleprob.output_func(
                  SciMLBase.build_solution(probs[i], alg, sol.t,
@@ -277,10 +281,12 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
 
     #Adaptive version only works with saveat
     if adaptive
-        ts, us = vectorized_asolve(probs, ensembleprob.prob, alg;
+        ts,
+        us = vectorized_asolve(probs, ensembleprob.prob, alg;
             kwargs..., callback = _callback)
     else
-        ts, us = vectorized_solve(probs, ensembleprob.prob, alg;
+        ts,
+        us = vectorized_solve(probs, ensembleprob.prob, alg;
             kwargs..., callback = _callback)
     end
     solus = Array(us)

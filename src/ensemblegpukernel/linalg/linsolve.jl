@@ -53,7 +53,8 @@ for Sa in [(2, 2), (3, 3)]  # not needed for Sa = (1, 1);
                 # This if block can be removed when https://github.com/JuliaArrays/StaticArrays.jl/pull/749 is merged.
                 c = similar(b, T)
                 for col in 1:Sb[2]
-                    @inbounds c[:, col] = _linear_solve(Size($Sa),
+                    @inbounds c[
+                        :, col] = _linear_solve(Size($Sa),
                         Size($Sa[1]),
                         a,
                         b[:, col])
