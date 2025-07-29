@@ -57,7 +57,7 @@ probs = cu(probs)
 Note that the core is the function `DiffEqGPU.vectorized_solve` which is the solver for the CUDA-based `probs`
 which uses the manually converted problems, and returns `us` which is a vector of CuArrays for the solution.
 
-Similarily, there exists a lower-level API for `EnsembleGPUArray` as well, primarily for benchmarking purposes. The solution
+Similarly, there exists a lower-level API for `EnsembleGPUArray` as well, primarily for benchmarking purposes. The solution
 returned for state (`sol.u`) is a matrix having columns as different parameter-parallel solutions for the ensemble problem.
 An example is shown below:
 

@@ -278,7 +278,7 @@ end
         callback::DiffEqGPU.GPUContinuousCallback,
         counter) where {AlgType <: GPUODEAlgorithm,
         IIP, S, T}
-    event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurance(
+    event_occurred, interp_index, prev_sign, prev_sign_index, event_idx = DiffEqBase.determine_event_occurrence(
         integrator,
         callback,
         counter)
@@ -360,7 +360,7 @@ end
 end
 
 # interp_points = 0 or equivalently nothing
-@inline function DiffEqBase.determine_event_occurance(
+@inline function DiffEqBase.determine_event_occurrence(
         integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,
