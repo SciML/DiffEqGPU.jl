@@ -63,7 +63,8 @@
     dtgamma = dt * γ
 
     # Starting
-    W = J - I * inv(dtgamma)
+    mass_matrix = f.mass_matrix
+    W = mass_matrix / dtgamma - J
     du = f(uprev, p, t)
 
     # Step 1
@@ -182,7 +183,8 @@ end
         dtgamma = dt * γ
 
         # Starting
-        W = J - I * inv(dtgamma)
+        mass_matrix = f.mass_matrix
+        W = mass_matrix / dtgamma - J
         du = f(uprev, p, t)
 
         # Step 1

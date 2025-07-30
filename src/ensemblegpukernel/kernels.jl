@@ -15,10 +15,18 @@
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    integ = init(alg, prob.f, false, prob.u0, prob.tspan[1], dt, prob.p, tstops,
-        callback, save_everystep, saveat)
+    # Check if initialization is needed for DAEs
+    u0, p_init,
+    init_success = if SciMLBase.has_initialization_data(prob.f)
+        # Perform initialization using SimpleNonlinearSolve compatible algorithm
+        gpu_initialization_solve(prob, SimpleTrustRegion(), 1e-6, 1e-6)
+    else
+        prob.u0, prob.p, true
+    end
 
-    u0 = prob.u0
+    # Use initialized values
+    integ = init(alg, prob.f, false, u0, prob.tspan[1], dt, p_init, tstops,
+        callback, save_everystep, saveat)
     tspan = prob.tspan
 
     integ.cur_t = 0
@@ -68,16 +76,24 @@ end
 
     saveat = _saveat === nothing ? saveat : _saveat
 
-    u0 = prob.u0
+    # Check if initialization is needed for DAEs
+    u0, p_init,
+    init_success = if SciMLBase.has_initialization_data(prob.f)
+        # Perform initialization using SimpleNonlinearSolve compatible algorithm
+        gpu_initialization_solve(prob, SimpleTrustRegion(), abstol, reltol)
+    else
+        prob.u0, prob.p, true
+    end
+
     tspan = prob.tspan
     f = prob.f
-    p = prob.p
+    p = p_init
 
     t = tspan[1]
     tf = prob.tspan[2]
 
-    integ = init(alg, prob.f, false, prob.u0, prob.tspan[1], prob.tspan[2], dt,
-        prob.p,
+    integ = init(alg, prob.f, false, u0, prob.tspan[1], prob.tspan[2], dt,
+        p,
         abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
         saveat)
 
