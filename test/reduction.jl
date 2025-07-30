@@ -3,8 +3,8 @@ using OrdinaryDiffEq, DiffEqGPU, Test
 include("utils.jl")
 
 seed = 100
-using Random;
-Random.seed!(seed);
+using Random
+Random.seed!(seed)
 ra = rand(100)
 
 function f!(du, u, p, t)

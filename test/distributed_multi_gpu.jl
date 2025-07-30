@@ -1,6 +1,7 @@
 using Distributed
 addprocs(2)
-@everywhere using DiffEqGPU, OrdinaryDiffEq, Test, Random
+@everywhere using DiffEqGPU, OrdinaryDiffEq, Test
+@everywhere using Random
 @everywhere include("utils.jl")
 
 @everywhere begin
