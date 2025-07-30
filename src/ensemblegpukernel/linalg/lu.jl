@@ -103,7 +103,10 @@ function __lu(A::StaticMatrix{M, 1}, ::Val{Pivot}) where {M, Pivot}
         end
         ps = tailindices(Val{M})
         if kp != 1
-            ps = setindex(ps, 1, kp - 1)
+            # Swap elements: put 1 at position kp-1, and kp at the first position  
+            ps_array = [ps...]
+            ps_array[kp - 1] = 1
+            ps = SVector{length(ps)}(ps_array)
         end
         U = SMatrix{1, 1}(A[kp, 1])
         # Scale first column
@@ -133,7 +136,10 @@ function __lu(A::StaticLUMatrix{M, N, T}, ::Val{Pivot}) where {M, N, T, Pivot}
         end
         ps = tailindices(Val{M})
         if kp != 1
-            ps = setindex(ps, 1, kp - 1)
+            # Swap elements: put 1 at position kp-1, and kp at the first position
+            ps_array = [ps...]
+            ps_array[kp - 1] = 1  
+            ps = SVector{length(ps)}(ps_array)
         end
         Ufirst = SMatrix{1, N}(A[kp, :])
         # Scale first column
