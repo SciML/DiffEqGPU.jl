@@ -1,0 +1,79 @@
+name: CI
+on:
+  pull_request:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+  push:
+    branches:
+      - master
+    paths-ignore:
+      - 'docs/**'
+  workflow_dispatch:
+
+jobs:
+  test:
+    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ matrix.group }}
+    runs-on: ${{ matrix.os }}
+    strategy:
+      fail-fast: false
+      matrix:
+        version:
+          - '1.10'
+          - '1.11'
+        os:
+          - ubuntu-latest
+          - windows-latest
+          - macOS-latest
+        arch:
+          - x64
+        group:
+          - CPU
+        include:
+          # Test CUDA on Ubuntu
+          - version: '1.10'
+            os: ubuntu-latest
+            arch: x64
+            group: CUDA
+          # Test AMDGPU on Ubuntu
+          - version: '1.10'
+            os: ubuntu-latest
+            arch: x64
+            group: AMDGPU
+          # Test oneAPI on Ubuntu
+          - version: '1.10'
+            os: ubuntu-latest
+            arch: x64
+            group: oneAPI
+          # Test Metal on macOS
+          - version: '1.10'
+            os: macOS-latest
+            arch: x64
+            group: Metal
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: ${{ matrix.version }}
+          arch: ${{ matrix.arch }}
+      - uses: julia-actions/cache@v2
+      - name: Install GPU dependencies
+        if: matrix.group == 'CUDA'
+        run: |
+          # Install CUDA toolkit for testing
+          sudo apt-get update
+          sudo apt-get install -y nvidia-cuda-toolkit
+        shell: bash
+      - uses: julia-actions/julia-buildpkg@v1
+      - uses: julia-actions/julia-runtest@v1
+        env:
+          GROUP: ${{ matrix.group }}
+      - uses: julia-actions/julia-processcoverage@v1
+        if: matrix.group == 'CPU'
+      - uses: codecov/codecov-action@v4
+        if: matrix.group == 'CPU'
+        with:
+          files: lcov.info
+          token: ${{ secrets.CODECOV_TOKEN }}
+          fail_ci_if_error: false

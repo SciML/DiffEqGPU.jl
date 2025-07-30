@@ -17,6 +17,7 @@ jobs:
       matrix:
         downgrade_mode: ['alldeps']
         julia-version: ['1.10']
+        group: ['CPU']
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
@@ -29,3 +30,5 @@ jobs:
       - uses: julia-actions/julia-runtest@v1
         with:
           ALLOW_RERESOLVE: false
+        env:
+          GROUP: ${{ matrix.group }}
