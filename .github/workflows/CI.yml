@@ -3,53 +3,49 @@ on:
   pull_request:
     branches:
       - master
-    paths-ignore:
-      - 'docs/**'
   push:
     branches:
       - master
-    paths-ignore:
-      - 'docs/**'
-  workflow_dispatch:
-
 jobs:
   test:
-    name: Julia ${{ matrix.version }} - ${{ matrix.os }} - ${{ matrix.arch }} - ${{ matrix.group }}
-    runs-on: ${{ matrix.os }}
+    runs-on: ubuntu-latest
+    continue-on-error: ${{ matrix.group == 'Downstream' }}
     strategy:
       fail-fast: false
       matrix:
-        version:
-          - '1'
-          - 'lts'
-          - 'pre'
-        os:
-          - ubuntu-latest
-        arch:
-          - x64
         group:
           - CPU
+        version:
+          - 'lts'
+          - '1'
+          - 'pre'
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
         with:
           version: ${{ matrix.version }}
-          arch: ${{ matrix.arch }}
-      - uses: julia-actions/cache@v2
-      - name: Install GPU dependencies
-        if: matrix.group == 'CUDA'
-        run: |
-          # Install CUDA toolkit for testing
-          sudo apt-get update
-          sudo apt-get install -y nvidia-cuda-toolkit
-        shell: bash
-      - uses: julia-actions/julia-buildpkg@v1
+      - uses: actions/cache@v4
+        env:
+          cache-name: cache-artifacts
+        with:
+          path: ~/.julia/artifacts
+          key: ${{ runner.os }}-test-${{ env.cache-name }}-${{ hashFiles('**/Project.toml') }}
+          restore-keys: |
+            ${{ runner.os }}-test-${{ env.cache-name }}-
+            ${{ runner.os }}-test-
+            ${{ runner.os }}-
       - uses: julia-actions/julia-runtest@v1
+        with:
+          coverage: false
+          check_bounds: auto
         env:
           GROUP: ${{ matrix.group }}
       - uses: julia-actions/julia-processcoverage@v1
-        if: matrix.group == 'CPU'
-      - uses: codecov/codecov-action@v4
+      - uses: codecov/codecov-action@v5
+        with:
+          token: ${{ secrets.CODECOV_TOKEN }}
+          file: lcov.info
+          fail_ci_if_error: false
         if: matrix.group == 'CPU'
         with:
           files: lcov.info
