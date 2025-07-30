@@ -34,8 +34,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
 @test length(filter(x -> x.u != sol2.u[6].u, sol.u)) != 0 # 0 element array
-@test all(all(sol[i].prob.p .== pre_p_distributed[i] .* p) for i in 1:10)
-@test all(all(sol2[i].prob.p .== pre_p_distributed[i] .* p) for i in 1:10)
+@test all(all(sol.u[i].prob.p .== pre_p_distributed[i] .* p) for i in 1:10)
+@test all(all(sol2.u[i].prob.p .== pre_p_distributed[i] .* p) for i in 1:10)
 
 #To set 1 GPU per device:
 #=

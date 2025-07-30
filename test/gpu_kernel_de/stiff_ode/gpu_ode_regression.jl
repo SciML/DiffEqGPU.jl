@@ -49,8 +49,8 @@ for alg in algs
         abstol = 1.0f-7,
         reltol = 1.0f-7)
 
-    @test norm(bench_sol.u[end] - sol[1].u[end]) < 5e-3
-    @test norm(bench_asol.u - asol[1].u) < 6e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 5e-3
+    @test norm(bench_asol.u - asol.u[1].u) < 6e-3
 
     ### solve parameters
 
@@ -68,14 +68,14 @@ for alg in algs
         abstol = 1.0f-7,
         reltol = 1.0f-7, saveat = saveat)
 
-    @test norm(asol[1].u[end] - sol[1].u[end]) < 4e-2
+    @test norm(asol.u[1].u[end] - sol.u[1].u[end]) < 4e-2
 
-    @test norm(bench_sol.u - sol[1].u) < 2e-4
+    @test norm(bench_sol.u - sol.u[1].u) < 2e-4
     #Use to fail for 2e-4
-    @test norm(bench_asol.u - asol[1].u) < 2e-3
+    @test norm(bench_asol.u - asol.u[1].u) < 2e-3
 
-    @test length(sol[1].u) == length(saveat)
-    @test length(asol[1].u) == length(saveat)
+    @test length(sol.u[1].u) == length(saveat)
+    @test length(asol.u[1].u) == length(saveat)
 
     saveat = collect(0.0f0:0.1f0:10.0f0)
 
@@ -92,13 +92,13 @@ for alg in algs
         reltol = 1.0f-7, saveat = saveat)
 
     #Fails also OrdinaryDiffEq.jl
-    # @test norm(asol[1].u[end] - sol[1].u[end]) < 6e-3
+    # @test norm(asol.u[1].u[end] - sol.u[1].u[end]) < 6e-3
 
-    @test norm(bench_sol.u - sol[1].u) < 2e-3
-    @test norm(bench_asol.u - asol[1].u) < 3e-2
+    @test norm(bench_sol.u - sol.u[1].u) < 2e-3
+    @test norm(bench_asol.u - asol.u[1].u) < 3e-2
 
-    @test length(sol[1].u) == length(saveat)
-    @test length(asol[1].u) == length(saveat)
+    @test length(sol.u[1].u) == length(saveat)
+    @test length(asol.u[1].u) == length(saveat)
 
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
         adaptive = false, dt = 0.01f0, save_everystep = false)
@@ -106,9 +106,9 @@ for alg in algs
     bench_sol = solve(prob, Rosenbrock23(), adaptive = false, dt = 0.01f0,
         save_everystep = false)
 
-    @test norm(bench_sol.u - sol[1].u) < 5e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 5e-3
 
-    @test length(sol[1].u) == length(bench_sol.u)
+    @test length(sol.u[1].u) == length(bench_sol.u)
 
     ### Huge number of threads
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0),
