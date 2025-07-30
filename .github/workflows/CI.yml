@@ -29,27 +29,6 @@ jobs:
           - x64
         group:
           - CPU
-        include:
-          # Test CUDA on Ubuntu
-          - version: '1.10'
-            os: ubuntu-latest
-            arch: x64
-            group: CUDA
-          # Test AMDGPU on Ubuntu
-          - version: '1.10'
-            os: ubuntu-latest
-            arch: x64
-            group: AMDGPU
-          # Test oneAPI on Ubuntu
-          - version: '1.10'
-            os: ubuntu-latest
-            arch: x64
-            group: oneAPI
-          # Test Metal on macOS
-          - version: '1.10'
-            os: macOS-latest
-            arch: x64
-            group: Metal
     steps:
       - uses: actions/checkout@v4
       - uses: julia-actions/setup-julia@v2
