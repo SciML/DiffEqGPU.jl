@@ -26,7 +26,7 @@ for alg in (GPURosenbrock23(autodiff = false), GPURodas4(autodiff = false),
     @info alg
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0),
         trajectories = 2, save_everystep = false, adaptive = true, dt = 0.01f0)
-    @test norm(sol[1].u - osol.u) < 2e-4
+    @test norm(sol.u[1].u - osol.u) < 2e-4
 
     # massive threads
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0),

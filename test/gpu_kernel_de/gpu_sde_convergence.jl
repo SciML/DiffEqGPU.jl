@@ -14,7 +14,7 @@ prob = SDEProblem(f, g, u₀, tspan, p; seed = 1234)
 dts = 1 .// 2 .^ (5:-1:2)
 
 ensemble_prob = EnsembleProblem(prob;
-    output_func = (sol, i) -> (sol[end], false))
+    output_func = (sol, i) -> (sol.u[end], false))
 
 @info "EM"
 dts = 1 .// 2 .^ (12:-1:8)

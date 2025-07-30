@@ -45,8 +45,8 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
         tstops = [2.40f0])
 
-    @test norm(bench_sol(2.40f0) - sol[1](2.40f0)) < 2e-3
-    @test norm(bench_sol.u - sol[1].u) < 5e-3
+    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 2e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 5e-3
 
     #Test the truncation error due to floating point math, encountered when adjusting t for tstops
     local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
@@ -58,8 +58,8 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
         tstops = [4.0f0])
 
-    @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 2e-6
-    @test norm(bench_sol.u - sol[1].u) < 3e-5
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 2e-6
+    @test norm(bench_sol.u - sol.u[1].u) < 3e-5
 
     @info "Callback: CallbackSets"
 
@@ -81,9 +81,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
         tstops = [2.40f0, 4.0f0])
 
-    @test norm(bench_sol(2.40f0) - sol[1](2.40f0)) < 2e-3
-    @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 3e-3
-    @test norm(bench_sol.u - sol[1].u) < 7e-3
+    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 2e-3
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 3e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 7e-3
 
     @info "saveat and callbacks"
 
@@ -96,9 +96,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
         tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0])
 
-    @test norm(bench_sol(2.40f0) - sol[1](2.40f0)) < 1e-3
-    @test norm(bench_sol(6.0f0) - sol[1](6.0f0)) < 3e-3
-    @test norm(bench_sol.u - sol[1].u) < 3e-3
+    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 1e-3
+    @test norm(bench_sol(6.0f0) - sol.u[1](6.0f0)) < 3e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 3e-3
 
     @info "save_everystep and callbacks"
 
@@ -111,9 +111,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
         tstops = [2.40f0, 4.0f0], save_everystep = false)
 
-    @test norm(bench_sol(2.40f0) - sol[1](2.40f0)) < 3e-5
-    @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 5e-5
-    @test norm(bench_sol.u - sol[1].u) < 2e-4
+    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 3e-5
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 5e-5
+    @test norm(bench_sol.u - sol.u[1].u) < 2e-4
 
     @info "Adaptive version"
 
@@ -129,8 +129,8 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         merge_callbacks = true,
         tstops = [4.0f0])
 
-    @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 5e-5
-    @test norm(bench_sol.u - sol[1].u) < 2e-4
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 5e-5
+    @test norm(bench_sol.u - sol.u[1].u) < 2e-4
 
     @info "Callback: CallbackSets"
 
@@ -144,9 +144,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         merge_callbacks = true,
         tstops = [2.40f0, 4.0f0])
 
-    @test norm(bench_sol(2.40f0) - sol[1](2.40f0)) < 6e-4
-    @test norm(bench_sol(4.0f0) - sol[1](4.0f0)) < 1e-3
-    @test norm(bench_sol.u - sol[1].u) < 3e-3
+    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 6e-4
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 1e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 3e-3
 
     @info "saveat and callbacks"
 
@@ -162,9 +162,9 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0], reltol = 1.0f-7,
         abstol = 1.0f-7)
 
-    @test norm(bench_sol(2.40f0) - sol[1](2.40f0)) < 7e-3
-    @test norm(bench_sol(6.0f0) - sol[1](6.0f0)) < 2e-2
-    @test norm(bench_sol.u - sol[1].u) < 2e-2
+    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 7e-3
+    @test norm(bench_sol(6.0f0) - sol.u[1](6.0f0)) < 2e-2
+    @test norm(bench_sol.u - sol.u[1].u) < 2e-2
 
     @info "Terminate callback"
 
@@ -179,6 +179,6 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
         tstops = [2.40f0])
 
-    @test norm(bench_sol.t - sol[1].t) < 2e-3
-    @test norm(bench_sol.u - sol[1].u) < 5e-3
+    @test norm(bench_sol.t - sol.u[1].t) < 2e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 5e-3
 end

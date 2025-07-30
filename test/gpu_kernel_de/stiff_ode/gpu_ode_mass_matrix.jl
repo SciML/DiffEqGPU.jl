@@ -35,5 +35,5 @@ sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
     dt = 0.1f0,
     adaptive = true, abstol = 1.0f-5, reltol = 1.0f-5)
 
-@test norm(bench_sol.u[1] - sol[1].u[1]) < 8e-4
-@test norm(bench_sol.u[end] - sol[1].u[end]) < 8e-4
+@test norm(bench_sol.u[1] - sol.u[1].u[1]) < 8e-4
+@test norm(bench_sol.u[end] - sol.u[1].u[end]) < 8e-4

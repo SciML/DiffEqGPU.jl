@@ -30,8 +30,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
 @test length(filter(x -> x.u != sol2.u[6].u, sol.u)) != 0 # 0 element array
-@test all(all(sol[i].prob.p .== pre_p[i] .* p) for i in 1:10)
-@test all(all(sol2[i].prob.p .== pre_p[i] .* p) for i in 1:10)
+@test all(all(sol.u[i].prob.p .== pre_p[i] .* p) for i in 1:10)
+@test all(all(sol2.u[i].prob.p .== pre_p[i] .* p) for i in 1:10)
 
 @time solve(monteprob, Tsit5(), EnsembleCPUArray(), trajectories = 10, saveat = 1.0f0)
 @time solve(monteprob, Tsit5(), EnsembleThreads(), trajectories = 10, saveat = 1.0f0)

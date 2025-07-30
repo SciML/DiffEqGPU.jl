@@ -33,7 +33,7 @@ for alg in algs
 
     us = reshape(mean(sol_array, dims = 3), size(sol_array, 2))
 
-    us_exact = 0.5f0 * exp.(sol[1].t)
+    us_exact = 0.5f0 * exp.(sol.u[1].t)
 
     @test norm(us - us_exact, Inf) < 6e-2
 
@@ -67,7 +67,7 @@ for alg in algs
         adaptive = false, save_everystep = false)
 
     @test sol.converged == true
-    @test length(sol[1].u) == 2
+    @test length(sol.u[1].u) == 2
 
     saveat = [0.3f0, 0.5f0]
 
@@ -111,4 +111,4 @@ sol = solve(
     adaptive = false, save_everystep = false)
 
 @test sol.converged == true
-@test length(sol[1].u) == 2
+@test length(sol.u[1].u) == 2
