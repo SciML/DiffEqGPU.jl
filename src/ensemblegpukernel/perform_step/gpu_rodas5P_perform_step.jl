@@ -7,7 +7,8 @@
     integ.uprev = integ.u
     uprev = integ.u
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a62, a63, a64, a65,
-    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, C71, C72, C73, C74, C75, C76,
+    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61,
+    C62, C63, C64, C65, C71, C72, C73, C74, C75, C76,
     C81, C82, C83, C84, C85, C86, C87, γ, d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
 
     integ.tprev = t
@@ -77,7 +78,8 @@
     dtgamma = dt * γ
 
     # Starting
-    W = J - I * inv(dtgamma)
+    mass_matrix = f.mass_matrix
+    W = mass_matrix / dtgamma - J
     du = f(uprev, p, t)
 
     # Step 1
@@ -147,7 +149,8 @@
 end
 
 @inline function step!(integ::GPUARodas5PI{false, S, T}, ts, us) where {T, S}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+    beta1, beta2, qmax, qmin, gamma, qoldinit,
+    _ = build_adaptive_controller_cache(
         integ.alg,
         T)
 
@@ -166,7 +169,8 @@ end
     reltol = integ.reltol
 
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a62, a63, a64, a65,
-    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65, C71, C72, C73, C74, C75, C76,
+    C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61,
+    C62, C63, C64, C65, C71, C72, C73, C74, C75, C76,
     C81, C82, C83, C84, C85, C86, C87, γ, d1, d2, d3, d4, d5, c2, c3, c4, c5 = integ.tab
 
     # Jacobian
@@ -226,7 +230,8 @@ end
         dtgamma = dt * γ
 
         # Starting
-        W = J - I * inv(dtgamma)
+        mass_matrix = f.mass_matrix
+        W = mass_matrix / dtgamma - J
         du = f(uprev, p, t)
 
         # Step 1

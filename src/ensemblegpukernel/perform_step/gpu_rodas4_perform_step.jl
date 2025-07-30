@@ -63,7 +63,8 @@
     dtgamma = dt * γ
 
     # Starting
-    W = J - I * inv(dtgamma)
+    mass_matrix = f.mass_matrix
+    W = mass_matrix / dtgamma - J
     du = f(uprev, p, t)
 
     # Step 1
@@ -115,7 +116,8 @@
 end
 
 @inline function step!(integ::GPUARodas4I{false, S, T}, ts, us) where {T, S}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+    beta1, beta2, qmax, qmin, gamma, qoldinit,
+    _ = build_adaptive_controller_cache(
         integ.alg,
         T)
 
@@ -181,7 +183,8 @@ end
         dtgamma = dt * γ
 
         # Starting
-        W = J - I * inv(dtgamma)
+        mass_matrix = f.mass_matrix
+        W = mass_matrix / dtgamma - J
         du = f(uprev, p, t)
 
         # Step 1
