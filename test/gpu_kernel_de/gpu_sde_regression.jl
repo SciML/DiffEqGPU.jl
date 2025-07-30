@@ -12,17 +12,17 @@ for alg in algs
     # dX_t = u*dt + udW_t
     f(u, p, t) = u
     g(u, p, t) = u
-    u0 = @SVector [0.5f0]
+    local u0 = @SVector [0.5f0]
 
-    tspan = (0.0f0, 1.0f0)
-    prob = SDEProblem(f, g, u0, tspan; seed = 123)
+    local tspan = (0.0f0, 1.0f0)
+    local prob = SDEProblem(f, g, u0, tspan; seed = 123)
 
-    monteprob = EnsembleProblem(prob)
+    local monteprob = EnsembleProblem(prob)
 
     dt = Float32(1 // 2^(8))
 
     ## solve using off-loading on CPU
-    sol = solve(monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
+    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
         adaptive = false)
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt,
@@ -50,13 +50,13 @@ for alg in algs
         return SVector{3}(3.0f0, 3.0f0, 3.0f0)
     end
 
-    u0 = @SVector [1.0f0, 0.0f0, 0.0f0]
-    tspan = (0.0f0, 10.0f0)
-    prob = SDEProblem(lorenz, σ_lorenz, u0, tspan)
-    monteprob = EnsembleProblem(prob)
+    local u0 = @SVector [1.0f0, 0.0f0, 0.0f0]
+    local tspan = (0.0f0, 10.0f0)
+    local prob = SDEProblem(lorenz, σ_lorenz, u0, tspan)
+    local monteprob = EnsembleProblem(prob)
     dt = Float32(1 // 2^(8))
 
-    sol = solve(
+    local sol = solve(
         monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
         adaptive = false)
 
