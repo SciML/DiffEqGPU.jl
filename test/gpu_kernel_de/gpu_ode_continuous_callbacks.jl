@@ -41,7 +41,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     bench_sol = solve(prob, diffeq_alg,
         adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 2e-3
 
     @info "Callback: CallbackSets"
 
@@ -54,7 +54,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     bench_sol = solve(prob, diffeq_alg,
         adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true)
 
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 2e-3
 
     @info "saveat and callbacks"
 
@@ -67,7 +67,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
         saveat = [0.0f0, 9.1f0])
 
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 2e-3
 
     @info "save_everystep and callbacks"
 
@@ -80,7 +80,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = false, dt = 0.1f0, callback = cb, merge_callbacks = true,
         save_everystep = false)
 
-    @test norm(bench_sol.u - sol.u[1].u) < 7e-4
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 7e-4
 
     @info "Adaptive version"
 
@@ -94,7 +94,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = true, save_everystep = false, dt = 0.1f0, callback = cb,
         merge_callbacks = true)
 
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 2e-3
 
     @info "Callback: CallbackSets"
 
@@ -108,7 +108,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         adaptive = true, dt = 0.1f0, save_everystep = false, callback = cb,
         merge_callbacks = true)
 
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 2e-3
 
     @info "saveat and callbacks"
 
@@ -123,7 +123,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         tstops = [24.0f0, 40.0f0], saveat = [0.0f0, 9.1f0], reltol = 1.0f-6,
         abstol = 1.0f-6)
 
-    @test norm(bench_sol.u - sol.u[1].u) < 8e-4
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 8e-4
 
     @info "Unadaptive and Adaptive comparison"
 

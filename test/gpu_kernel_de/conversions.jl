@@ -23,25 +23,25 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 if ENV["GROUP"] ∉ ("Metal", "oneAPI")
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
-        saveat = 1:10)[1].t == Float32.(1:10)
+        saveat = 1:10).u[1].t == Float32.(1:10)
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
-        saveat = 1:0.1:10)[1].t == 1.0f0:0.1f0:10.0f0
+        saveat = 1:0.1:10).u[1].t == 1.0f0:0.1f0:10.0f0
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
-        saveat = 1:(1.0f0):10)[1].t == 1:1.0f0:10
+        saveat = 1:(1.0f0):10).u[1].t == 1:1.0f0:10
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
-        saveat = 1.0)[1].t == 0.0f0:1.0f0:10.0f0
+        saveat = 1.0).u[1].t == 0.0f0:1.0f0:10.0f0
 end
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = [1.0f0, 5.0f0, 10.0f0])[1].t == [1.0f0, 5.0f0, 10.0f0]
+    saveat = [1.0f0, 5.0f0, 10.0f0]).u[1].t == [1.0f0, 5.0f0, 10.0f0]
 
 @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
     trajectories = 10_000,
-    saveat = [1.0, 5.0, 10.0])[1].t == [1.0f0, 5.0f0, 10.0f0]
+    saveat = [1.0, 5.0, 10.0]).u[1].t == [1.0f0, 5.0f0, 10.0f0]
