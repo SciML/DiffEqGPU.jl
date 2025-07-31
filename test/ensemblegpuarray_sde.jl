@@ -50,10 +50,9 @@ NRate[2, 2] = 1
 u0 = ComplexF32[1.0; 0.0; 0.0; 0.0]
 tspan = (0.0f0, 10.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
-prob = SDEProblem(lorenz, multiplicative_noise, u0, tspan, p, noise_rate_prototype = NRate)
+prob = SDEProblem(lorenz, multiplicative_noise, u0, tspan, p, noise_rate_prototype=NRate)
 
-prob_func = (prob, i, repeat) -> remake(prob, p = p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func)
+prob_func = (prob, i, repeat) -> remake(prob, p=p)
+monteprob = EnsembleProblem(prob, prob_func=prob_func)
 
-@test_throws "Incompatible problem detected. EnsembleGPUArray currently requires `prob.noise_rate_prototype === nothing`, i.e. only diagonal noise is currently supported. Track https://github.com/SciML/DiffEqGPU.jl/issues/331 for more information." sol=solve(
-    monteprob, SRA1(), EnsembleCPUArray(), trajectories = 10_000, saveat = 1.0f0)
+@test_throws "Incompatible problem detected. EnsembleGPUArray currently requires `prob.noise_rate_prototype === nothing`, i.e. only diagonal noise is currently supported. Track https://github.com/SciML/DiffEqGPU.jl/issues/331 for more information." sol = solve(monteprob, SRA1(), EnsembleCPUArray(), trajectories=10_000, saveat=1.0f0)

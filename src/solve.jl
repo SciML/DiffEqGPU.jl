@@ -273,7 +273,7 @@ function batch_solve_up_kernel(ensembleprob, probs, alg, ensemblealg, I, adaptiv
             _callback.continuous_callbacks)...)
 
     dev = ensemblealg.dev
-    probs = adapt(dev, adapt.((dev,), probs))
+    probs = adapt(dev,adapt.((dev,), probs))
 
     #Adaptive version only works with saveat
     if adaptive
