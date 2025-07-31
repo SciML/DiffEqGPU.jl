@@ -108,7 +108,8 @@ end
 
     cache = SIEAConstantCache(eltype(u0), typeof(t))
 
-    @unpack α1, α2, γ1, λ1, λ2, λ3, µ1, µ2, µ3, µ0, µbar0, λ0, λbar0, ν1, ν2, β2, β3, δ2, δ3 = cache
+    @unpack α1, α2, γ1, λ1, λ2, λ3, µ1, µ2, µ3, µ0, µbar0, λ0, λbar0, ν1, ν2, β2, β3, δ2,
+    δ3 = cache
 
     for j in 2:n
         uprev = u

@@ -68,8 +68,6 @@ include("ensemblegpukernel/tableaus/verner_tableaus.jl")
 include("ensemblegpukernel/tableaus/rodas_tableaus.jl")
 include("ensemblegpukernel/tableaus/kvaerno_tableaus.jl")
 
-
-
 include("utils.jl")
 include("algorithms.jl")
 include("solve.jl")

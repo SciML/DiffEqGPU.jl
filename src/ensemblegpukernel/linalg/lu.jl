@@ -148,7 +148,7 @@ function __lu(A::StaticLUMatrix{M, N, T}, ::Val{Pivot}) where {M, N, T, Pivot}
         Lrest, Urest, prest = __lu(Arest, Val(Pivot))
         p = [SVector{1, Int}(kp); ps[prest]]
         L = [[SVector{1}(one(eltype(Ls))); Ls[prest]] [zeros(typeof(SMatrix{1}(Lrest[1,
-                                                           :])));
+                                                       :])));
                                                        Lrest]]
         U = [Ufirst; [zeros(typeof(Urest[:, 1])) Urest]]
     end

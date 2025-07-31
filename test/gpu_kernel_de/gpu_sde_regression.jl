@@ -22,7 +22,8 @@ for alg in algs
     dt = Float32(1 // 2^(8))
 
     ## solve using off-loading on CPU
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
         adaptive = false)
 
     sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt,

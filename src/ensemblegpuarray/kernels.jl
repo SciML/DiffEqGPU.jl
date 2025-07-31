@@ -75,6 +75,7 @@ end
 
     @views @inbounds f(J[section, section], u[:, i + 1], p, t)
     @inbounds for j in section, k in section
+
         J[k, j] = J[k, j] * (tspan[2] - tspan[1])
     end
 end
@@ -94,6 +95,7 @@ end
     @views @inbounds x = f(u[:, i + 1], p, t)
 
     @inbounds for j in section, k in section
+
         J[k, j] = x[k, j] * (tspan[2] - tspan[1])
     end
 end
@@ -117,6 +119,7 @@ end
         @views @inbounds x = f(u[:, i + 1], p[i + 1], t)
     end
     @inbounds for j in section, k in section
+
         J[k, j] = x[k, j]
     end
 end
