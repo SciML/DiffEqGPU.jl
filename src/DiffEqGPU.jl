@@ -3,8 +3,6 @@ $(DocStringExtensions.README)
 """
 module DiffEqGPU
 
-__precompile__(false)
-
 using DocStringExtensions
 using KernelAbstractions
 import KernelAbstractions: get_backend, allocate
