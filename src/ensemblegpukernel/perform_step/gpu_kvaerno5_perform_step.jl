@@ -6,7 +6,8 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64,
+    a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
     @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
     @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 
@@ -117,7 +118,8 @@
 end
 
 @inline function step!(integ::GPUAKvaerno5I{false, S, T}, ts, us) where {T, S}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+    beta1, beta2, qmax, qmin, gamma, qoldinit,
+    _ = build_adaptive_controller_cache(
         integ.alg,
         T)
 
@@ -135,7 +137,8 @@ end
     abstol = integ.abstol
     reltol = integ.reltol
 
-    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64, a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
+    @unpack γ, a31, a32, a41, a42, a43, a51, a52, a53, a54, a61, a63, a64,
+    a65, a71, a73, a74, a75, a76, c3, c4, c5, c6 = integ.tab
     @unpack btilde1, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.tab
     @unpack α31, α32, α41, α42, α43, α51, α52, α53, α61, α62, α63 = integ.tab
 

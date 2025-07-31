@@ -39,18 +39,22 @@ probs = cu(probs)
 ## Finally use the lower API for faster solves! (Fixed time-stepping)
 
 # Run once for compilation
-@time CUDA.@sync ts, us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5();
+@time CUDA.@sync ts,
+us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5();
     save_everystep = false, dt = 0.1f0)
 
-@time CUDA.@sync ts, us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5();
+@time CUDA.@sync ts,
+us = DiffEqGPU.vectorized_solve(probs, prob, GPUTsit5();
     save_everystep = false, dt = 0.1f0)
 
 ## Adaptive time-stepping
 # Run once for compilation
-@time CUDA.@sync ts, us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5();
+@time CUDA.@sync ts,
+us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5();
     save_everystep = false, dt = 0.1f0)
 
-@time CUDA.@sync ts, us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5();
+@time CUDA.@sync ts,
+us = DiffEqGPU.vectorized_asolve(probs, prob, GPUTsit5();
     save_everystep = false, dt = 0.1f0)
 ```
 

@@ -12,7 +12,6 @@
 This library is a component package of the DifferentialEquations.jl ecosystem. It includes
 functionality for making use of GPUs in the differential equation solvers.
 
-
 ## The two ways to accelerate ODE solvers with GPUs
 
 There are two very different ways that one can

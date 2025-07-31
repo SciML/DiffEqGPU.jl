@@ -6,7 +6,8 @@
     f = integ.f
     integ.uprev = integ.u
     uprev = integ.u
-    @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31, α32 = integ.tab
+    @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31,
+    α32 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
@@ -86,7 +87,8 @@
 end
 
 @inline function step!(integ::GPUAKvaerno3I{false, S, T}, ts, us) where {T, S}
-    beta1, beta2, qmax, qmin, gamma, qoldinit, _ = build_adaptive_controller_cache(
+    beta1, beta2, qmax, qmin, gamma, qoldinit,
+    _ = build_adaptive_controller_cache(
         integ.alg,
         T)
 
@@ -104,7 +106,8 @@ end
     abstol = integ.abstol
     reltol = integ.reltol
 
-    @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31, α32 = integ.tab
+    @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31,
+    α32 = integ.tab
 
     if integ.u_modified
         k1 = f(uprev, p, t)
