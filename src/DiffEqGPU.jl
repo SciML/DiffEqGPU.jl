@@ -14,6 +14,8 @@ using RecursiveArrayTools
 import ZygoteRules
 import Base.Threads
 using LinearSolve
+using SimpleNonlinearSolve
+import SimpleNonlinearSolve: SimpleTrustRegion
 #For gpu_tsit5
 using Adapt, SimpleDiffEq, StaticArrays
 using Parameters, MuladdMacro
@@ -51,6 +53,7 @@ include("ensemblegpukernel/integrators/stiff/interpolants.jl")
 include("ensemblegpukernel/integrators/nonstiff/interpolants.jl")
 include("ensemblegpukernel/nlsolve/type.jl")
 include("ensemblegpukernel/nlsolve/utils.jl")
+include("ensemblegpukernel/nlsolve/initialization.jl")
 include("ensemblegpukernel/kernels.jl")
 
 include("ensemblegpukernel/perform_step/gpu_tsit5_perform_step.jl")
@@ -71,6 +74,7 @@ include("ensemblegpukernel/tableaus/kvaerno_tableaus.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("solve.jl")
+include("dae_adapt.jl")
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 

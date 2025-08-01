@@ -50,7 +50,7 @@ end
         else
             finite_diff_jac(u -> f(u, p, t), f.jac_prototype, u)
         end
-    W(u, p, t) = -LinearAlgebra.I + γ * dt * J(u, p, t)
+    W(u, p, t) = -f.mass_matrix + γ * dt * J(u, p, t)
     J, W
 end
 

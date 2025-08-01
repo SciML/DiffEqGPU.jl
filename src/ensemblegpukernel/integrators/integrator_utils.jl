@@ -370,7 +370,7 @@ end
 end
 
 # interp_points = 0 or equivalently nothing
-@inline function DiffEqBase.determine_event_occurrence(
+@inline function DiffEqBase.determine_event_occurance(
         integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP,

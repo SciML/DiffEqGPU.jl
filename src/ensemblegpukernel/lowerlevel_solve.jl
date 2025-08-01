@@ -1,6 +1,6 @@
 """
 ```julia
-vectorized_solve(probs, prob::Union{ODEProblem, SDEProblem}alg;
+vectorized_solve(probs, prob::Union{ODEProblem, SDEProblem}, alg;
     dt, saveat = nothing,
     save_everystep = true,
     debug = false, callback = CallbackSet(nothing), tstops = nothing)
