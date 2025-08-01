@@ -64,7 +64,7 @@
 
     # Starting
     mass_matrix = f.mass_matrix
-    W = mass_matrix / dtgamma - J
+    W = J - mass_matrix * inv(dtgamma)
     du = f(uprev, p, t)
 
     # Step 1
