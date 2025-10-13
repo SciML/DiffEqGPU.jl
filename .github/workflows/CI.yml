@@ -33,6 +33,7 @@ jobs:
           - "pre"
         group:
           - CPU
+          - JLArrays
     uses: "SciML/.github/.github/workflows/tests.yml@master"
     with:
       julia-version: "${{ matrix.version }}"
