@@ -11,6 +11,9 @@ elseif GROUP == "oneAPI"
 elseif GROUP == "Metal"
     using Metal
     Metal.MetalBackend()
+elseif GROUP == "JLArrays"
+    using JLArrays
+    JLArrays.JLBackend()
 elseif GROUP == "CPU"
     using KernelAbstractions
     KernelAbstractions.CPU()
