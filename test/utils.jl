@@ -11,6 +11,9 @@ elseif GROUP == "oneAPI"
 elseif GROUP == "Metal"
     using Metal
     Metal.MetalBackend()
+elseif GROUP == "OpenCL"
+    using OpenCL
+    OpenCL.CLBackend()
 elseif GROUP == "JLArrays"
     using JLArrays
     JLArrays.JLBackend()

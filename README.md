@@ -36,6 +36,7 @@ SciML's GPU support extends to a wide array of hardware, including:
 | AMD              | ROCm                | [AMDGPU.jl](https://github.com/JuliaGPU/AMDGPU.jl) | `AMDGPU.ROCBackend()`    |
 | Intel            | OneAPI              | [OneAPI.jl](https://github.com/JuliaGPU/oneAPI.jl) | `oneAPI.oneAPIBackend()` |
 | Apple (M-Series) | Metal               | [Metal.jl](https://github.com/JuliaGPU/Metal.jl)   | `Metal.MetalBackend()`   |
+| CPU (for debugging) | OpenCL           | [OpenCL.jl](https://github.com/JuliaGPU/OpenCL.jl) | `OpenCL.CLBackend()`     |
 
 For this tutorial we will demonstrate the CUDA backend for NVIDIA GPUs, though any of the other GPUs can be
 used by simply swapping out the `backend` choice.
