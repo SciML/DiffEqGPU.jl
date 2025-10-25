@@ -34,6 +34,7 @@ jobs:
         group:
           - CPU
           - JLArrays
+          - OpenCL
     uses: "SciML/.github/.github/workflows/tests.yml@master"
     with:
       julia-version: "${{ matrix.version }}"

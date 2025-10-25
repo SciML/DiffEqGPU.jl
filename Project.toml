@@ -30,6 +30,7 @@ AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
+OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [extensions]
@@ -37,6 +38,7 @@ AMDGPUExt = ["AMDGPU"]
 CUDAExt = ["CUDA"]
 JLArraysExt = ["JLArrays"]
 MetalExt = ["Metal"]
+OpenCLExt = ["OpenCL"]
 oneAPIExt = ["oneAPI"]
 
 [compat]
@@ -53,6 +55,7 @@ KernelAbstractions = "0.9"
 LinearSolve = "3"
 Metal = "1"
 MuladdMacro = "0.2"
+OpenCL = "0.9, 0.10"
 Parameters = "0.12"
 RecursiveArrayTools = "3"
 SciMLBase = "2.92"
@@ -70,5 +73,7 @@ CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 GPUArraysCore = "46192b85-c4d5-4398-a991-12ede77f4527"
 JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
-oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
+pocl_jll = "627d6b7a-bbe6-5189-83e7-98cc0a5aeadd"
