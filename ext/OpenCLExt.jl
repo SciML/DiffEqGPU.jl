@@ -3,9 +3,9 @@ using OpenCL
 import DiffEqGPU
 
 using .OpenCL
-import .OpenCL: CLBackend
+import .OpenCL: OpenCLBackend
 
-DiffEqGPU.maxthreads(::CLBackend) = 256
-DiffEqGPU.maybe_prefer_blocks(::CLBackend) = CLBackend()
+DiffEqGPU.maxthreads(::OpenCLBackend) = 256
+DiffEqGPU.maybe_prefer_blocks(::OpenCLBackend) = OpenCLBackend()
 
 end

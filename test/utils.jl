@@ -13,7 +13,7 @@ elseif GROUP == "Metal"
     Metal.MetalBackend()
 elseif GROUP == "OpenCL"
     using OpenCL
-    OpenCL.CLBackend()
+    OpenCL.OpenCLBackend()
 elseif GROUP == "JLArrays"
     using JLArrays
     JLArrays.JLBackend()
