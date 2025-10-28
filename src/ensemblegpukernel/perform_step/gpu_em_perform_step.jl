@@ -1,75 +1,53 @@
-@kernel function em_kernel(@Const(probs), _us, _ts, dt,
-        saveat, ::Val{save_everystep}) where {save_everystep}
+@kernel function em_kernel(
+        @Const(probs), _us, _ts, dt, saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
-
-    # get the actual problem for this thread
     prob = @inbounds probs[i]
-
     Random.seed!(prob.seed)
 
-    # get the input/output arrays for this thread
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
-
-    _saveat = get(prob.kwargs, :saveat, nothing)
-
-    saveat = _saveat === nothing ? saveat : _saveat
 
     f = prob.f
     g = prob.g
     u0 = prob.u0
-    tspan = prob.tspan
+    t0, t1 = prob.tspan
     p = prob.p
+    Tt = typeof(t0)
 
-    is_diagonal_noise = SciMLBase.is_diagonal_noise(prob)
-
-    cur_t = 0
-    if saveat !== nothing
-        cur_t = 1
-        if tspan[1] == saveat[1]
-            cur_t += 1
-            @inbounds us[1] = u0
-        end
-    else
-        @inbounds ts[1] = tspan[1]
+    # init
+    if saveat === nothing
+        @inbounds ts[1] = t0
         @inbounds us[1] = u0
     end
 
-    sqdt = sqrt(dt)
-    u = copy(u0)
-    t = copy(tspan[1])
-    n = length(tspan[1]:dt:tspan[2])
+    # keep everything in the element types; no Float64
+    sqdt = sqrt(Tt(dt))
+    u = u0                 # avoid copy()
+    t = t0
 
-    for j in 2:n
-        uprev = u
-
-        if is_diagonal_noise
-            u = uprev + f(uprev, p, t) * dt +
-                sqdt * g(uprev, p, t) .* randn(typeof(u0))
-        else
-            u = uprev + f(uprev, p, t) * dt +
-                sqdt * g(uprev, p, t) * randn(typeof(prob.noise_rate_prototype[1, :]))
+    if saveat === nothing && save_everystep
+        # use the preallocated length; no float→Int
+        n = size(us, 1)
+        @inbounds for j in 2:n
+            uprev = u
+            u = uprev + f(uprev, p, t) * dt + sqdt * g(uprev, p, t) .* randn(typeof(u0))
+            t += dt
+            us[j] = u
+            ts[j] = t
         end
 
-        t += dt
-
-        if saveat === nothing && save_everystep
-            @inbounds us[j] = u
-            @inbounds ts[j] = t
-        elseif saveat !== nothing
-            while cur_t <= length(saveat) && saveat[cur_t] <= t
-                savet = saveat[cur_t]
-                Θ = (savet - (t - dt)) / dt
-                # Linear Interpolation
-                @inbounds us[cur_t] = uprev + (u - uprev) * Θ
-                @inbounds ts[cur_t] = savet
-                cur_t += 1
-            end
+    else
+        # no need for n; just advance until t reaches t1
+        # tolerance avoids off-by-one from fp error
+        tol = eps(Tt) * abs(t1) + Tt(1e-7) * dt
+        while t + dt <= t1 + tol
+            uprev = u
+            u = uprev + f(uprev, p, t) * dt + sqdt * g(uprev, p, t) .* randn(typeof(u0))
+            t += dt
         end
-    end
-
-    if saveat === nothing && !save_everystep
-        @inbounds us[2] = u
-        @inbounds ts[2] = t
+        if saveat === nothing && !save_everystep
+            @inbounds us[2] = u
+            @inbounds ts[2] = t
+        end
     end
 end
