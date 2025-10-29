@@ -51,34 +51,30 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = if saveat isa AbstractRange
-            _saveat = range(convert(eltype(prob.tspan), first(saveat)),
-                convert(eltype(prob.tspan), last(saveat)),
-                length = length(saveat))
-            convert(
-                StepRangeLen{
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat) === Float32 ? Int32 : Int64
-                },
-                _saveat)
+        # Get the time type from the problem
+        Tt = eltype(prob.tspan)
+        
+        # FIX for Issue #379: Convert saveat to proper type
+        saveat_converted = if saveat isa AbstractRange
+            Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
         elseif saveat isa AbstractVector
-            adapt(backend, convert.(eltype(prob.tspan), saveat))
+            Tt.(collect(saveat))
         else
-            _saveat = prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
-            convert(
-                StepRangeLen{
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat),
-                    eltype(_saveat) === Float32 ? Int32 : Int64
-                },
-                _saveat)
+            # saveat is a Number (step size)
+            t0, tf = Tt.(prob.tspan)
+            if Tt(saveat) == Tt(0.0)
+                Tt.([t0, tf])
+            else
+                num_points = Int(ceil(abs(tf - t0) / abs(Tt(saveat)))) + 1
+                Tt.(collect(range(t0, tf, length = num_points)))
+            end
         end
-        ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
+        
+        saveat_converted = adapt(backend, saveat_converted)
+        
+        ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
+        us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
     tstops = adapt(backend, tstops)
@@ -89,7 +85,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         @warn "Running the kernel on CPU"
     end
 
-    kernel(probs, alg, us, ts, dt, callback, tstops, nsteps, saveat,
+    kernel(probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
         Val(save_everystep);
         ndrange = length(probs))
 
@@ -122,18 +118,28 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = if saveat isa AbstractRange
-            range(convert(eltype(prob.tspan), first(saveat)),
-                convert(eltype(prob.tspan), last(saveat)),
-                length = length(saveat))
+        # Get the time type from the problem
+        Tt = eltype(prob.tspan)
+        
+        # FIX for Issue #379: Convert saveat to proper type
+        saveat_converted = if saveat isa AbstractRange
+            Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
         elseif saveat isa AbstractVector
-            convert.(eltype(prob.tspan), adapt(backend, saveat))
+            Tt.(collect(saveat))
         else
-            prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
+            # saveat is a Number (step size)
+            t0, tf = Tt.(prob.tspan)
+            if Tt(saveat) == Tt(0.0)
+                Tt.([t0, tf])
+            else
+                num_points = Int(ceil(abs(tf - t0) / abs(Tt(saveat)))) + 1
+                Tt.(collect(range(t0, tf, length = num_points)))
+            end
         end
-        ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
+        
+        ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
+        us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
     if alg isa GPUEM
@@ -148,7 +154,7 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         @warn "Running the kernel on CPU"
     end
 
-    kernel(probs, us, ts, dt, saveat, Val(save_everystep);
+    kernel(probs, us, ts, dt, saveat_converted, Val(save_everystep);
         ndrange = length(probs))
     ts, us
 end
@@ -184,41 +190,67 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         abstol = 1.0f-6, reltol = 1.0f-3,
         debug = false, callback = CallbackSet(nothing), tstops = nothing,
         kwargs...)
+    
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
 
-    prob = convert(ImmutableODEProblem, prob)
+    # Get the time type from the problem
+    Tt = eltype(prob.tspan)
+    
+    # FIX for Issue #379: Convert saveat to eliminate 
+    # StepRangeLen's internal Float64 fields which crash Metal
 
+    if saveat !== nothing
+        if saveat isa Number
+            # Handle edge case: saveat = 0.0 means only save endpoints
+            if Tt(saveat) == Tt(0.0)
+                saveat_converted = Tt.([prob.tspan[1], prob.tspan[2]])
+            else
+                # Create proper range with correct type
+                t0, tf = Tt.(prob.tspan)
+                
+                # Handle both forward and reverse time integration
+                num_points = Int(ceil(abs(tf - t0) / abs(Tt(saveat)))) + 1
+                
+                # Safety check: prevent massive arrays
+                max_saveat_length = 100_000
+                if num_points > max_saveat_length
+                    error("saveat would create too many save points ($num_points). " *
+                          "Consider using a larger saveat value.")
+                end
+                
+                # Create range and convert to pure Vector{Tt}
+                saveat_range = range(t0, tf, length = num_points)
+                saveat_converted = Tt.(collect(saveat_range))
+            end
+        elseif saveat isa AbstractRange || saveat isa AbstractArray
+            # Range or array - convert all elements to Tt
+            # This eliminates StepRangeLen's Float64 internals
+            saveat_converted = Tt.(collect(saveat))
+        else
+            # Already in correct form
+            saveat_converted = saveat
+        end
+    else
+        saveat_converted = nothing
+    end
+
+    prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
-    abstol = convert(eltype(prob.tspan), abstol)
-    reltol = convert(eltype(prob.tspan), reltol)
-    # if saveat is specified, we'll use a vector of timestamps.
-    # otherwise it's a matrix that may be different for each ODE.
-    if saveat === nothing
+
+    if saveat_converted === nothing
         if save_everystep
-            error("Don't use adaptive version with saveat == nothing and save_everystep = true")
+            len = ceil(Int, (prob.tspan[2] - prob.tspan[1]) / dt) + 1
         else
             len = 2
         end
-        # if tstops !== nothing
-        #     len += length(tstops)
-        # end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        saveat = if saveat isa AbstractRange
-            range(convert(eltype(prob.tspan), first(saveat)),
-                convert(eltype(prob.tspan), last(saveat)),
-                length = length(saveat))
-        elseif saveat isa AbstractVector
-            adapt(backend, convert.(eltype(prob.tspan), saveat))
-        else
-            prob.tspan[1]:convert(eltype(prob.tspan), saveat):prob.tspan[end]
-        end
-        ts = allocate(backend, typeof(dt), (length(saveat), length(probs)))
+        ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
         fill!(ts, prob.tspan[1])
-        us = allocate(backend, typeof(prob.u0), (length(saveat), length(probs)))
+        us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
     us = adapt(backend, us)
@@ -232,14 +264,9 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     end
 
     kernel(probs, alg, us, ts, dt, callback, tstops,
-        abstol, reltol, saveat, Val(save_everystep);
+        abstol, reltol, saveat_converted, Val(save_everystep);
         ndrange = length(probs))
 
-    # we build the actual solution object on the CPU because the GPU would create one
-    # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
-    # no useful operations, etc). That's unfortunate though, since this loop is
-    # generally slower than the entire GPU execution, and necessitates synchronization
-    #EDIT: Done when using with DiffEqGPU
     ts, us
 end
 
