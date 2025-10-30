@@ -260,6 +260,9 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
     ts = adapt(backend, ts)
     tstops = adapt(backend, tstops)
 
+    if saveat_converted !== nothing
+        saveat_converted = adapt(backend, saveat_converted)
+    end
     kernel = ode_asolve_kernel(backend)
 
     if backend isa CPU
