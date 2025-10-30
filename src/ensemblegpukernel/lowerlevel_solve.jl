@@ -36,6 +36,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
 
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
+    saveat_converted = nothing
 
     if saveat === nothing
         if save_everystep
@@ -107,7 +108,7 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
     backend = maybe_prefer_blocks(backend)
 
     dt = convert(eltype(prob.tspan), dt)
-
+    saveat_converted = nothing
     if saveat === nothing
         if save_everystep
             len = length(prob.tspan[1]:dt:prob.tspan[2])
@@ -141,7 +142,9 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
-
+    if saveat_converted !== nothing
+        saveat_converted = adapt(backend, saveat_converted)
+    end
     if alg isa GPUEM
         kernel = em_kernel(backend)
     elseif alg isa Union{GPUSIEA}
