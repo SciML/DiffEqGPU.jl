@@ -17,7 +17,7 @@
         Δz = linear_solve(W_eval, f_rhs)
         z_i = z_i - Δz
 
-        if integrator.internalnorm(dt * integrator.f(tmp + γ * z_i, p, t + c * dt) - z_i, t) < abstol
+        if diffeqgpunorm(dt * integrator.f(tmp + γ * z_i, p, t + c * dt) - z_i, t) < abstol
             break
         end
     end
