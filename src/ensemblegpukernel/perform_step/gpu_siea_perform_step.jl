@@ -61,124 +61,101 @@ function SIEAConstantCache(::Type{T}, ::Type{T2}) where {T, T2}
         β2, β3, δ2, δ3)
 end
 
-@kernel function siea_kernel(
-        @Const(probs), _us, _ts, dt, saveat, ::Val{save_everystep}) where {save_everystep}
+@kernel function siea_kernel(@Const(probs), _us, _ts, dt,
+        saveat, ::Val{save_everystep}) where {save_everystep}
     i = @index(Global, Linear)
+
+    # get the actual problem for this thread
     prob = @inbounds probs[i]
+
     Random.seed!(prob.seed)
 
+    # get the input/output arrays for this thread
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
+
+    _saveat = get(prob.kwargs, :saveat, nothing)
+
+    saveat = _saveat === nothing ? saveat : _saveat
 
     f = prob.f
     g = prob.g
     u0 = prob.u0
-    t0, t1 = prob.tspan
+    tspan = prob.tspan
     p = prob.p
-    Tt = typeof(t0)
-    dtT = Tt(dt)                 # keep all time math in Tt
-    sqdt = sqrt(dtT)
 
-    # init write only when not saveat (matches EM fix semantics)
-    if saveat === nothing
-        @inbounds ts[1] = t0
+    is_diagonal_noise = SciMLBase.is_diagonal_noise(prob)
+
+    cur_t = 0
+    if saveat !== nothing
+        cur_t = 1
+        if tspan[1] == saveat[1]
+            cur_t += 1
+            @inbounds us[1] = u0
+        end
+    else
+        @inbounds ts[1] = tspan[1]
         @inbounds us[1] = u0
     end
 
-    # make constants in the right element types
-    cache = SIEAConstantCache(eltype(u0), typeof(t0))
-    α1 = cache.α1
-    α2 = cache.α2
-    γ1 = cache.γ1
-    λ1 = cache.λ1
-    λ2 = cache.λ2
-    λ3 = cache.λ3
-    µ1 = cache.µ1
-    µ2 = cache.µ2
-    µ3 = cache.µ3
-    µ0 = cache.µ0
-    µbar0 = cache.µbar0
-    λ0 = cache.λ0
-    λbar0 = cache.λbar0
-    ν1 = cache.ν1
-    ν2 = cache.ν2
-    β2 = cache.β2
-    β3 = cache.β3
-    δ2 = cache.δ2
-    δ3 = cache.δ3
+    @inbounds ts[1] = prob.tspan[1]
+    @inbounds us[1] = prob.u0
 
-    u = u0           # avoid copy(); keeps SVector type
-    t = t0
+    sqdt = sqrt(dt)
+    u = copy(u0)
+    t = copy(tspan[1])
+    t1 = copy(tspan[2])
 
-    if saveat === nothing && save_everystep
-        # drive by preallocated length – no float range, no Int casts
-        n = size(us, 1)
-        @inbounds for j in 2:n
-            uprev = u
-            # stage values
-            k0 = f(uprev, p, t)
-            g0 = g(uprev, p, t)
-            # diagonal noise branch (matches your code path)
+    cache = SIEAConstantCache(eltype(u0), typeof(t))
+
+    @unpack α1, α2, γ1, λ1, λ2, λ3, µ1, µ2, µ3, µ0, µbar0, λ0, λbar0, ν1, ν2, β2, β3, δ2,
+    δ3 = cache
+
+    j = 2
+    tol = dt / 2
+    while t < t1 - tol
+        uprev = u
+
+        # compute stage values
+        k0 = f(uprev, p, t)
+        g0 = g(uprev, p, t)
+
+        if is_diagonal_noise
             dW = sqdt * randn(typeof(u0))
-            W2 = (dW .* dW) / sqdt
-            W3 = ν2 * (dW .* dW .* dW) / dtT
-            k1 = f(uprev + λ0 * k0 * dtT + ν1 * g0 .* dW + g0 .* W3, p, t + µ0 * dtT)
-            g1 = g(uprev + λbar0 * k0 * dtT + β2 * g0 * sqdt + β3 * g0 .* W2,
-                p, t + µbar0 * dtT)
-            g2 = g(uprev + λbar0 * k0 * dtT + δ2 * g0 * sqdt + δ3 * g0 .* W2,
-                p, t + µbar0 * dtT)
-            u = uprev + (α1 * k0 + α2 * k1) * dtT
-            u += γ1 * g0 .* dW +
-                 (λ1 .* dW .+ λ2 * sqdt .+ λ3 .* W2) .* g1 +
-                 (µ1 .* dW .+ µ2 * sqdt .+ µ3 .* W2) .* g2
-            t += dtT
-            us[j] = u
-            ts[j] = t
+            W2 = (dW) .^ 2 / sqdt
+            W3 = ν2 * (dW) .^ 3 / dt
+            k1 = f(uprev + λ0 * k0 * dt + ν1 * g0 .* dW + g0 .* W3, p, t + µ0 * dt)
+            g1 = g(uprev + λbar0 * k0 * dt + β2 * g0 * sqdt + β3 * g0 .* W2, p,
+                t + µbar0 * dt)
+            g2 = g(uprev + λbar0 * k0 * dt + δ2 * g0 * sqdt + δ3 * g0 .* W2, p,
+                t + µbar0 * dt)
+
+            u = uprev + (α1 * k0 + α2 * k1) * dt
+
+            u += γ1 * g0 .* dW + (λ1 .* dW .+ λ2 * sqdt + λ3 .* W2) .* g1 +
+                 (µ1 .* dW .+ µ2 * sqdt + µ3 .* W2) .* g2
         end
-    else
-        # time-driven loop with tolerance; no ranges, no float→Int
-        tol = eps(Tt) * abs(t1) + Tt(1e-7) * dtT
-        cur_t = 0
-        if saveat !== nothing
-            cur_t = 1
-            if t0 == saveat[1]
+
+        t += dt
+
+        if saveat === nothing && save_everystep
+            @inbounds us[j] = u
+            @inbounds ts[j] = t
+        elseif saveat !== nothing
+            while cur_t <= length(saveat) && saveat[cur_t] <= t
+                savet = saveat[cur_t]
+                Θ = (savet - (t - dt)) / dt
+                # Linear Interpolation
+                @inbounds us[cur_t] = uprev + (u - uprev) * Θ
+                @inbounds ts[cur_t] = savet
                 cur_t += 1
-                @inbounds us[1] = u0
             end
         end
-        while t + dtT <= t1 + tol
-            uprev = u
-            k0 = f(uprev, p, t)
-            g0 = g(uprev, p, t)
-            dW = sqdt * randn(typeof(u0))
-            W2 = (dW .* dW) / sqdt
-            W3 = ν2 * (dW .* dW .* dW) / dtT
-            k1 = f(uprev + λ0 * k0 * dtT + ν1 * g0 .* dW + g0 .* W3, p, t + µ0 * dtT)
-            g1 = g(uprev + λbar0 * k0 * dtT + β2 * g0 * sqdt + β3 * g0 .* W2,
-                p, t + µbar0 * dtT)
-            g2 = g(uprev + λbar0 * k0 * dtT + δ2 * g0 * sqdt + δ3 * g0 .* W2,
-                p, t + µbar0 * dtT)
-            u = uprev + (α1 * k0 + α2 * k1) * dtT
-            u += γ1 * g0 .* dW +
-                 (λ1 .* dW .+ λ2 * sqdt .+ λ3 .* W2) .* g1 +
-                 (µ1 .* dW .+ µ2 * sqdt .+ µ3 .* W2) .* g2
-            t += dtT
+        j += 1
+    end
 
-            if saveat !== nothing
-                # interpolate any save points we passed
-                while cur_t <= length(saveat) && saveat[cur_t] <= t + tol
-                    savet = saveat[cur_t]
-                    Θ = (savet - (t - dtT)) / dtT
-                    @inbounds us[cur_t] = uprev + (u - uprev) * Θ
-                    @inbounds ts[cur_t] = savet
-                    cur_t += 1
-                end
-            end
-        end
-
-        if saveat === nothing && !save_everystep
-            @inbounds us[2] = u
-            @inbounds ts[2] = t
-        end
+    if saveat === nothing && !save_everystep
+        @inbounds us[2] = u
+        @inbounds ts[2] = t
     end
 end
