@@ -56,10 +56,8 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         Tt = eltype(prob.tspan)
         
         # FIX for Issue #379: Convert saveat to proper type
-        saveat_converted = if saveat isa AbstractRange
-            Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
-        elseif saveat isa AbstractVector
-            Tt.(collect(saveat))
+        saveat_converted = if saveat isa AbstractRange || saveat isa AbstractArray
+    	    Tt.(collect(saveat))
         else
             # saveat is a Number (step size)
             t0, tf = Tt.(prob.tspan)
@@ -123,10 +121,8 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         Tt = eltype(prob.tspan)
         
         # FIX for Issue #379: Convert saveat to proper type
-        saveat_converted = if saveat isa AbstractRange
-            Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
-        elseif saveat isa AbstractVector
-            Tt.(collect(saveat))
+        saveat_converted = if saveat isa AbstractRange || saveat isa AbstractArray
+    	    Tt.(collect(saveat))
         else
             # saveat is a Number (step size)
             t0, tf = Tt.(prob.tspan)
