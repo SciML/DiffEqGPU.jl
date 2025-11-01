@@ -27,11 +27,11 @@ if ENV["GROUP"] ∉ ("oneAPI")
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
-        saveat = 1:0.1:10).u[1].t == 1.0f0:0.1f0:10.0f0
+        saveat = 1:0.1:10).u[1].t == collect(1.0f0:0.1f0:10.0f0)
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
-        saveat = 1:(1.0f0):10).u[1].t == 1:1.0f0:10
+        saveat = 1:(1.0f0):10).u[1].t == collect(1:1.0f0:10)
 
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
