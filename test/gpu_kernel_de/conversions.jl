@@ -20,7 +20,7 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 ## Don't test the problems in which GPUs don't support FP64 completely yet
 ## Creating StepRangeLen causes some param types to be FP64 inferred by `float` function
-if ENV["GROUP"] ∉ ("Metal", "oneAPI")
+if ENV["GROUP"] ∉ ("oneAPI")
     @test solve(monteprob, GPUTsit5(), EnsembleGPUKernel(backend),
         trajectories = 10_000,
         saveat = 1:10).u[1].t == Float32.(1:10)
