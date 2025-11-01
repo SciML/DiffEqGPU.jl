@@ -69,11 +69,13 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
             end
         end
         
-        saveat_converted = adapt(backend, saveat_converted)
-        
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
+    end
+
+    if saveat_converted !== nothing
+        saveat_converted = adapt(backend, saveat_converted)
     end
 
     tstops = adapt(backend, tstops)
