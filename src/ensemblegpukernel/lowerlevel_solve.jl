@@ -94,7 +94,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
     # no useful operations, etc). That's unfortunate though, since this loop is
     # generally slower than the entire GPU execution, and necessitates synchronization
-    #EDIT: Done when using with DiffEqGPU
+    # EDIT: Done when using with DiffEqGPU
     ts, us
 end
 
