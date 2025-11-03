@@ -63,6 +63,7 @@ end
     
     # FIX for Issue #379: Get time type from tspan
     Tt = typeof(tspan[1])
+    dt = Tt(dt)
     
     is_diagonal_noise = SciMLBase.is_diagonal_noise(prob)
     cur_t = 0
@@ -78,13 +79,13 @@ end
     end
     
     # FIX: Use Tt for sqrt to ensure proper type
-    sqdt = sqrt(Tt(dt))
+    sqdt = sqrt(dt)
     u = copy(u0)
     t = copy(tspan[1])
     
     # FIX: Ensure n calculation uses proper types
     t0, tf = tspan[1], tspan[2]
-    n = floor(Int, abs(tf - t0) / abs(Tt(dt))) + 1
+    n = floor(Int, abs(tf - t0) / abs(dt)) + 1
     
     cache = SIEAConstantCache(eltype(u0), Tt)
     @unpack α1, α2, γ1, λ1, λ2, λ3, µ1, µ2, µ3, µ0, µbar0, λ0, λbar0, ν1, ν2, β2, β3, δ2,
@@ -98,24 +99,24 @@ end
         if is_diagonal_noise
             dW = sqdt * randn(typeof(u0))
             W2 = (dW) .^ 2 / sqdt
-            W3 = ν2 * (dW) .^ 3 / Tt(dt)
-            k1 = f(uprev + λ0 * k0 * Tt(dt) + ν1 * g0 .* dW + g0 .* W3, p, t + µ0 * Tt(dt))
-            g1 = g(uprev + λbar0 * k0 * Tt(dt) + β2 * g0 * sqdt + β3 * g0 .* W2, p,
-                t + µbar0 * Tt(dt))
-            g2 = g(uprev + λbar0 * k0 * Tt(dt) + δ2 * g0 * sqdt + δ3 * g0 .* W2, p,
-                t + µbar0 * Tt(dt))
-            u = uprev + (α1 * k0 + α2 * k1) * Tt(dt)
+            W3 = ν2 * (dW) .^ 3 / dt
+            k1 = f(uprev + λ0 * k0 * dt + ν1 * g0 .* dW + g0 .* W3, p, t + µ0 * dt)
+            g1 = g(uprev + λbar0 * k0 * dt + β2 * g0 * sqdt + β3 * g0 .* W2, p,
+                t + µbar0 * dt)
+            g2 = g(uprev + λbar0 * k0 * dt + δ2 * g0 * sqdt + δ3 * g0 .* W2, p,
+                t + µbar0 * dt)
+            u = uprev + (α1 * k0 + α2 * k1) * dt
             u += γ1 * g0 .* dW + (λ1 .* dW .+ λ2 * sqdt + λ3 .* W2) .* g1 +
                  (µ1 .* dW .+ µ2 * sqdt + µ3 .* W2) .* g2
         end
-        t += Tt(dt)
+        t += dt
         if saveat === nothing && save_everystep
             @inbounds us[j] = u
             @inbounds ts[j] = t
         elseif saveat !== nothing
             while cur_t <= length(saveat) && saveat[cur_t] <= t
                 savet = saveat[cur_t]
-                Θ = (savet - (t - Tt(dt))) / Tt(dt)
+                Θ = (savet - (t - dt)) / dt
                 # Linear Interpolation
                 @inbounds us[cur_t] = uprev + (u - uprev) * Θ
                 @inbounds ts[cur_t] = savet

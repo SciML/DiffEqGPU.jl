@@ -17,6 +17,7 @@
     
     # FIX for Issue #379: Get time type from tspan
     Tt = typeof(tspan[1])
+    dt = Tt(dt)
     
     is_diagonal_noise = SciMLBase.is_diagonal_noise(prob)
     cur_t = 0
@@ -32,31 +33,31 @@
     end
     
     # FIX: Use Tt for sqrt to ensure proper type
-    sqdt = sqrt(Tt(dt))
+    sqdt = sqrt(dt)
     u = copy(u0)
     t = copy(tspan[1])
     
     # FIX: Ensure n calculation uses proper types
     t0, tf = tspan[1], tspan[2]
-    n = floor(Int, abs(tf - t0) / abs(Tt(dt))) + 1
+    n = floor(Int, abs(tf - t0) / abs(dt)) + 1
     
     for j in 2:n
         uprev = u
         if is_diagonal_noise
-            u = uprev + f(uprev, p, t) * Tt(dt) +
+            u = uprev + f(uprev, p, t) * dt +
                 sqdt * g(uprev, p, t) .* randn(typeof(u0))
         else
-            u = uprev + f(uprev, p, t) * Tt(dt) +
+            u = uprev + f(uprev, p, t) * dt +
                 sqdt * g(uprev, p, t) * randn(typeof(prob.noise_rate_prototype[1, :]))
         end
-        t += Tt(dt)
+        t += dt
         if saveat === nothing && save_everystep
             @inbounds us[j] = u
             @inbounds ts[j] = t
         elseif saveat !== nothing
             while cur_t <= length(saveat) && saveat[cur_t] <= t
                 savet = saveat[cur_t]
-                Θ = (savet - (t - Tt(dt))) / Tt(dt)
+                Θ = (savet - (t - dt)) / dt
                 # Linear Interpolation
                 @inbounds us[cur_t] = uprev + (u - uprev) * Θ
                 @inbounds ts[cur_t] = savet
