@@ -1,7 +1,7 @@
 name = "DiffEqGPU"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
-authors = ["Chris Rackauckas", "SciML"]
 version = "3.9.0"
+authors = ["Chris Rackauckas", "SciML"]
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
@@ -16,6 +16,7 @@ LinearAlgebra = "37e2e46d-f89d-539d-b4ee-838fcccc9c8e"
 LinearSolve = "7ed4a6bd-45f5-4d41-b270-4a48e9bafcae"
 MuladdMacro = "46d2c3a1-f734-5fdb-9937-b9b9aeba4221"
 Parameters = "d96e819e-fc66-5662-9728-84c9c7592b0a"
+PrecompileTools = "aea7be01-6a6a-4083-8856-8a6e6704d82a"
 Random = "9a3f8284-a2c9-5f02-9a11-845980a1fd5c"
 RecursiveArrayTools = "731186ca-8d62-57ce-b412-fbd966d074cd"
 SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
@@ -57,6 +58,7 @@ Metal = "1"
 MuladdMacro = "0.2"
 OpenCL = "0.9, 0.10"
 Parameters = "0.12"
+PrecompileTools = "1"
 RecursiveArrayTools = "3"
 SciMLBase = "2.92"
 Setfield = "1"
