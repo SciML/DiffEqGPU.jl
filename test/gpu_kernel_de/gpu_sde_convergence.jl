@@ -13,16 +13,20 @@ prob = SDEProblem(f, g, u₀, tspan, p; seed = 1234)
 
 dts = 1 .// 2 .^ (5:-1:2)
 
-ensemble_prob = EnsembleProblem(prob;
-    output_func = (sol, i) -> (sol.u[end], false))
+ensemble_prob = EnsembleProblem(
+    prob;
+    output_func = (sol, i) -> (sol.u[end], false)
+)
 
 @info "EM"
 dts = 1 .// 2 .^ (12:-1:8)
-sim = test_convergence(Float32.(dts), ensemble_prob, GPUEM(),
+sim = test_convergence(
+    Float32.(dts), ensemble_prob, GPUEM(),
     EnsembleGPUKernel(backend, 0.0),
-    save_everystep = false, trajectories = Int(1e5),
+    save_everystep = false, trajectories = Int(1.0e5),
     weak_timeseries_errors = false,
-    expected_value = SA[u₀ * exp((p[1]))])
+    expected_value = SA[u₀ * exp((p[1]))]
+)
 
 @show sim.𝒪est[:weak_final]
 @test abs(sim.𝒪est[:weak_final] - 1.0) < 0.1
@@ -31,10 +35,12 @@ sim = test_convergence(Float32.(dts), ensemble_prob, GPUEM(),
 
 dts = 1 .// 2 .^ (6:-1:4)
 
-sim = test_convergence(Float32.(dts), ensemble_prob, GPUSIEA(),
+sim = test_convergence(
+    Float32.(dts), ensemble_prob, GPUSIEA(),
     EnsembleGPUKernel(backend, 0.0),
-    save_everystep = false, trajectories = Int(5e4),
-    expected_value = SA[u₀ * exp((p[1]))])
+    save_everystep = false, trajectories = Int(5.0e4),
+    expected_value = SA[u₀ * exp((p[1]))]
+)
 
 @show sim.𝒪est[:weak_final]
 @test abs(sim.𝒪est[:weak_final] - 2.1) < 0.4

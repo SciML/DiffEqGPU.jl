@@ -66,7 +66,7 @@ struct GPUKvaerno5{AD} <: GPUODEImplicitAlgorithm{AD} end
 for Alg in [:GPURosenbrock23, :GPURodas4, :GPURodas5P, :GPUKvaerno3, :GPUKvaerno5]
     @eval begin
         function $Alg(; autodiff = Val{true}())
-            $Alg{SciMLBase._unwrap_val(autodiff)}()
+            return $Alg{SciMLBase._unwrap_val(autodiff)}()
         end
     end
 end

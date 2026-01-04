@@ -4,7 +4,7 @@
     t = integ.t
     p = integ.p
     a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
-    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
+        a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
 
     tmp = integ.tmp
     f = integ.f
@@ -16,7 +16,7 @@
     adv_integ = true
     ## Check if tstops are within the range of time-series
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-       (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - T(100) * eps(T) < T(0))
+            (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - T(100) * eps(T) < T(0))
         integ.t = integ.tstops[integ.tstops_idx]
         ## Set correct dt
         dt = integ.t - integ.tprev
@@ -45,7 +45,7 @@
     k6 = f(tmp, p, t + dt)
 
     integ.u = uprev +
-              dt * ((a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4) + a75 * k5 + a76 * k6)
+        dt * ((a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4) + a75 * k5 + a76 * k6)
     k7 = f(integ.u, p, t + dt)
 
     @inbounds begin # Necessary for interpolation
@@ -67,16 +67,17 @@ end
 
 @inline function step!(integ::GPUAT5I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit,
-    _ = build_adaptive_controller_cache(
+        _ = build_adaptive_controller_cache(
         integ.alg,
-        T)
+        T
+    )
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dtnew
     t = integ.t
     p = integ.p
     tf = integ.tf
     a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
-    a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
+        a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
     btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.btildes
 
     tmp = integ.tmp
@@ -113,8 +114,10 @@ end
         u = uprev + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
         k7 = f(u, p, t + dt)
 
-        tmp = dt * (btilde1 * k1 + btilde2 * k2 + btilde3 * k3 + btilde4 * k4 +
-               btilde5 * k5 + btilde6 * k6 + btilde7 * k7)
+        tmp = dt * (
+            btilde1 * k1 + btilde2 * k2 + btilde3 * k3 + btilde4 * k4 +
+                btilde5 * k5 + btilde6 * k6 + btilde7 * k7
+        )
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
@@ -153,8 +156,8 @@ end
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-                   integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
-                   T(100) * eps(T) < T(0)
+                        integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
+                        T(100) * eps(T) < T(0)
                     integ.t = integ.tstops[integ.tstops_idx]
                     integ.u = integ(integ.t)
                     dt = integ.t - integ.tprev

@@ -1,31 +1,37 @@
-@inline function (integrator::DiffEqBase.AbstractODEIntegrator{
-        AlgType,
-        IIP,
-        S,
-        T
-})(t) where {
+@inline function (
+        integrator::DiffEqBase.AbstractODEIntegrator{
+            AlgType,
+            IIP,
+            S,
+            T,
+        }
+    )(t) where {
         AlgType <:
         GPUODEAlgorithm,
         IIP,
         S,
-        T
-}
+        T,
+    }
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 @inline function DiffEqBase.u_modified!(
         integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
             IIP, S,
-            T},
-        bool::Bool) where {AlgType <: GPUODEAlgorithm, IIP,
-        S, T}
-    integrator.u_modified = bool
+            T,
+        },
+        bool::Bool
+    ) where {
+        AlgType <: GPUODEAlgorithm, IIP,
+        S, T,
+    }
+    return integrator.u_modified = bool
 end
 
 mutable struct GPURosenbrock23Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -55,13 +61,17 @@ mutable struct GPURosenbrock23Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <
 end
 const GPURB23I = GPURosenbrock23Integrator
 
-@inline function init(alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T,
+        saveat::ST
+    ) where {
+        F, P, T,
         S,
-        TS, CB, ST}
+        TS, CB, ST,
+    }
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -69,7 +79,8 @@ const GPURB23I = GPURosenbrock23Integrator
     d = T(2)
     d = 1 / (d + sqrt(d))
 
-    integ = GPURB23I{IIP, S, T, ST, P, F, TS, CB, typeof(alg)}(alg, f, copy(u0), copy(u0),
+    return integ = GPURB23I{IIP, S, T, ST, P, F, TS, CB, typeof(alg)}(
+        alg, f, copy(u0), copy(u0),
         copy(u0), t0, t0,
         t0,
         dt,
@@ -80,24 +91,25 @@ const GPURB23I = GPURosenbrock23Integrator
         vector_event_last_time,
         last_event_error,
         copy(u0), copy(u0), d,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 mutable struct GPUARosenbrock23Integrator{
-    IIP,
-    S,
-    T,
-    ST,
-    P,
-    F,
-    N,
-    TOL,
-    Q,
-    TS,
-    CB,
-    AlgType
-} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+        IIP,
+        S,
+        T,
+        ST,
+        P,
+        F,
+        N,
+        TOL,
+        Q,
+        TS,
+        CB,
+        AlgType,
+    } <:
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -135,16 +147,20 @@ end
 
 const GPUARB23I = GPUARosenbrock23Integrator
 
-@inline function init(alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, tf::T,
+@inline function init(
+        alg::GPURosenbrock23, f::F, IIP::Bool, u0::S, t0::T, tf::T,
         dt::T, p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS,
-        CB, ST}
+        saveat::ST
+    ) where {
+        F, P, S, T, N, TOL, TS,
+        CB, ST,
+    }
     !IIP && @assert S <: SArray
 
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
@@ -152,7 +168,7 @@ const GPUARB23I = GPUARosenbrock23Integrator
     d = T(2)
     d = 1 / (d + sqrt(d))
 
-    integ = GPUARB23I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(
+    return integ = GPUARB23I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(
         alg,
         f,
         copy(u0),
@@ -164,8 +180,10 @@ const GPUARB23I = GPUARosenbrock23Integrator
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -186,7 +204,8 @@ const GPUARB23I = GPUARosenbrock23Integrator
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 ##########################
@@ -194,7 +213,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPURodas4Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -224,13 +243,17 @@ mutable struct GPURodas4Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType
 end
 const GPURodas4I = GPURodas4Integrator
 
-@inline function init(alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T,
+        saveat::ST
+    ) where {
+        F, P, T,
         S,
-        TS, CB, ST}
+        TS, CB, ST,
+    }
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -238,7 +261,8 @@ const GPURodas4I = GPURodas4Integrator
 
     tab = Rodas4Tableau(T, T)
 
-    integ = GPURodas4I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
+    return integ = GPURodas4I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f,
         copy(u0),
         copy(u0),
         copy(u0), t0,
@@ -256,26 +280,27 @@ const GPURodas4I = GPURodas4Integrator
         last_event_error,
         copy(u0),
         copy(u0), tab,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 # Adaptive Step
 mutable struct GPUARodas4Integrator{
-    IIP,
-    S,
-    T,
-    ST,
-    P,
-    F,
-    N,
-    TOL,
-    Q,
-    TS,
-    CB,
-    TabType,
-    AlgType
-} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+        IIP,
+        S,
+        T,
+        ST,
+        P,
+        F,
+        N,
+        TOL,
+        Q,
+        TS,
+        CB,
+        TabType,
+        AlgType,
+    } <:
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -312,23 +337,30 @@ end
 
 const GPUARodas4I = GPUARodas4Integrator
 
-@inline function init(alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, tf::T,
+@inline function init(
+        alg::GPURodas4, f::F, IIP::Bool, u0::S, t0::T, tf::T,
         dt::T, p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS,
-        CB, ST}
+        saveat::ST
+    ) where {
+        F, P, S, T, N, TOL, TS,
+        CB, ST,
+    }
     !IIP && @assert S <: SArray
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
 
     tab = Rodas4Tableau(T, T)
 
-    integ = GPUARodas4I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-        typeof(alg)}(alg,
+    return integ = GPUARodas4I{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
+        typeof(alg),
+    }(
+        alg,
         f,
         copy(u0),
         copy(u0),
@@ -339,8 +371,10 @@ const GPUARodas4I = GPUARodas4Integrator
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -359,7 +393,8 @@ const GPUARodas4I = GPUARodas4Integrator
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 ##########################
@@ -367,7 +402,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPURodas5PIntegrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -398,13 +433,17 @@ mutable struct GPURodas5PIntegrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgTyp
 end
 const GPURodas5PI = GPURodas5PIntegrator
 
-@inline function init(alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T,
+        saveat::ST
+    ) where {
+        F, P, T,
         S,
-        TS, CB, ST}
+        TS, CB, ST,
+    }
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -412,7 +451,8 @@ const GPURodas5PI = GPURodas5PIntegrator
 
     tab = Rodas5PTableau(T, T)
 
-    integ = GPURodas5PI{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
+    return integ = GPURodas5PI{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f,
         copy(u0),
         copy(u0),
         copy(u0), t0,
@@ -432,14 +472,16 @@ const GPURodas5PI = GPURodas5PIntegrator
         copy(u0),
         copy(u0),
         tab,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 # Adaptive Step
-mutable struct GPUARodas5PIntegrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-    AlgType
-} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+mutable struct GPUARodas5PIntegrator{
+        IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
+        AlgType,
+    } <:
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -477,24 +519,30 @@ end
 
 const GPUARodas5PI = GPUARodas5PIntegrator
 
-@inline function init(alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, tf::T,
+@inline function init(
+        alg::GPURodas5P, f::F, IIP::Bool, u0::S, t0::T, tf::T,
         dt::T, p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS,
-        CB, ST}
+        saveat::ST
+    ) where {
+        F, P, S, T, N, TOL, TS,
+        CB, ST,
+    }
     !IIP && @assert S <: SArray
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
 
     tab = Rodas5PTableau(T, T)
 
-    integ = GPUARodas5PI{
+    return integ = GPUARodas5PI{
         IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-        typeof(alg)}(alg,
+        typeof(alg),
+    }(
+        alg,
         f,
         copy(u0),
         copy(u0),
@@ -505,8 +553,10 @@ const GPUARodas5PI = GPUARodas5PIntegrator
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -526,7 +576,8 @@ const GPUARodas5PI = GPUARodas5PIntegrator
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 ##########################
@@ -534,7 +585,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPUKvaerno3Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -564,13 +615,17 @@ mutable struct GPUKvaerno3Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgTy
 end
 const GPUKvaerno3I = GPUKvaerno3Integrator
 
-@inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T,
+        saveat::ST
+    ) where {
+        F, P, T,
         S,
-        TS, CB, ST}
+        TS, CB, ST,
+    }
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -578,7 +633,8 @@ const GPUKvaerno3I = GPUKvaerno3Integrator
 
     tab = Kvaerno3Tableau(T, T)
 
-    integ = GPUKvaerno3I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
+    return integ = GPUKvaerno3I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f,
         copy(u0),
         copy(u0),
         copy(u0),
@@ -599,14 +655,16 @@ const GPUKvaerno3I = GPUKvaerno3Integrator
         copy(u0),
         copy(u0),
         tab,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 # Adaptive Step
-mutable struct GPUAKvaerno3Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-    AlgType
-} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+mutable struct GPUAKvaerno3Integrator{
+        IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
+        AlgType,
+    } <:
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -643,24 +701,31 @@ end
 
 const GPUAKvaerno3I = GPUAKvaerno3Integrator
 
-@inline function init(alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, tf::T,
+@inline function init(
+        alg::GPUKvaerno3, f::F, IIP::Bool, u0::S, t0::T, tf::T,
         dt::T, p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS,
-        CB, ST}
+        saveat::ST
+    ) where {
+        F, P, S, T, N, TOL, TS,
+        CB, ST,
+    }
     !IIP && @assert S <: SArray
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
 
     tab = Kvaerno3Tableau(T, T)
 
-    integ = GPUAKvaerno3I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB,
+    return integ = GPUAKvaerno3I{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB,
         typeof(tab),
-        typeof(alg)}(alg,
+        typeof(alg),
+    }(
+        alg,
         f,
         copy(u0),
         copy(u0),
@@ -671,8 +736,10 @@ const GPUAKvaerno3I = GPUAKvaerno3Integrator
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -691,7 +758,8 @@ const GPUAKvaerno3I = GPUAKvaerno3Integrator
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 ##########################
@@ -699,7 +767,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPUKvaerno5Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -729,13 +797,17 @@ mutable struct GPUKvaerno5Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgTy
 end
 const GPUKvaerno5I = GPUKvaerno5Integrator
 
-@inline function init(alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T,
+        saveat::ST
+    ) where {
+        F, P, T,
         S,
-        TS, CB, ST}
+        TS, CB, ST,
+    }
     !IIP && @assert S <: SArray
     event_last_time = 1
     vector_event_last_time = 0
@@ -743,7 +815,8 @@ const GPUKvaerno5I = GPUKvaerno5Integrator
 
     tab = Kvaerno5Tableau(T, T)
 
-    integ = GPUKvaerno5I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f,
+    return integ = GPUKvaerno5I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f,
         copy(u0),
         copy(u0),
         copy(u0),
@@ -764,14 +837,16 @@ const GPUKvaerno5I = GPUKvaerno5Integrator
         copy(u0),
         copy(u0),
         tab,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
 # Adaptive Step
-mutable struct GPUAKvaerno5Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
-    AlgType
-} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+mutable struct GPUAKvaerno5Integrator{
+        IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
+        AlgType,
+    } <:
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -808,24 +883,31 @@ end
 
 const GPUAKvaerno5I = GPUAKvaerno5Integrator
 
-@inline function init(alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, tf::T,
+@inline function init(
+        alg::GPUKvaerno5, f::F, IIP::Bool, u0::S, t0::T, tf::T,
         dt::T, p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS,
-        CB, ST}
+        saveat::ST
+    ) where {
+        F, P, S, T, N, TOL, TS,
+        CB, ST,
+    }
     !IIP && @assert S <: SArray
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
 
     tab = Kvaerno5Tableau(T, T)
 
-    integ = GPUAKvaerno5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB,
+    return integ = GPUAKvaerno5I{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB,
         typeof(tab),
-        typeof(alg)}(alg,
+        typeof(alg),
+    }(
+        alg,
         f,
         copy(u0),
         copy(u0),
@@ -836,8 +918,10 @@ const GPUAKvaerno5I = GPUAKvaerno5Integrator
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -856,5 +940,6 @@ const GPUAKvaerno5I = GPUAKvaerno5Integrator
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end

@@ -5,7 +5,7 @@ include("utils.jl")
 function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
     du[2] = u[1] * (p[2] - u[3]) - u[2]
-    du[3] = u[1] * u[2] - p[3] * u[3]
+    return du[3] = u[1] * u[2] - p[3] * u[3]
 end
 
 u0 = Float32[1.0; 0.0; 0.0]
@@ -20,13 +20,19 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 #Performance check with nvvp
 # CUDAnative.CUDAdrv.@profile
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
-    saveat = 1.0f0)
+@time sol = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
+    saveat = 1.0f0
+)
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
-@time sol = solve(monteprob, ROCK4(), EnsembleGPUArray(backend), trajectories = 10,
-    saveat = 1.0f0)
-@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
-    batch_size = 5, saveat = 1.0f0)
+@time sol = solve(
+    monteprob, ROCK4(), EnsembleGPUArray(backend), trajectories = 10,
+    saveat = 1.0f0
+)
+@time sol2 = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
+    batch_size = 5, saveat = 1.0f0
+)
 
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
 @test length(filter(x -> x.u != sol2.u[6].u, sol.u)) != 0 # 0 element array
@@ -60,79 +66,97 @@ function lorenz_jac(J, u, p, t)
     J[3, 2] = x
     J[1, 3] = 0
     J[2, 3] = -x
-    J[3, 3] = -β
+    return J[3, 3] = -β
 end
 
 function lorenz_tgrad(J, u, p, t)
-    nothing
+    return nothing
 end
 
 func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
 prob_jac = ODEProblem(func, u0, tspan, p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
-@time solve(monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
+@time solve(
+    monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
     trajectories = 10,
-    saveat = 1.0f0)
-@time solve(monteprob_jac, TRBDF2(), EnsembleCPUArray(), dt = 0.1,
+    saveat = 1.0f0
+)
+@time solve(
+    monteprob_jac, TRBDF2(), EnsembleCPUArray(), dt = 0.1,
     trajectories = 10,
-    saveat = 1.0f0)
+    saveat = 1.0f0
+)
 
 if GROUP == "CUDA"
-    @time solve(monteprob_jac, Rodas5(), EnsembleGPUArray(backend), dt = 0.1,
+    @time solve(
+        monteprob_jac, Rodas5(), EnsembleGPUArray(backend), dt = 0.1,
         trajectories = 10,
-        saveat = 1.0f0)
-    @time solve(monteprob_jac, TRBDF2(), EnsembleGPUArray(backend), dt = 0.1,
+        saveat = 1.0f0
+    )
+    @time solve(
+        monteprob_jac, TRBDF2(), EnsembleGPUArray(backend), dt = 0.1,
         trajectories = 10,
-        saveat = 1.0f0)
+        saveat = 1.0f0
+    )
 end
 
 @info "Callbacks"
 
 condition = function (u, t, integrator)
-    @inbounds u[1] > 5
+    return @inbounds u[1] > 5
 end
 
 affect! = function (integrator)
-    @inbounds integrator.u[1] = -4
+    return @inbounds integrator.u[1] = -4
 end
 
 # test discrete
 discrete_callback = DiscreteCallback(condition, affect!, save_positions = (false, false))
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = discrete_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-@time solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
-    saveat = 1.0f0)
+@time solve(
+    callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
+    saveat = 1.0f0
+)
 
 c_condition = function (u, t, integrator)
-    @inbounds u[1] - 3
+    return @inbounds u[1] - 3
 end
 
 c_affect! = function (integrator)
-    @inbounds integrator.u[1] += 20
+    return @inbounds integrator.u[1] += 20
 end
 
 # test continuous
-continuous_callback = ContinuousCallback(c_condition, c_affect!,
-    save_positions = (false, false))
+continuous_callback = ContinuousCallback(
+    c_condition, c_affect!,
+    save_positions = (false, false)
+)
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = continuous_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
-    saveat = 1.0f0)
+solve(
+    callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
+    saveat = 1.0f0
+)
 
 # test callback set
 callback_set = CallbackSet(discrete_callback, continuous_callback)
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = callback_set)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
-    saveat = 1.0f0)
+solve(
+    callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
+    saveat = 1.0f0
+)
 
 # test merge
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = discrete_callback)
 callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
-solve(callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
+solve(
+    callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
     saveat = 1.0f0,
-    callback = continuous_callback)
+    callback = continuous_callback
+)
 
 @info "ROBER"
 
@@ -149,15 +173,17 @@ end k₁ k₂ k₃
 function rober_f(internal_var___du, internal_var___u, internal_var___p, t)
     @inbounds begin
         internal_var___du[1] = -(internal_var___p[1]) * internal_var___u[1] +
-                               internal_var___p[3] * internal_var___u[2] *
-                               internal_var___u[3]
-        internal_var___du[2] = (internal_var___p[1] * internal_var___u[1] -
-                                internal_var___p[2] * internal_var___u[2]^2) -
-                               internal_var___p[3] * internal_var___u[2] *
-                               internal_var___u[3]
+            internal_var___p[3] * internal_var___u[2] *
+            internal_var___u[3]
+        internal_var___du[2] = (
+            internal_var___p[1] * internal_var___u[1] -
+                internal_var___p[2] * internal_var___u[2]^2
+        ) -
+            internal_var___p[3] * internal_var___u[2] *
+            internal_var___u[3]
         internal_var___du[3] = internal_var___p[2] * internal_var___u[2]^2
     end
-    nothing
+    return nothing
 end
 
 function rober_jac(internal_var___J, internal_var___u, internal_var___p, t)
@@ -167,41 +193,49 @@ function rober_jac(internal_var___J, internal_var___u, internal_var___p, t)
         internal_var___J[1, 3] = internal_var___p[3] * internal_var___u[2]
         internal_var___J[2, 1] = internal_var___p[1] * 1
         internal_var___J[2, 2] = -2 * internal_var___p[2] * internal_var___u[2] -
-                                 internal_var___p[3] * internal_var___u[3]
+            internal_var___p[3] * internal_var___u[3]
         internal_var___J[2, 3] = -(internal_var___p[3]) * internal_var___u[2]
         internal_var___J[3, 1] = 0 * 1
         internal_var___J[3, 2] = 2 * internal_var___p[2] * internal_var___u[2]
         internal_var___J[3, 3] = 0 * 1
     end
-    nothing
+    return nothing
 end
 
 function rober_tgrad(J, u, p, t)
-    nothing
+    return nothing
 end
 
-rober_prob = ODEProblem(ODEFunction(rober_f, jac = rober_jac, tgrad = rober_tgrad),
-    Float32[1.0, 0.0, 0.0], (0.0f0, 1.0f5), (0.04f0, 3.0f7, 1.0f4))
+rober_prob = ODEProblem(
+    ODEFunction(rober_f, jac = rober_jac, tgrad = rober_tgrad),
+    Float32[1.0, 0.0, 0.0], (0.0f0, 1.0f5), (0.04f0, 3.0f7, 1.0f4)
+)
 sol = solve(rober_prob, Rodas5(), abstol = 1.0f-8, reltol = 1.0f-8)
 sol = solve(rober_prob, TRBDF2(), abstol = 1.0f-4, reltol = 1.0f-1)
 rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
 
 if GROUP == "CUDA"
-    @time sol = solve(rober_monteprob, Rodas5(),
+    @time sol = solve(
+        rober_monteprob, Rodas5(),
         EnsembleGPUArray(backend), trajectories = 10,
         saveat = 1.0f0,
         abstol = 1.0f-8,
-        reltol = 1.0f-8)
-    @time sol = solve(rober_monteprob, TRBDF2(),
+        reltol = 1.0f-8
+    )
+    @time sol = solve(
+        rober_monteprob, TRBDF2(),
         EnsembleGPUArray(backend), trajectories = 10,
         saveat = 1.0f0,
         abstol = 1.0f-4,
-        reltol = 1.0f-1)
+        reltol = 1.0f-1
+    )
 end
 
-@time sol = solve(rober_monteprob, TRBDF2(), EnsembleThreads(),
+@time sol = solve(
+    rober_monteprob, TRBDF2(), EnsembleThreads(),
     trajectories = 10,
-    abstol = 1e-4, reltol = 1e-1, saveat = 1.0f0)
+    abstol = 1.0e-4, reltol = 1.0e-1, saveat = 1.0f0
+)
 
 @info "Struct parameters"
 
@@ -213,7 +247,7 @@ end
 function lorenzp(du, u, p::LorenzParameters, t)
     du[1] = p.σ * (u[2] - u[1])
     du[2] = u[1] * (p.ρ - u[3]) - u[2]
-    du[3] = u[1] * u[2] - p.β * u[3]
+    return du[3] = u[1] * u[2] - p.β * u[3]
 end
 
 u0 = Float32[1.0; 0.0; 0.0]
@@ -221,15 +255,19 @@ tspan = (0.0f0, 100.0f0)
 p = LorenzParameters(10.0f0, 28.0f0, 8 / 3.0f0)
 prob = ODEProblem(lorenzp, u0, tspan, p)
 function param_prob_func(prob, i, repeat)
-    p = LorenzParameters(pre_p[i][1] .* 10.0f0,
+    p = LorenzParameters(
+        pre_p[i][1] .* 10.0f0,
         pre_p[i][2] .* 28.0f0,
-        pre_p[i][3] .* 8 / 3.0f0)
-    remake(prob; p)
+        pre_p[i][3] .* 8 / 3.0f0
+    )
+    return remake(prob; p)
 end
 monteprob = EnsembleProblem(prob, prob_func = param_prob_func)
 
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
-    saveat = 1.0f0)
+@time sol = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
+    saveat = 1.0f0
+)
 @test length(filter(x -> x.u != sol.u[1].u, sol.u)) != 0 # 0 element array
 
 @info "Different time-spans"
@@ -237,16 +275,26 @@ monteprob = EnsembleProblem(prob, prob_func = param_prob_func)
 saveats = 1.0f0:1.0f0:10.0f0
 
 prob = ODEProblem(lorenz, u0, tspan, p)
-monteprob = EnsembleProblem(prob_jac,
-    prob_func = (prob, i, repeat) -> remake(prob;
-        tspan = (0.0f0,
-            saveats[i])))
+monteprob = EnsembleProblem(
+    prob_jac,
+    prob_func = (prob, i, repeat) -> remake(
+        prob;
+        tspan = (
+            0.0f0,
+            saveats[i],
+        )
+    )
+)
 
-sol = solve(monteprob, Tsit5(), EnsembleGPUArray(backend, 0.0), trajectories = 10,
-    adaptive = false, dt = 0.01f0, save_everystep = false)
+sol = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(backend, 0.0), trajectories = 10,
+    adaptive = false, dt = 0.01f0, save_everystep = false
+)
 
 if GROUP == "CUDA"
-    sol = solve(monteprob, Rosenbrock23(), EnsembleGPUArray(backend, 0.0),
+    sol = solve(
+        monteprob, Rosenbrock23(), EnsembleGPUArray(backend, 0.0),
         trajectories = 10,
-        adaptive = false, dt = 0.01f0, save_everystep = false)
+        adaptive = false, dt = 0.01f0, save_everystep = false
+    )
 end

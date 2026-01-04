@@ -1,4 +1,3 @@
-
 #Credits: StaticArrays.jl
 # https://github.com/JuliaArrays/StaticArrays.jl/blob/master/src/lu.jl
 
@@ -12,21 +11,21 @@ for pv in pivot_options
     # ... define each `pivot::Val{true/false}` method individually to avoid ambiguties
     @eval function static_lu(A::StaticLUMatrix, pivot::$pv; check = true)
         L, U, p = _lu(A, pivot, check)
-        LU(L, U, p)
+        return LU(L, U, p)
     end
 
     # For the square version, return explicit lower and upper triangular matrices.
     # We would do this for the rectangular case too, but Base doesn't support that.
     @eval function static_lu(A::StaticLUMatrix{N, N}, pivot::$pv; check = true) where {N}
         L, U, p = _lu(A, pivot, check)
-        LU(LowerTriangular(L), UpperTriangular(U), p)
+        return LU(LowerTriangular(L), UpperTriangular(U), p)
     end
 end
 static_lu(A::StaticLUMatrix; check = true) = static_lu(A, Val(true); check = check)
 
 # location of the first zero on the diagonal, 0 when not found
 function _first_zero_on_diagonal(A::StaticLUMatrix{M, N, T}) where {M, N, T}
-    if @generated
+    return if @generated
         quote
             $(map(i -> :(A[$i, $i] == zero(T) && return $i), 1:min(M, N))...)
             0
@@ -45,7 +44,7 @@ end
     else
         pivot()
     end
-    quote
+    return quote
         L, U, P = __lu(A, $(_pivot))
         if check
             i = _first_zero_on_diagonal(U)
@@ -56,36 +55,38 @@ end
 end
 
 function __lu(A::StaticMatrix{0, 0, T}, ::Val{Pivot}) where {T, Pivot}
-    (SMatrix{0, 0, typeof(one(T))}(), A, SVector{0, Int}())
+    return (SMatrix{0, 0, typeof(one(T))}(), A, SVector{0, Int}())
 end
 
 function __lu(A::StaticMatrix{0, 1, T}, ::Val{Pivot}) where {T, Pivot}
-    (SMatrix{0, 0, typeof(one(T))}(), A, SVector{0, Int}())
+    return (SMatrix{0, 0, typeof(one(T))}(), A, SVector{0, Int}())
 end
 
 function __lu(A::StaticMatrix{0, N, T}, ::Val{Pivot}) where {T, N, Pivot}
-    (SMatrix{0, 0, typeof(one(T))}(), A, SVector{0, Int}())
+    return (SMatrix{0, 0, typeof(one(T))}(), A, SVector{0, Int}())
 end
 
 function __lu(A::StaticMatrix{1, 0, T}, ::Val{Pivot}) where {T, Pivot}
-    (SMatrix{1, 0, typeof(one(T))}(), SMatrix{0, 0, T}(), SVector{1, Int}(1))
+    return (SMatrix{1, 0, typeof(one(T))}(), SMatrix{0, 0, T}(), SVector{1, Int}(1))
 end
 
 function __lu(A::StaticMatrix{M, 0, T}, ::Val{Pivot}) where {T, M, Pivot}
-    (SMatrix{M, 0, typeof(one(T))}(), SMatrix{0, 0, T}(), SVector{M, Int}(1:M))
+    return (SMatrix{M, 0, typeof(one(T))}(), SMatrix{0, 0, T}(), SVector{M, Int}(1:M))
 end
 
 function __lu(A::StaticMatrix{1, 1, T}, ::Val{Pivot}) where {T, Pivot}
-    (SMatrix{1, 1}(one(T)), A, SVector(1))
+    return (SMatrix{1, 1}(one(T)), A, SVector(1))
 end
 
-function __lu(A::LinearAlgebra.HermOrSym{T, <:StaticMatrix{1, 1, T}},
-        ::Val{Pivot}) where {T, Pivot}
-    (SMatrix{1, 1}(one(T)), A.data, SVector(1))
+function __lu(
+        A::LinearAlgebra.HermOrSym{T, <:StaticMatrix{1, 1, T}},
+        ::Val{Pivot}
+    ) where {T, Pivot}
+    return (SMatrix{1, 1}(one(T)), A.data, SVector(1))
 end
 
 function __lu(A::StaticMatrix{1, N, T}, ::Val{Pivot}) where {N, T, Pivot}
-    (SMatrix{1, 1, T}(one(T)), A, SVector{1, Int}(1))
+    return (SMatrix{1, 1, T}(one(T)), A, SVector{1, Int}(1))
 end
 
 function __lu(A::StaticMatrix{M, 1}, ::Val{Pivot}) where {M, Pivot}
@@ -147,14 +148,24 @@ function __lu(A::StaticLUMatrix{M, N, T}, ::Val{Pivot}) where {M, N, T, Pivot}
         Arest = A[ps, tailindices(Val{N})] - Ls * Ufirst[:, tailindices(Val{N})]
         Lrest, Urest, prest = __lu(Arest, Val(Pivot))
         p = [SVector{1, Int}(kp); ps[prest]]
-        L = [[SVector{1}(one(eltype(Ls))); Ls[prest]] [zeros(typeof(SMatrix{1}(Lrest[1,
-                                                       :])));
-                                                       Lrest]]
+        L = [[SVector{1}(one(eltype(Ls))); Ls[prest]] [
+            zeros(
+                typeof(
+                    SMatrix{1}(
+                        Lrest[
+                            1,
+                            :,
+                        ]
+                    )
+                )
+            );
+            Lrest
+        ]]
         U = [Ufirst; [zeros(typeof(Urest[:, 1])) Urest]]
     end
     return (L, U, p)
 end
 
 @generated function tailindices(::Type{Val{M}}) where {M}
-    :(SVector{$(M - 1), Int}($(tuple(2:M...))))
+    return :(SVector{$(M - 1), Int}($(tuple(2:M...))))
 end

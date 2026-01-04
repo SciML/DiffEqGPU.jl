@@ -38,9 +38,10 @@ function Kvaerno3Tableau(T, T2)
     α32 = ((-2θ + 3θ^2) + (6θ * (1 - θ) / c2) * γ)
     α41 = convert(T2, 0.0)
     α42 = convert(T2, 0.0)
-    Kvaerno3Tableau(
+    return Kvaerno3Tableau(
         γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31,
-        α32, α41, α42)
+        α32, α41, α42
+    )
 end
 
 struct Kvaerno5Tableau{T, T2}
@@ -138,7 +139,7 @@ function Kvaerno5Tableau(T, T2)
     a42 = convert(T, 0.47675532319799699)
     a43 = -convert(T, 0.06470895363112615)
     a51 = convert(T, 0.16648564323248321)
-    a52 = convert(T, 0.10450018841591720)
+    a52 = convert(T, 0.1045001884159172)
     a53 = convert(T, 0.03631482272098715)
     a54 = -convert(T, 0.13090704451073998)
     a61 = convert(T, 0.13855640231268224)
@@ -172,9 +173,11 @@ function Kvaerno5Tableau(T, T2)
     c4 = convert(T, 0.895765984350076)
     c5 = convert(T, 0.436393609858648)
     c6 = convert(T, 1)
-    Kvaerno5Tableau(γ, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+    return Kvaerno5Tableau(
+        γ, a31, a32, a41, a42, a43, a51, a52, a53, a54,
         a61, a63, a64, a65, a71, a73, a74, a75, a76,
         btilde1, btilde3, btilde4, btilde5, btilde6, btilde7,
         c3, c4, c5, c6, α31, α32, α41, α42, α43, α51, α52, α53,
-        α61, α62, α63)
+        α61, α62, α63
+    )
 end

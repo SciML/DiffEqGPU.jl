@@ -28,7 +28,7 @@ diffeq_algs = [Rosenbrock23(), Rodas4()]
 for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     @info typeof(alg)
 
-    condition(u, t, integrator) = t == 2.40f0
+    condition(u, t, integrator) = t == 2.4f0
 
     affect!(integrator) = integrator.u += @SVector[10.0f0]
 
@@ -36,34 +36,42 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     @info "Unadaptive version"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0])
+        tstops = [2.4f0]
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0])
+        tstops = [2.4f0]
+    )
 
-    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 2e-3
-    @test norm(bench_sol.u - sol.u[1].u) < 5e-3
+    @test norm(bench_sol(2.4f0) - sol.u[1](2.4f0)) < 2.0e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 5.0e-3
 
     #Test the truncation error due to floating point math, encountered when adjusting t for tstops
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
-        tstops = [4.0f0])
+        tstops = [4.0f0]
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = false, dt = 0.01f0, callback = cb, merge_callbacks = true,
-        tstops = [4.0f0])
+        tstops = [4.0f0]
+    )
 
-    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 2e-6
-    @test norm(bench_sol.u - sol.u[1].u) < 3e-5
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 2.0e-6
+    @test norm(bench_sol.u - sol.u[1].u) < 3.0e-5
 
     @info "Callback: CallbackSets"
 
-    condition_1(u, t, integrator) = t == 2.40f0
+    condition_1(u, t, integrator) = t == 2.4f0
 
     condition_2(u, t, integrator) = t == 4.0f0
 
@@ -72,113 +80,141 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
 
     cb = CallbackSet(cb_1, cb_2)
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0])
+        tstops = [2.4f0, 4.0f0]
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0])
+        tstops = [2.4f0, 4.0f0]
+    )
 
-    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 2e-3
-    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 3e-3
-    @test norm(bench_sol.u - sol.u[1].u) < 7e-3
+    @test norm(bench_sol(2.4f0) - sol.u[1](2.4f0)) < 2.0e-3
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 3.0e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 7.0e-3
 
     @info "saveat and callbacks"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0])
+        tstops = [2.4f0, 4.0f0], saveat = [0.0f0, 6.0f0]
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0])
+        tstops = [2.4f0, 4.0f0], saveat = [0.0f0, 6.0f0]
+    )
 
-    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 1e-3
-    @test norm(bench_sol(6.0f0) - sol.u[1](6.0f0)) < 3e-3
-    @test norm(bench_sol.u - sol.u[1].u) < 3e-3
+    @test norm(bench_sol(2.4f0) - sol.u[1](2.4f0)) < 1.0e-3
+    @test norm(bench_sol(6.0f0) - sol.u[1](6.0f0)) < 3.0e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 3.0e-3
 
     @info "save_everystep and callbacks"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0], save_everystep = false)
+        tstops = [2.4f0, 4.0f0], save_everystep = false
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0], save_everystep = false)
+        tstops = [2.4f0, 4.0f0], save_everystep = false
+    )
 
-    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 3e-5
-    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 5e-5
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-4
+    @test norm(bench_sol(2.4f0) - sol.u[1](2.4f0)) < 3.0e-5
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 5.0e-5
+    @test norm(bench_sol.u - sol.u[1].u) < 2.0e-4
 
     @info "Adaptive version"
 
     cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [4.0f0])
+        tstops = [4.0f0]
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = true, save_everystep = false, dt = 1.0f0, callback = cb,
         merge_callbacks = true,
-        tstops = [4.0f0])
+        tstops = [4.0f0]
+    )
 
-    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 5e-5
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-4
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 5.0e-5
+    @test norm(bench_sol.u - sol.u[1].u) < 2.0e-4
 
     @info "Callback: CallbackSets"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0])
+        tstops = [2.4f0, 4.0f0]
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = true, dt = 1.0f0, save_everystep = false, callback = cb,
         merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0])
+        tstops = [2.4f0, 4.0f0]
+    )
 
-    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 6e-4
-    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 1e-3
-    @test norm(bench_sol.u - sol.u[1].u) < 3e-3
+    @test norm(bench_sol(2.4f0) - sol.u[1](2.4f0)) < 6.0e-4
+    @test norm(bench_sol(4.0f0) - sol.u[1](4.0f0)) < 1.0e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 3.0e-3
 
     @info "saveat and callbacks"
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = true, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0], reltol = 1.0f-7,
-        abstol = 1.0f-7)
+        tstops = [2.4f0, 4.0f0], saveat = [0.0f0, 6.0f0], reltol = 1.0f-7,
+        abstol = 1.0f-7
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = true, save_everystep = false, dt = 1.0f0, callback = cb,
         merge_callbacks = true,
-        tstops = [2.40f0, 4.0f0], saveat = [0.0f0, 6.0f0], reltol = 1.0f-7,
-        abstol = 1.0f-7)
+        tstops = [2.4f0, 4.0f0], saveat = [0.0f0, 6.0f0], reltol = 1.0f-7,
+        abstol = 1.0f-7
+    )
 
-    @test norm(bench_sol(2.40f0) - sol.u[1](2.40f0)) < 7e-3
-    @test norm(bench_sol(6.0f0) - sol.u[1](6.0f0)) < 2e-2
-    @test norm(bench_sol.u - sol.u[1].u) < 2e-2
+    @test norm(bench_sol(2.4f0) - sol.u[1](2.4f0)) < 7.0e-3
+    @test norm(bench_sol(6.0f0) - sol.u[1](6.0f0)) < 2.0e-2
+    @test norm(bench_sol.u - sol.u[1].u) < 2.0e-2
 
     @info "Terminate callback"
 
     cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
 
-    local sol = solve(monteprob, alg, EnsembleGPUKernel(backend),
+    local sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend),
         trajectories = 2,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0])
+        tstops = [2.4f0]
+    )
 
-    bench_sol = solve(prob, diffeq_alg,
+    bench_sol = solve(
+        prob, diffeq_alg,
         adaptive = false, dt = 1.0f0, callback = cb, merge_callbacks = true,
-        tstops = [2.40f0])
+        tstops = [2.4f0]
+    )
 
-    @test norm(bench_sol.t - sol.u[1].t) < 2e-3
-    @test norm(bench_sol.u - sol.u[1].u) < 5e-3
+    @test norm(bench_sol.t - sol.u[1].t) < 2.0e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 5.0e-3
 end

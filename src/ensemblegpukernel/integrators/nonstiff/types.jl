@@ -1,7 +1,7 @@
 ## Fixed TimeStep Integrator
 
 mutable struct GPUTsit5Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -40,11 +40,11 @@ const GPUT5I = GPUTsit5Integrator
 
 @inline function (integrator::GPUTsit5Integrator)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 @inline function DiffEqBase.u_modified!(integrator::GPUTsit5Integrator, bool::Bool)
-    integrator.u_modified = bool
+    return integrator.u_modified = bool
 end
 
 DiffEqBase.isinplace(::GPUT5I{IIP}) where {IIP} = IIP
@@ -52,7 +52,7 @@ DiffEqBase.isinplace(::GPUT5I{IIP}) where {IIP} = IIP
 ## Adaptive TimeStep Integrator
 
 mutable struct GPUATsit5Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -99,16 +99,16 @@ const GPUAT5I = GPUATsit5Integrator
 
 @inline function (integrator::GPUATsit5Integrator)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 @inline function DiffEqBase.u_modified!(integrator::GPUATsit5Integrator, bool::Bool)
-    integrator.u_modified = bool
+    return integrator.u_modified = bool
 end
 ## Vern7
 
 mutable struct GPUV7Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -148,11 +148,11 @@ const GPUV7I = GPUV7Integrator
 
 @inline function (integrator::GPUV7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 mutable struct GPUAV7Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -199,13 +199,13 @@ const GPUAV7I = GPUAV7Integrator
 
 @inline function (integrator::GPUAV7I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 ## Vern9
 
 mutable struct GPUV9Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -245,11 +245,11 @@ const GPUV9I = GPUV9Integrator
 
 @inline function (integrator::GPUV9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 mutable struct GPUAV9Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType} <:
-               DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -296,18 +296,22 @@ const GPUAV9I = GPUAV9Integrator
 
 @inline function (integrator::GPUAV9I)(t)
     Θ = (t - integrator.tprev) / integrator.dt
-    _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
 end
 
 #######################################################################################
 # Initialization of Integrators
 #######################################################################################
-@inline function init(alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T, S,
-        TS, CB, ST}
+        saveat::ST
+    ) where {
+        F, P, T, S,
+        TS, CB, ST,
+    }
     cs, as, rs = SimpleDiffEq._build_tsit5_caches(T)
 
     !IIP && @assert S <: SArray
@@ -315,7 +319,8 @@ end
     vector_event_last_time = 0
     last_event_error = zero(T)
 
-    integ = GPUT5I{IIP, S, T, ST, P, F, TS, CB, typeof(alg)}(alg, f, copy(u0), copy(u0),
+    return integ = GPUT5I{IIP, S, T, ST, P, F, TS, CB, typeof(alg)}(
+        alg, f, copy(u0), copy(u0),
         copy(u0), t0, t0, t0,
         dt,
         sign(dt), p, true, tstops, 1,
@@ -328,25 +333,28 @@ end
         copy(u0),
         copy(u0),
         copy(u0), copy(u0), cs, as, rs,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
-@inline function init(alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
+@inline function init(
+        alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
         p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
+        saveat::ST
+    ) where {F, P, S, T, N, TOL, TS, CB, ST}
     cs, as, btildes, rs = SimpleDiffEq._build_atsit5_caches(T)
 
     !IIP && @assert S <: SArray
 
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
 
-    integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(
+    return integ = GPUAT5I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(alg)}(
         alg,
         f,
         copy(u0),
@@ -358,8 +366,10 @@ end
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -387,15 +397,20 @@ end
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
-@inline function init(alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T, S,
-        TS, CB, ST}
+        saveat::ST
+    ) where {
+        F, P, T, S,
+        TS, CB, ST,
+    }
     tab = Vern7Tableau(T, T)
 
     !IIP && @assert S <: SArray
@@ -403,7 +418,8 @@ end
     vector_event_last_time = 0
     last_event_error = zero(T)
 
-    integ = GPUV7I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f, copy(u0),
+    return integ = GPUV7I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f, copy(u0),
         copy(u0),
         copy(u0),
         t0, t0, t0, dt,
@@ -426,26 +442,32 @@ end
         copy(u0),
         copy(u0),
         tab,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
-@inline function init(alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
+@inline function init(
+        alg::GPUVern7, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
         p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
+        saveat::ST
+    ) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern7Tableau(T, T)
 
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
 
-    integ = GPUAV7I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-        typeof(alg)}(alg, f,
+    return integ = GPUAV7I{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
+        typeof(alg),
+    }(
+        alg, f,
         copy(u0),
         copy(u0),
         copy(u0),
@@ -455,8 +477,10 @@ end
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -484,15 +508,20 @@ end
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
-@inline function init(alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+@inline function init(
+        alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
-        saveat::ST) where {F, P, T, S,
-        TS, CB, ST}
+        saveat::ST
+    ) where {
+        F, P, T, S,
+        TS, CB, ST,
+    }
     tab = Vern9Tableau(T, T)
 
     !IIP && @assert S <: SArray
@@ -500,7 +529,8 @@ end
     vector_event_last_time = 0
     last_event_error = zero(T)
 
-    integ = GPUV9I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(alg, f, copy(u0),
+    return integ = GPUV9I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f, copy(u0),
         copy(u0),
         copy(u0),
         t0, t0, t0, dt,
@@ -523,26 +553,32 @@ end
         copy(u0),
         copy(u0),
         tab,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end
 
-@inline function init(alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
+@inline function init(
+        alg::GPUVern9, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
         p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,
         callback::CB,
-        saveat::ST) where {F, P, S, T, N, TOL, TS, CB, ST}
+        saveat::ST
+    ) where {F, P, S, T, N, TOL, TS, CB, ST}
     !IIP && @assert S <: SArray
 
     tab = Vern9Tableau(T, T)
 
-    qoldinit = T(1e-4)
+    qoldinit = T(1.0e-4)
     event_last_time = 1
     vector_event_last_time = 0
     last_event_error = zero(T)
 
-    integ = GPUAV9I{IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
-        typeof(alg)}(alg, f,
+    return integ = GPUAV9I{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
+        typeof(alg),
+    }(
+        alg, f,
         copy(u0),
         copy(u0),
         copy(u0),
@@ -552,8 +588,10 @@ end
         tf,
         dt,
         dt,
-        sign(tf -
-             t0),
+        sign(
+            tf -
+                t0
+        ),
         p,
         true,
         tstops,
@@ -581,5 +619,6 @@ end
         abstol,
         reltol,
         internalnorm,
-        DiffEqBase.ReturnCode.Default)
+        DiffEqBase.ReturnCode.Default
+    )
 end

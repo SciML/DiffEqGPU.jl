@@ -7,14 +7,14 @@
     integ.uprev = integ.u
     uprev = integ.u
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
-    C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3, d4 = integ.tab
+        C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3, d4 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
     adv_integ = true
     ## Check if tstops are within the range of time-series
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-       (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
+            (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
         integ.t = integ.tstops[integ.tstops_idx]
         ## Set correct dt
         dt = integ.t - integ.tprev
@@ -116,9 +116,10 @@ end
 
 @inline function step!(integ::GPUARodas4I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit,
-    _ = build_adaptive_controller_cache(
+        _ = build_adaptive_controller_cache(
         integ.alg,
-        T)
+        T
+    )
 
     dt = integ.dtnew
     t = integ.t
@@ -135,8 +136,8 @@ end
     reltol = integ.reltol
 
     @unpack a21, a31, a32, a41, a42, a43, a51, a52, a53, a54, C21, C31, C32, C41, C42, C43,
-    C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3,
-    d4 = integ.tab
+        C51, C52, C53, C54, C61, C62, C63, C64, C65, γ, c2, c3, c4, d1, d2, d3,
+        d4 = integ.tab
 
     # Jacobian
 
@@ -254,8 +255,8 @@ end
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-                   integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
-                   100 * eps(T) < 0
+                        integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
+                        100 * eps(T) < 0
                     integ.t = integ.tstops[integ.tstops_idx]
                     integ.u = integ(integ.t)
                     dt = integ.t - integ.tprev

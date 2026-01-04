@@ -7,14 +7,14 @@
     integ.uprev = integ.u
     uprev = integ.u
     @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31,
-    α32 = integ.tab
+        α32 = integ.tab
 
     integ.tprev = t
     saved_in_cb = false
     adv_integ = true
     ## Check if tstops are within the range of time-series
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-       (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
+            (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
         integ.t = integ.tstops[integ.tstops_idx]
         ## Set correct dt
         dt = integ.t - integ.tprev
@@ -33,9 +33,11 @@
 
     ## Build nlsolver
 
-    nlsolver = build_nlsolver(integ.alg, integ.u, integ.p, integ.t, integ.dt, integ.f,
+    nlsolver = build_nlsolver(
+        integ.alg, integ.u, integ.p, integ.t, integ.dt, integ.f,
         integ.tab.γ,
-        integ.tab.c3)
+        integ.tab.c3
+    )
 
     ## Steps
 
@@ -88,9 +90,10 @@ end
 
 @inline function step!(integ::GPUAKvaerno3I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit,
-    _ = build_adaptive_controller_cache(
+        _ = build_adaptive_controller_cache(
         integ.alg,
-        T)
+        T
+    )
 
     dt = integ.dtnew
     t = integ.t
@@ -107,7 +110,7 @@ end
     reltol = integ.reltol
 
     @unpack γ, a31, a32, a41, a42, a43, btilde1, btilde2, btilde3, btilde4, c3, α31,
-    α32 = integ.tab
+        α32 = integ.tab
 
     if integ.u_modified
         k1 = f(uprev, p, t)
@@ -123,9 +126,11 @@ end
 
         ## Steps
 
-        nlsolver = build_nlsolver(integ.alg, integ.u, integ.p, integ.t, dt, integ.f,
+        nlsolver = build_nlsolver(
+            integ.alg, integ.u, integ.p, integ.t, dt, integ.f,
             integ.tab.γ,
-            integ.tab.c3)
+            integ.tab.c3
+        )
 
         # FSAL Step 1
 
@@ -168,11 +173,13 @@ end
 
         W_eval = nlsolver.W(nlsolver.tmp + nlsolver.γ * z₄, p, t + nlsolver.c * dt)
 
-        err = linear_solve(W_eval,
-            btilde1 * z₁ + btilde2 * z₂ + btilde3 * z₃ + btilde4 * z₄)
+        err = linear_solve(
+            W_eval,
+            btilde1 * z₁ + btilde2 * z₂ + btilde3 * z₃ + btilde4 * z₄
+        )
 
         tmp = (err) ./
-              (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
+            (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
         if iszero(EEst)
@@ -205,8 +212,8 @@ end
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-                   integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
-                   100 * eps(T) < 0
+                        integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
+                        100 * eps(T) < 0
                     integ.t = integ.tstops[integ.tstops_idx]
                     integ.u = integ(integ.t)
                     dt = integ.t - integ.tprev
