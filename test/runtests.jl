@@ -4,10 +4,10 @@
 if Base.JLOptions().check_bounds == 1
     cmd = Cmd(filter(arg -> !startswith(arg, "--check-bounds"), Base.julia_cmd().exec))
     code = """
-      $(Base.load_path_setup_code(false))
-      cd($(repr(@__DIR__)))
-      include($(repr(@__FILE__)))
-      """
+    $(Base.load_path_setup_code(false))
+    cd($(repr(@__DIR__)))
+    include($(repr(@__FILE__)))
+    """
     run(`$cmd --eval $code`)
     exit()
 end

@@ -1,5 +1,7 @@
-@kernel function em_kernel(@Const(probs), _us, _ts, dt,
-        saveat, ::Val{save_everystep}) where {save_everystep}
+@kernel function em_kernel(
+        @Const(probs), _us, _ts, dt,
+        saveat, ::Val{save_everystep}
+    ) where {save_everystep}
     i = @index(Global, Linear)
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -14,11 +16,11 @@
     u0 = prob.u0
     tspan = prob.tspan
     p = prob.p
-    
+
     # FIX for Issue #379: Get time type from tspan
     Tt = typeof(tspan[1])
     dt = Tt(dt)
-    
+
     is_diagonal_noise = SciMLBase.is_diagonal_noise(prob)
     cur_t = 0
     if saveat !== nothing
@@ -31,16 +33,16 @@
         @inbounds ts[1] = tspan[1]
         @inbounds us[1] = u0
     end
-    
+
     # FIX: Use Tt for sqrt to ensure proper type
     sqdt = sqrt(dt)
     u = copy(u0)
     t = copy(tspan[1])
-    
+
     # FIX: Ensure n calculation uses proper types
     t0, tf = tspan[1], tspan[2]
     n = floor(Int, abs(tf - t0) / abs(dt)) + 1
-    
+
     for j in 2:n
         uprev = u
         if is_diagonal_noise

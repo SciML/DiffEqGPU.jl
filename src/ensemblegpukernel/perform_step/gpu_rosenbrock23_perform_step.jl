@@ -13,7 +13,7 @@
     adv_integ = true
     ## Check if tstops are within the range of time-series
     if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-       (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
+            (integ.tstops[integ.tstops_idx] - integ.t - integ.dt - 100 * eps(T) < 0)
         integ.t = integ.tstops[integ.tstops_idx]
         ## Set correct dt
         dt = integ.t - integ.tprev
@@ -73,9 +73,10 @@ end
 
 @inline function step!(integ::GPUARB23I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit,
-    _ = build_adaptive_controller_cache(
+        _ = build_adaptive_controller_cache(
         integ.alg,
-        T)
+        T
+    )
     dt = integ.dtnew
     t = integ.t
     p = integ.p
@@ -140,9 +141,11 @@ end
             k3 = linear_solve(W_fact, F₂ - e32 * (k2 - F₁) - 2 * (k1 - F₀) + dt * dT)
 
         else
-            k3 = linear_solve(W_fact,
+            k3 = linear_solve(
+                W_fact,
                 F₂ - mass_matrix * (e32 * k2 + 2 * k1) +
-                e32 * F₁ + 2 * F₀ + dt * dT)
+                    e32 * F₁ + 2 * F₀ + dt * dT
+            )
         end
 
         tmp = dto6 * (k1 - 2 * k2 + k3)
@@ -179,8 +182,8 @@ end
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-                   integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
-                   100 * eps(T) < 0
+                        integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
+                        100 * eps(T) < 0
                     integ.t = integ.tstops[integ.tstops_idx]
                     integ.u = integ(integ.t)
                     dt = integ.t - integ.tprev

@@ -49,7 +49,7 @@ function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
     #BET2P=0.0317D0
     #BET3P=0.0635D0
     #BET4P=0.3438D0
-    a21 = convert(T, 1.544000000000000)
+    a21 = convert(T, 1.544)
     a31 = convert(T, 0.9466785280815826)
     a32 = convert(T, 0.2557011698983284)
     a41 = convert(T, 3.314825187068521)
@@ -58,8 +58,8 @@ function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
     a51 = convert(T, 1.221224509226641)
     a52 = convert(T, 6.019134481288629)
     a53 = convert(T, 12.53708332932087)
-    a54 = -convert(T, 0.6878860361058950)
-    C21 = -convert(T, 5.668800000000000)
+    a54 = -convert(T, 0.687886036105895)
+    C21 = -convert(T, 5.6688)
     C31 = -convert(T, 2.430093356833875)
     C32 = -convert(T, 0.2063599157091915)
     C41 = -convert(T, 0.1073529058151375)
@@ -68,7 +68,7 @@ function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
     C51 = convert(T, 7.496443313967647)
     C52 = -convert(T, 10.24680431464352)
     C53 = -convert(T, 33.99990352819905)
-    C54 = convert(T, 11.70890893206160)
+    C54 = convert(T, 11.7089089320616)
     C61 = convert(T, 8.083246795921522)
     C62 = -convert(T, 7.981132988064893)
     C63 = -convert(T, 31.52159432874371)
@@ -79,9 +79,9 @@ function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
     c3 = convert(T2, 0.21)
     c4 = convert(T2, 0.63)
 
-    d1 = convert(T, 0.2500000000000000)
-    d2 = -convert(T, 0.1043000000000000)
-    d3 = convert(T, 0.1035000000000000)
+    d1 = convert(T, 0.25)
+    d2 = -convert(T, 0.1043)
+    d3 = convert(T, 0.1035)
     d4 = -convert(T, 0.03620000000000023)
 
     h21 = convert(T, 10.12623508344586)
@@ -95,10 +95,12 @@ function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
     h34 = convert(T, 24.76722511418386)
     h35 = -convert(T, 6.594389125716872)
 
-    Rodas4Tableau(a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+    return Rodas4Tableau(
+        a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
         C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65,
         γ, c2, c3, c4, d1, d2, d3, d4,
-        h21, h22, h23, h24, h25, h31, h32, h33, h34, h35)
+        h21, h22, h23, h24, h25, h31, h32, h33, h34, h35
+    )
 end
 
 struct Rodas5PTableau{T, T2}
@@ -267,7 +269,8 @@ function Rodas5PTableau(T, T2)
     h47 = convert(T, -0.15582684282751913)
     h48 = convert(T, 4.883087185713722)
 
-    Rodas5PTableau(a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+    return Rodas5PTableau(
+        a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
         a61, a62, a63, a64, a65,
         C21, C31, C32, C41, C42, C43, C51, C52, C53, C54,
         C61, C62, C63, C64, C65, C71, C72, C73, C74, C75, C76,
@@ -275,5 +278,6 @@ function Rodas5PTableau(T, T2)
         γ, d1, d2, d3, d4, d5, c2, c3, c4, c5,
         h21, h22, h23, h24, h25, h26, h27, h28, h31, h32, h33, h34, h35, h36,
         h37,
-        h38, h41, h42, h43, h44, h45, h46, h47, h48)
+        h38, h41, h42, h43, h44, h45, h46, h47, h48
+    )
 end

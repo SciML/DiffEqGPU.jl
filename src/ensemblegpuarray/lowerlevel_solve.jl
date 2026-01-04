@@ -22,10 +22,12 @@ Only a subset of the common solver arguments are supported.
 """
 function vectorized_map_solve end
 
-function vectorized_map_solve(probs, alg,
+function vectorized_map_solve(
+        probs, alg,
         ensemblealg::Union{EnsembleArrayAlgorithm}, I,
         adaptive;
-        kwargs...)
+        kwargs...
+    )
 
     #    @assert all(Base.Fix2((prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),probs[1]),probs)
     # u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
@@ -37,8 +39,10 @@ function vectorized_map_solve(probs, alg,
     p = hcat([Array(probs[i].p) for i in 1:length(I)]...)
 
     prob = probs[1]
-    sol = vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p;
-        adaptive = adaptive, kwargs...)
+    return sol = vectorized_map_solve_up(
+        prob, alg, ensemblealg, I, u0, p;
+        adaptive = adaptive, kwargs...
+    )
 end
 
 function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
@@ -78,6 +82,8 @@ function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
         _alg = alg
     end
 
-    sol = solve(prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
-        internalnorm = diffeqgpunorm)
+    return sol = solve(
+        prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
+        internalnorm = diffeqgpunorm
+    )
 end

@@ -24,11 +24,14 @@ for alg in algs
     ## solve using off-loading on CPU
     local sol = solve(
         monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
-        adaptive = false)
+        adaptive = false
+    )
 
-    sol = solve(monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt,
+    sol = solve(
+        monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt,
         trajectories = 1000,
-        adaptive = false)
+        adaptive = false
+    )
 
     sol_array = Array(sol)
 
@@ -36,7 +39,7 @@ for alg in algs
 
     us_exact = 0.5f0 * exp.(sol.u[1].t)
 
-    @test norm(us - us_exact, Inf) < 6e-2
+    @test norm(us - us_exact, Inf) < 6.0e-2
 
     @info "Diagonal Noise"
 
@@ -59,13 +62,15 @@ for alg in algs
 
     local sol = solve(
         monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-        adaptive = false)
+        adaptive = false
+    )
 
     @test sol.converged == true
 
     sol = solve(
         monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-        adaptive = false, save_everystep = false)
+        adaptive = false, save_everystep = false
+    )
 
     @test sol.converged == true
     @test length(sol.u[1].u) == 2
@@ -74,7 +79,8 @@ for alg in algs
 
     sol = solve(
         monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-        adaptive = false, saveat = saveat)
+        adaptive = false, saveat = saveat
+    )
 end
 
 @info "Non-Diagonal Noise"
@@ -103,13 +109,15 @@ monteprob = EnsembleProblem(prob)
 
 sol = solve(
     monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-    adaptive = false)
+    adaptive = false
+)
 
 @test sol.converged == true
 
 sol = solve(
     monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-    adaptive = false, save_everystep = false)
+    adaptive = false, save_everystep = false
+)
 
 @test sol.converged == true
 @test length(sol.u[1].u) == 2

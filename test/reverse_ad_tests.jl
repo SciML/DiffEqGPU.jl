@@ -4,24 +4,26 @@ import Zygote
 include("utils.jl")
 
 function modelf(du, u, p, t)
-    du[1] = 1.01 * u[1] * p[1] * p[2]
+    return du[1] = 1.01 * u[1] * p[1] * p[2]
 end
 
 function model(θ, ensemblealg)
     prob = ODEProblem(modelf, [θ[1]], (0.0, 1.0), [θ[2], θ[3]])
 
     function prob_func(prob, i, repeat)
-        remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+        return remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-    solve(ensemble_prob, Tsit5(), ensemblealg, saveat = 0.1,
-        trajectories = 10)
+    return solve(
+        ensemble_prob, Tsit5(), ensemblealg, saveat = 0.1,
+        trajectories = 10
+    )
 end
 
 callback = function (θ, l) # callback function to observe training
     @show l
-    false
+    return false
 end
 
 pa = [1.0, 2.0]

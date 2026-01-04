@@ -21,5 +21,5 @@
             break
         end
     end
-    @set! nlsolver.z = z_i
+    return @set! nlsolver.z = z_i
 end

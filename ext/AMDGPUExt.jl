@@ -6,7 +6,7 @@ using .AMDGPU
 import .AMDGPU: ROCBackend
 
 function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
-    DiffEqGPU.EnsembleGPUArray(ROCBackend(), cpu_offload)
+    return DiffEqGPU.EnsembleGPUArray(ROCBackend(), cpu_offload)
 end
 DiffEqGPU.maxthreads(::ROCBackend) = 256
 DiffEqGPU.maybe_prefer_blocks(::ROCBackend) = ROCBackend()

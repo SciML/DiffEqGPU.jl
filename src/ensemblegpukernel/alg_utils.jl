@@ -23,7 +23,7 @@ function finite_diff_jac(f, jac_prototype, x)
         x_dx = convert(SArray, x_dx)
         jac[:, i] .= (f(x_dx) - f(x)) / dx
     end
-    convert(SMatrix, jac)
+    return convert(SMatrix, jac)
 end
 
 function alg_autodiff(alg::GPUODEAlgorithm)

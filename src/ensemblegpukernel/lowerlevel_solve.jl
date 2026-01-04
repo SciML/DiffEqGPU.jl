@@ -22,11 +22,13 @@ Only a subset of the common solver arguments are supported.
 """
 function vectorized_solve end
 
-function vectorized_solve(probs, prob::ODEProblem, alg;
+function vectorized_solve(
+        probs, prob::ODEProblem, alg;
         dt, saveat = nothing,
         save_everystep = true,
         debug = false, callback = CallbackSet(nothing), tstops = nothing,
-        kwargs...)
+        kwargs...
+    )
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
@@ -54,7 +56,7 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
     else
         # Get the time type from the problem
         Tt = eltype(prob.tspan)
-        
+
         # FIX for Issue #379: Convert saveat to proper type
         saveat_converted = if saveat isa AbstractRange
             Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
@@ -70,9 +72,9 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
                 Tt.(collect(range(t0, tf, length = num_points)))
             end
         end
-        
+
         saveat_converted = adapt(backend, saveat_converted)
-        
+
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
@@ -86,24 +88,28 @@ function vectorized_solve(probs, prob::ODEProblem, alg;
         @warn "Running the kernel on CPU"
     end
 
-    kernel(probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
+    kernel(
+        probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
         Val(save_everystep);
-        ndrange = length(probs))
+        ndrange = length(probs)
+    )
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
     # no useful operations, etc). That's unfortunate though, since this loop is
     # generally slower than the entire GPU execution, and necessitates synchronization
     # EDIT: Done when using with DiffEqGPU
-    ts, us
+    return ts, us
 end
 
 # SDEProblems over GPU cannot support u0 as a Number type, because GPU kernels compiled only through u0 being StaticArrays
-function vectorized_solve(probs, prob::SDEProblem, alg;
+function vectorized_solve(
+        probs, prob::SDEProblem, alg;
         dt, saveat = nothing,
         save_everystep = true,
         debug = false,
-        kwargs...)
+        kwargs...
+    )
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
 
@@ -121,7 +127,7 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
     else
         # Get the time type from the problem
         Tt = eltype(prob.tspan)
-        
+
         # FIX for Issue #379: Convert saveat to proper type
         saveat_converted = if saveat isa AbstractRange
             Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
@@ -137,7 +143,7 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
                 Tt.(collect(range(t0, tf, length = num_points)))
             end
         end
-        
+
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
         fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
@@ -149,7 +155,7 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         kernel = em_kernel(backend)
     elseif alg isa Union{GPUSIEA}
         SciMLBase.is_diagonal_noise(prob) ? nothing :
-        error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
+            error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
         kernel = siea_kernel(backend)
     end
 
@@ -157,9 +163,11 @@ function vectorized_solve(probs, prob::SDEProblem, alg;
         @warn "Running the kernel on CPU"
     end
 
-    kernel(probs, us, ts, dt, saveat_converted, Val(save_everystep);
-        ndrange = length(probs))
-    ts, us
+    kernel(
+        probs, us, ts, dt, saveat_converted, Val(save_everystep);
+        ndrange = length(probs)
+    )
+    return ts, us
 end
 
 """
@@ -187,20 +195,22 @@ Only a subset of the common solver arguments are supported.
 """
 function vectorized_asolve end
 
-function vectorized_asolve(probs, prob::ODEProblem, alg;
+function vectorized_asolve(
+        probs, prob::ODEProblem, alg;
         dt = 0.1f0, saveat = nothing,
         save_everystep = false,
         abstol = 1.0f-6, reltol = 1.0f-3,
         debug = false, callback = CallbackSet(nothing), tstops = nothing,
-        kwargs...)
-    
+        kwargs...
+    )
+
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
 
     # Get the time type from the problem
     Tt = eltype(prob.tspan)
-    
-    # FIX for Issue #379: Convert saveat to eliminate 
+
+    # FIX for Issue #379: Convert saveat to eliminate
     # StepRangeLen's internal Float64 fields which crash Metal
 
     if saveat !== nothing
@@ -211,17 +221,19 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
             else
                 # Create proper range with correct type
                 t0, tf = Tt.(prob.tspan)
-                
+
                 # Handle both forward and reverse time integration
                 num_points = Int(ceil(abs(tf - t0) / abs(Tt(saveat)))) + 1
-                
+
                 # Safety check: prevent massive arrays
                 max_saveat_length = 100_000
                 if num_points > max_saveat_length
-                    error("saveat would create too many save points ($num_points). " *
-                          "Consider using a larger saveat value.")
+                    error(
+                        "saveat would create too many save points ($num_points). " *
+                            "Consider using a larger saveat value."
+                    )
                 end
-                
+
                 # Create range and convert to pure Vector{Tt}
                 saveat_range = range(t0, tf, length = num_points)
                 saveat_converted = Tt.(collect(saveat_range))
@@ -269,17 +281,21 @@ function vectorized_asolve(probs, prob::ODEProblem, alg;
         @warn "Running the kernel on CPU"
     end
 
-    kernel(probs, alg, us, ts, dt, callback, tstops,
+    kernel(
+        probs, alg, us, ts, dt, callback, tstops,
         abstol, reltol, saveat_converted, Val(save_everystep);
-        ndrange = length(probs))
+        ndrange = length(probs)
+    )
 
-    ts, us
+    return ts, us
 end
 
-function vectorized_asolve(probs, prob::SDEProblem, alg;
+function vectorized_asolve(
+        probs, prob::SDEProblem, alg;
         dt, saveat = nothing,
         save_everystep = true,
         debug = false,
-        kwargs...)
+        kwargs...
+    )
     error("Adaptive time-stepping is not supported yet with GPUEM.")
 end

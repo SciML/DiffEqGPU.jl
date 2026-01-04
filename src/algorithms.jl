@@ -156,22 +156,24 @@ struct EnsembleGPUKernel{Dev} <: EnsembleKernelAlgorithm
     cpu_offload::Float64
 end
 
-cpu_alg = Dict(GPUTsit5 => (GPUSimpleTsit5(), GPUSimpleATsit5()),
+cpu_alg = Dict(
+    GPUTsit5 => (GPUSimpleTsit5(), GPUSimpleATsit5()),
     GPUVern7 => (GPUSimpleVern7(), GPUSimpleAVern7()),
-    GPUVern9 => (GPUSimpleVern9(), GPUSimpleAVern9()))
+    GPUVern9 => (GPUSimpleVern9(), GPUSimpleAVern9())
+)
 
 # Work around the fact that Zygote cannot handle the task system
 # Work around the fact that Zygote isderiving fails with constants?
 function EnsembleGPUArray(dev)
-    EnsembleGPUArray(dev, 0.2)
+    return EnsembleGPUArray(dev, 0.2)
 end
 
 function EnsembleGPUKernel(dev)
-    EnsembleGPUKernel(dev, 0.0)
+    return EnsembleGPUKernel(dev, 0.0)
 end
 
 function ChainRulesCore.rrule(::Type{<:EnsembleGPUArray})
-    EnsembleGPUArray(0.0), _ -> NoTangent()
+    return EnsembleGPUArray(0.0), _ -> NoTangent()
 end
 
 ZygoteRules.@adjoint function EnsembleGPUArray(dev)
