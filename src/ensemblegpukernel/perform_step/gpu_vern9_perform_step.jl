@@ -32,13 +32,7 @@
         integ.t += dt
     end
 
-    if integ.u_modified
-        k1 = f(uprev, p, t)
-        integ.u_modified = false
-    else
-        @inbounds k1 = integ.k1
-    end
-
+    # Note: Vern9 is not FSAL, k1 must always be recomputed
     k1 = f(uprev, p, t)
     a = dt * a0201
     k2 = f(uprev + a * k1, p, t + c1 * dt)

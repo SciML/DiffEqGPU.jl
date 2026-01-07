@@ -26,13 +26,7 @@
         integ.t += dt
     end
 
-    if integ.u_modified
-        k1 = f(uprev, p, t)
-        integ.u_modified = false
-    else
-        @inbounds k1 = integ.k1
-    end
-
+    # Note: Vern7 is not FSAL, k1 must always be recomputed
     k1 = f(uprev, p, t)
     a = dt * a021
     k2 = f(uprev + a * k1, p, t + c2 * dt)
