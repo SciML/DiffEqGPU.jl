@@ -1016,4 +1016,3 @@ end
 @inline function DiffEqBase.u_modified!(integrator::GPUAKvaerno5I, bool::Bool)
     return integrator.u_modified = bool
 end
-
