@@ -106,3 +106,10 @@ if GROUP == "CUDA"
         end
     end
 end
+
+# Allocation tests run separately to avoid precompilation interference
+if GROUP == "all" || GROUP == "nopre"
+    @time @safetestset "Allocation Tests" begin
+        include("alloc_tests.jl")
+    end
+end

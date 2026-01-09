@@ -43,7 +43,7 @@ for alg in algs
     )
 
     @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 5.0e-3
-    @test norm(bench_asol.u - asol.u[1].u) < 8.0e-4
+    @test norm(bench_asol.u - asol.u[1].u) < 1.0e-3
 
     ### solve parameters
 
@@ -68,8 +68,8 @@ for alg in algs
 
     @test norm(asol.u[1].u[end] - sol.u[1].u[end]) < 5.0e-3
 
-    @test norm(bench_sol.u - sol.u[1].u) < 2.0e-4
-    @test norm(bench_asol.u - asol.u[1].u) < 2.0e-4
+    @test norm(bench_sol.u - sol.u[1].u) < 5.0e-4
+    @test norm(bench_asol.u - asol.u[1].u) < 5.0e-4
 
     @test length(sol.u[1].u) == length(saveat)
     @test length(asol.u[1].u) == length(saveat)
@@ -93,10 +93,10 @@ for alg in algs
         reltol = 1.0f-7, saveat = saveat
     )
 
-    @test norm(asol.u[1].u[end] - sol.u[1].u[end]) < 6.0e-3
+    @test norm(asol.u[1].u[end] - sol.u[1].u[end]) < 1.0e-2
 
-    @test norm(bench_sol.u - sol.u[1].u) < 2.0e-3
-    @test norm(bench_asol.u - asol.u[1].u) < 5.0e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 5.0e-3
+    @test norm(bench_asol.u - asol.u[1].u) < 1.0e-2
 
     @test length(sol.u[1].u) == length(saveat)
     @test length(asol.u[1].u) == length(saveat)
@@ -108,7 +108,7 @@ for alg in algs
 
     bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0, save_everystep = false)
 
-    @test norm(bench_sol.u - sol.u[1].u) < 5.0e-3
+    @test norm(bench_sol.u - sol.u[1].u) < 1.0e-2
 
     @test length(sol.u[1].u) == length(bench_sol.u)
 

@@ -1,35 +1,3 @@
-@inline function (
-        integrator::DiffEqBase.AbstractODEIntegrator{
-            AlgType,
-            IIP,
-            S,
-            T,
-        }
-    )(t) where {
-        AlgType <:
-        GPUODEAlgorithm,
-        IIP,
-        S,
-        T,
-    }
-    Θ = (t - integrator.tprev) / integrator.dt
-    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
-end
-
-@inline function DiffEqBase.u_modified!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
-            AlgType,
-            IIP, S,
-            T,
-        },
-        bool::Bool
-    ) where {
-        AlgType <: GPUODEAlgorithm, IIP,
-        S, T,
-    }
-    return integrator.u_modified = bool
-end
-
 mutable struct GPURosenbrock23Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <:
     DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
@@ -942,4 +910,109 @@ const GPUAKvaerno5I = GPUAKvaerno5Integrator
         internalnorm,
         DiffEqBase.ReturnCode.Default
     )
+end
+
+
+#######################################################################################
+# Callable and u_modified! definitions for all stiff integrators
+#######################################################################################
+
+# GPURosenbrock23Integrator
+@inline function (integrator::GPURB23I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPURB23I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUARosenbrock23Integrator
+@inline function (integrator::GPUARB23I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUARB23I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPURodas4Integrator
+@inline function (integrator::GPURodas4I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPURodas4I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUARodas4Integrator
+@inline function (integrator::GPUARodas4I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUARodas4I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPURodas5PIntegrator
+@inline function (integrator::GPURodas5PI)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPURodas5PI, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUARodas5PIntegrator
+@inline function (integrator::GPUARodas5PI)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUARodas5PI, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUKvaerno3Integrator
+@inline function (integrator::GPUKvaerno3I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUKvaerno3I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUAKvaerno3Integrator
+@inline function (integrator::GPUAKvaerno3I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUAKvaerno3I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUKvaerno5Integrator
+@inline function (integrator::GPUKvaerno5I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUKvaerno5I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUAKvaerno5Integrator
+@inline function (integrator::GPUAKvaerno5I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUAKvaerno5I, bool::Bool)
+    return integrator.u_modified = bool
 end
