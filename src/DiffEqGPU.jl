@@ -6,6 +6,7 @@ module DiffEqGPU
 using DocStringExtensions
 using KernelAbstractions
 import KernelAbstractions: get_backend, allocate
+using BracketingNonlinearSolve
 using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
 using ForwardDiff
 import ChainRulesCore

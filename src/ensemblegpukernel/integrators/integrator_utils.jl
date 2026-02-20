@@ -235,7 +235,18 @@ end
         cb_time, prev_sign, event_idx, ts,
         us
     ) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
-    DiffEqBase.change_t_via_interpolation!(integrator, integrator.tprev + cb_time)
+    DiffEqBase.change_t_via_interpolation!(integrator, cb_time)
+
+    # The new absolute-time callback handling can leave dtnew ≈ 0 when
+    # the step controller clamped it at tf before the callback moved t back.
+    if hasfield(typeof(integrator), :dtnew) &&
+            integrator.dtnew < convert(T, 1.0e-12)
+        remaining = abs(integrator.tf - integrator.t)
+        integrator.dtnew = min(
+            callback.dtrelax * integrator.dt,
+            remaining
+        )
+    end
 
     # handle saveat
     _, savedexactly = savevalues!(integrator, ts, us)
@@ -313,6 +324,16 @@ end
     return false, saved_in_cb
 end
 
+@inline function gpu_find_root(f, tup, rootfind)
+    sol = solve(IntervalNonlinearProblem{false}(f, tup),
+        BracketingNonlinearSolve.ITP(), abstol = 0.0, reltol = 0.0)
+    if rootfind == SciMLBase.LeftRootFind
+        return sol.left
+    else
+        return sol.right
+    end
+end
+
 @inline function DiffEqBase.find_callback_time(
         integrator::DiffEqBase.AbstractODEIntegrator{
             AlgType,
@@ -321,66 +342,55 @@ end
             T,
         },
         callback::DiffEqGPU.GPUContinuousCallback,
-        counter
+        callback_idx
     ) where {
         AlgType <: GPUODEAlgorithm,
         IIP, S, T,
     }
-    event_occurred, interp_index,
-        prev_sign,
-        prev_sign_index,
-        event_idx = DiffEqBase.determine_event_occurrence(
-        integrator,
-        callback,
-        counter
+    # Compute previous sign
+    bottom_t = integrator.tprev
+    bottom_condition = callback.condition(
+        integrator.uprev, integrator.tprev,
+        integrator
     )
 
-    if event_occurred
-        if callback.condition === nothing
-            new_t = zero(typeof(integrator.t))
-        else
-            top_t = integrator.t
-            bottom_t = integrator.tprev
-            if callback.rootfind != SciMLBase.NoRootFind
-                function zero_func(abst, p = nothing)
-                    return DiffEqBase.get_condition(integrator, callback, abst)
-                end
-                if zero_func(top_t) == 0
-                    Θ = top_t
-                else
-                    if integrator.event_last_time == counter &&
-                            abs(zero_func(bottom_t)) <= 100abs(integrator.last_event_error) &&
-                            prev_sign_index == 1
-
-                        # Determined that there is an event by derivative
-                        # But floating point error may make the end point negative
-                        bottom_t += integrator.dt * callback.repeat_nudge
-                        sign_top = sign(zero_func(top_t))
-                        sign(zero_func(bottom_t)) * sign_top >= zero(sign_top) &&
-                            error("Double callback crossing floating pointer reducer errored. Report this issue.")
-                    end
-                    Θ = DiffEqBase.bisection(
-                        zero_func, (bottom_t, top_t),
-                        isone(integrator.tdir),
-                        callback.rootfind, callback.abstol,
-                        callback.reltol
-                    )
-                    integrator.last_event_error = DiffEqBase.ODE_DEFAULT_NORM(
-                        zero_func(Θ),
-                        Θ
-                    )
-                end
-                new_t = Θ - integrator.tprev
-            else
-                # If no solve and no interpolants, just use endpoint
-                new_t = integrator.dt
-            end
+    if integrator.event_last_time == callback_idx
+        # If there was a previous event, nudge tprev on the right
+        # side of the root (if necessary) to avoid repeat detection
+        if abs(bottom_condition - integrator.last_event_error) <= callback.abstol
+            bottom_t = integrator.tprev + integrator.dt * callback.repeat_nudge
+            bottom_condition = DiffEqBase.get_condition(integrator, callback, bottom_t)
         end
+    end
+    bottom_sign = sign(bottom_condition)
+
+    # Check if an event occurred
+    top_t = integrator.t
+    top_condition = DiffEqBase.get_condition(integrator, callback, top_t)
+    top_sign = sign(top_condition)
+
+    event_occurred = (
+        (bottom_sign < 0 && callback.affect! !== nothing) ||
+            (bottom_sign > 0 && callback.affect_neg! !== nothing)
+    ) &&
+        bottom_sign * top_sign <= 0
+
+    event_idx = 1
+
+    if !event_occurred
+        callback_t = integrator.t
+        residual = zero(bottom_condition)
+    elseif callback.rootfind == SciMLBase.NoRootFind || iszero(top_sign)
+        callback_t = top_t
+        residual = zero(bottom_condition)
     else
-        new_t = zero(typeof(integrator.t))
+        # Find callback time via root finding
+        zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
+        callback_t = gpu_find_root(zero_func, (bottom_t, top_t), callback.rootfind)
+        residual = zero_func(callback_t)
     end
 
-    return new_t, prev_sign, event_occurred, event_idx
+    return callback_t, bottom_sign, event_occurred, event_idx, residual
 end
 
 @inline function SciMLBase.get_tmp_cache(
@@ -418,68 +428,4 @@ end
         tmp = integrator(abst)
     end
     return callback.condition(tmp, abst, integrator)
-end
-
-# interp_points = 0 or equivalently nothing
-@inline function DiffEqBase.determine_event_occurrence(
-        integrator::DiffEqBase.AbstractODEIntegrator{
-            AlgType,
-            IIP,
-            S,
-            T,
-        },
-        callback::DiffEqGPU.GPUContinuousCallback,
-        counter
-    ) where {
-        AlgType <:
-        GPUODEAlgorithm, IIP,
-        S, T,
-    }
-    event_occurred = false
-    interp_index = 0
-
-    # Check if the event occured
-    previous_condition = callback.condition(
-        integrator.uprev, integrator.tprev,
-        integrator
-    )
-
-    prev_sign = zero(integrator.t)
-    next_sign = zero(integrator.t)
-    # @show typeof(0)
-    if integrator.event_last_time == counter &&
-            minimum(DiffEqBase.ODE_DEFAULT_NORM(previous_condition, integrator.t)) <=
-            100DiffEqBase.ODE_DEFAULT_NORM(integrator.last_event_error, integrator.t)
-
-        # If there was a previous event, utilize the derivative at the start to
-        # chose the previous sign. If the derivative is positive at tprev, then
-        # we treat `prev_sign` as negetive, and if the derivative is negative then we
-        # treat `prev_sign` as positive, regardless of the postiivity/negativity
-        # of the true value due to it being =0 sans floating point issues.
-
-        # Only due this if the discontinuity did not move it far away from an event
-        # Since near even we use direction instead of location to reset
-
-        # Evaluate condition slightly in future
-        abst = integrator.tprev + integrator.dt * callback.repeat_nudge
-        tmp_condition = DiffEqBase.get_condition(integrator, callback, abst)
-        prev_sign = sign(tmp_condition)
-    else
-        prev_sign = sign(previous_condition)
-    end
-
-    prev_sign_index = 1
-    abst = integrator.t
-    next_condition = DiffEqBase.get_condition(integrator, callback, abst)
-    next_sign = sign(next_condition)
-
-    if (
-            (prev_sign < 0 && callback.affect! !== nothing) ||
-                (prev_sign > 0 && callback.affect_neg! !== nothing)
-        ) && prev_sign * next_sign <= 0
-        event_occurred = true
-    end
-    event_idx = 1
-
-    return event_occurred, interp_index, prev_sign, prev_sign_index, event_idx
 end
