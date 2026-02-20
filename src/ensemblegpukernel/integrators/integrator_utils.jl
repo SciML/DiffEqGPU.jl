@@ -325,29 +325,12 @@ end
 end
 
 @inline function gpu_find_root(f, tup, rootfind)
-    t_left, t_right = tup
-    f_left = f(t_left)
-
-    for _ in 1:100
-        t_mid = (t_left + t_right) / 2
-        if t_mid == t_left || t_mid == t_right
-            break
-        end
-        f_mid = f(t_mid)
-        if iszero(f_mid)
-            return t_mid
-        elseif sign(f_left) * sign(f_mid) > 0
-            t_left = t_mid
-            f_left = f_mid
-        else
-            t_right = t_mid
-        end
-    end
-
+    sol = solve(IntervalNonlinearProblem{false}(f, tup),
+        BracketingNonlinearSolve.ITP(), abstol = 0.0, reltol = 0.0)
     if rootfind == SciMLBase.LeftRootFind
-        return t_left
+        return sol.left
     else
-        return t_right
+        return sol.right
     end
 end
 
