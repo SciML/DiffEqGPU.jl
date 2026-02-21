@@ -19,8 +19,14 @@ const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
 
-@time @safetestset "JET static analysis" begin
-    include("jet_tests.jl")
+if GROUP == "QA"
+    import Pkg
+    Pkg.activate(joinpath(@__DIR__, "qa"))
+    Pkg.develop(Pkg.PackageSpec(path = dirname(@__DIR__)))
+    Pkg.instantiate()
+    @time @safetestset "JET static analysis" begin
+        include("jet_tests.jl")
+    end
 end
 
 @time @safetestset "GPU Kernelized Stiff ODE Mass Matrix" begin

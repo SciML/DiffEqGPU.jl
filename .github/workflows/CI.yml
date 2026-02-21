@@ -35,6 +35,10 @@ jobs:
           - CPU
           - JLArrays
           - OpenCL
+          - QA
+        exclude:
+          - version: "pre"
+            group: QA
     uses: "SciML/.github/.github/workflows/tests.yml@master"
     with:
       julia-version: "${{ matrix.version }}"
