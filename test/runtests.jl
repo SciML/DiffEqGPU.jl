@@ -49,8 +49,13 @@ end
     include("gpu_kernel_de/forward_diff.jl")
 end
 
-@time @safetestset "GPU Kernelized FiniteDiff tests" begin
-    include("gpu_kernel_de/finite_diff.jl")
+# Skipped on OpenCL: the LLVM SPIR-V backend (llc) crashes on functions returning
+# SMatrix{1,1,Float32} (lowered to `[1 x float]`), miscompiling the return type to i32.
+# See https://github.com/JuliaGPU/OpenCL.jl/issues/422
+if GROUP != "OpenCL"
+    @time @safetestset "GPU Kernelized FiniteDiff tests" begin
+        include("gpu_kernel_de/finite_diff.jl")
+    end
 end
 
 @time @safetestset "GPU Kernelized Auto-Conversion tests" begin
