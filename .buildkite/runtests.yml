@@ -73,8 +73,11 @@ steps:
           Pkg.add(; name="oneAPI")
 
           println("+++ :julia: Building support library")
-          include(joinpath(dirname(dirname(Base.find_package("oneAPI"))), "deps", "build_ci.jl"))
+          deps_dir = joinpath(dirname(dirname(Base.find_package("oneAPI"))), "deps")
+          rm(joinpath(deps_dir, "Manifest.toml"); force=true)
+          include(joinpath(deps_dir, "build_ci.jl"))
           Pkg.activate()'
+        rm test/Manifest.toml
         julia --project -e '
           import Pkg
           println("+++ :julia: Running tests")
