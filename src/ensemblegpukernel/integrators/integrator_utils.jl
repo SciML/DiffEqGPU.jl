@@ -325,13 +325,61 @@ end
 end
 
 @inline function gpu_find_root(f, tup, rootfind)
-    sol = solve(IntervalNonlinearProblem{false}(f, tup),
-        BracketingNonlinearSolve.ITP(), abstol = 0.0, reltol = 0.0,
-        verbose = NonlinearVerbosity(None()))
+    # Hand-written ITP (Interpolate, Truncate, Project) root finder.
+    # GPU-compatible: no dynamic dispatch, no allocations, no SciMLBase wrappers.
+    # Algorithm matches BracketingNonlinearSolve.ITP() defaults (scaled_k1=0.2, k2=2, n0=10).
+    left, right = tup
+    fl = f(left)
+    fr = f(right)
+
+    T = typeof(left)
+    span0 = right - left
+    k1 = T(0.2) / span0              # scaled_k1 * span0^(1-k2), k2=2
+    ϵ_s = span0 * T(512)             # span0/2 * 2^n0, n0=10
+    T0 = zero(fl)
+
+    for _ in 1:100
+        span = right - left
+        mid = (left + right) / 2
+        r = ϵ_s - span / 2
+
+        # Interpolate: regula falsi
+        x_f = left + span * fl / (fl - fr)
+
+        # Truncate: limit step toward bisection midpoint
+        δ = max(k1 * span * span, eps(x_f))
+        diff = mid - x_f
+        xt = ifelse(δ ≤ abs(diff), x_f + copysign(δ, diff), mid)
+
+        # Project: keep within trust region around midpoint
+        xp = ifelse(abs(xt - mid) ≤ r, xt, mid - copysign(r, diff))
+
+        # Evaluate and update bracket
+        yp = f(xp)
+        yps = yp * sign(fr)
+        if yps > T0
+            right = xp
+            fr = yp
+        elseif yps < T0
+            left = xp
+            fl = yp
+        else
+            left = xp
+            right = xp
+            break
+        end
+
+        ϵ_s /= 2
+
+        if nextfloat(left) ≥ right
+            break
+        end
+    end
+
     if rootfind == SciMLBase.LeftRootFind
-        return sol.left
+        return left
     else
-        return sol.right
+        return right
     end
 end
 
