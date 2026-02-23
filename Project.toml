@@ -1,7 +1,7 @@
 name = "DiffEqGPU"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 authors = ["Chris Rackauckas", "SciML"]
-version = "3.11.0"
+version = "3.12.0"
 
 [deps]
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
