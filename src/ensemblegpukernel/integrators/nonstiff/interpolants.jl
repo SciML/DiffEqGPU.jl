@@ -20,7 +20,12 @@
     return out
 end
 
-@inline function bΘs(integ::T, Θ) where {T <: Union{GPUV7I, GPUAV7I}}
+# Compute tail-sum polynomial values qᵢ(Θ) for Vern7 (1-Θ)-factored interpolant.
+# Each original bᵢ(Θ) is restructured as: bᵢ(Θ) = Θ*wᵢ + Θ*(Θ-1)*qᵢ(Θ)
+# where wᵢ is the RK step weight. This guarantees exact endpoints in floating point:
+# at Θ=0 the Θ factor gives zero, at Θ=1 the (Θ-1) factor kills the correction.
+# The qᵢ coefficients are obtained by synthetic division of (bᵢ(Θ)/Θ - wᵢ) by (Θ-1).
+@inline function _vern7_qΘs(integ::T, Θ) where {T <: Union{GPUV7I, GPUAV7I}}
     @unpack r011, r012, r013, r014, r015, r016, r017, r042, r043, r044, r045, r046, r047,
         r052, r053, r054, r055, r056, r057, r062, r063, r064, r065, r066, r067, r072, r073,
         r074, r075, r076, r077, r082, r083, r084, r085, r086, r087, r092, r093, r094, r095,
@@ -28,23 +33,65 @@ end
         r132, r133, r134, r135, r136, r137, r142, r143, r144, r145, r146, r147, r152, r153,
         r154, r155, r156, r157, r162, r163, r164, r165, r166, r167 = integ.tab.interp
 
-    b1Θ = @evalpoly(Θ, 0, r011, r012, r013, r014, r015, r016, r017)
-    b4Θ = @evalpoly(Θ, 0, 0, r042, r043, r044, r045, r046, r047)
-    b5Θ = @evalpoly(Θ, 0, 0, r052, r053, r054, r055, r056, r057)
-    b6Θ = @evalpoly(Θ, 0, 0, r062, r063, r064, r065, r066, r067)
-    b7Θ = @evalpoly(Θ, 0, 0, r072, r073, r074, r075, r076, r077)
-    b8Θ = @evalpoly(Θ, 0, 0, r082, r083, r084, r085, r086, r087)
-    b9Θ = @evalpoly(Θ, 0, 0, r092, r093, r094, r095, r096, r097)
-    b11Θ = @evalpoly(Θ, 0, 0, r112, r113, r114, r115, r116, r117)
-    b12Θ = @evalpoly(Θ, 0, 0, r122, r123, r124, r125, r126, r127)
-    b13Θ = @evalpoly(Θ, 0, 0, r132, r133, r134, r135, r136, r137)
-    b14Θ = @evalpoly(Θ, 0, 0, r142, r143, r144, r145, r146, r147)
-    b15Θ = @evalpoly(Θ, 0, 0, r152, r153, r154, r155, r156, r157)
-    b16Θ = @evalpoly(Θ, 0, 0, r162, r163, r164, r165, r166, r167)
+    @unpack b1, b4, b5, b6, b7, b8, b9 = integ.tab
 
-    return b1Θ, b4Θ, b5Θ, b6Θ, b7Θ, b8Θ, b9Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b16Θ
+    # Stage 1: p(Θ) = (r011-b1) + r012*Θ + ... + r017*Θ⁶, then q = p/(Θ-1)
+    # Synthetic division (reverse cumulative sum): s5=r017, s4=r016+s5, ..., s0=r012+s1
+    # Then q0 = (r011-b1) is absorbed as remainder ≈ 0; actual q0 = r012 + s1_chain
+    s15 = r017
+    s14 = r016 + s15
+    s13 = r015 + s14
+    s12 = r014 + s13
+    s11 = r013 + s12
+    s10 = r012 + s11
+    q1Θ = @evalpoly(Θ, s10, s11, s12, s13, s14, s15)
+
+    # Stages 4-9: p(Θ) = -wᵢ + ri2*Θ + ri3*Θ² + ... + ri7*Θ⁶, then q = p/(Θ-1)
+    s45 = r047; s44 = r046 + s45; s43 = r045 + s44; s42 = r044 + s43; s41 = r043 + s42
+    q4Θ = @evalpoly(Θ, r042 + s41, s41, s42, s43, s44, s45)
+
+    s55 = r057; s54 = r056 + s55; s53 = r055 + s54; s52 = r054 + s53; s51 = r053 + s52
+    q5Θ = @evalpoly(Θ, r052 + s51, s51, s52, s53, s54, s55)
+
+    s65 = r067; s64 = r066 + s65; s63 = r065 + s64; s62 = r064 + s63; s61 = r063 + s62
+    q6Θ = @evalpoly(Θ, r062 + s61, s61, s62, s63, s64, s65)
+
+    s75 = r077; s74 = r076 + s75; s73 = r075 + s74; s72 = r074 + s73; s71 = r073 + s72
+    q7Θ = @evalpoly(Θ, r072 + s71, s71, s72, s73, s74, s75)
+
+    s85 = r087; s84 = r086 + s85; s83 = r085 + s84; s82 = r084 + s83; s81 = r083 + s82
+    q8Θ = @evalpoly(Θ, r082 + s81, s81, s82, s83, s84, s85)
+
+    s95 = r097; s94 = r096 + s95; s93 = r095 + s94; s92 = r094 + s93; s91 = r093 + s92
+    q9Θ = @evalpoly(Θ, r092 + s91, s91, s92, s93, s94, s95)
+
+    # Extra stages 11-16: step weight = 0, so p(Θ) = ri2*Θ + ... + ri7*Θ⁶
+    # After dividing by Θ: ri2 + ri3*Θ + ... + ri7*Θ⁵
+    # Synthetic division by (Θ-1):
+    s115 = r117; s114 = r116 + s115; s113 = r115 + s114; s112 = r114 + s113; s111 = r113 + s112
+    q11Θ = @evalpoly(Θ, r112 + s111, s111, s112, s113, s114, s115)
+
+    s125 = r127; s124 = r126 + s125; s123 = r125 + s124; s122 = r124 + s123; s121 = r123 + s122
+    q12Θ = @evalpoly(Θ, r122 + s121, s121, s122, s123, s124, s125)
+
+    s135 = r137; s134 = r136 + s135; s133 = r135 + s134; s132 = r134 + s133; s131 = r133 + s132
+    q13Θ = @evalpoly(Θ, r132 + s131, s131, s132, s133, s134, s135)
+
+    s145 = r147; s144 = r146 + s145; s143 = r145 + s144; s142 = r144 + s143; s141 = r143 + s142
+    q14Θ = @evalpoly(Θ, r142 + s141, s141, s142, s143, s144, s145)
+
+    s155 = r157; s154 = r156 + s155; s153 = r155 + s154; s152 = r154 + s153; s151 = r153 + s152
+    q15Θ = @evalpoly(Θ, r152 + s151, s151, s152, s153, s154, s155)
+
+    s165 = r167; s164 = r166 + s165; s163 = r165 + s164; s162 = r164 + s163; s161 = r163 + s162
+    q16Θ = @evalpoly(Θ, r162 + s161, s161, s162, s163, s164, s165)
+
+    return q1Θ, q4Θ, q5Θ, q6Θ, q7Θ, q8Θ, q9Θ, q11Θ, q12Θ, q13Θ, q14Θ, q15Θ, q16Θ
 end
 
+# Vern7 interpolant with (1-Θ)-factored form for exact floating-point endpoints.
+# u(Θ) = y₀ + Θ*step_sum + Θ*(Θ-1)*dt*Σ qᵢ(Θ)*kᵢ
+# where step_sum = dt*(b1*k1 + b4*k4 + ... + b9*k9) is recomputed from tableau weights.
 @inline @muladd function _ode_interpolant(
         Θ, dt, y₀,
         integ::T
@@ -52,7 +99,7 @@ end
         T <:
         Union{GPUV7I, GPUAV7I},
     }
-    b1Θ, b4Θ, b5Θ, b6Θ, b7Θ, b8Θ, b9Θ, b11Θ, b12Θ, b13Θ, b14Θ, b15Θ, b16Θ = bΘs(integ, Θ)
+    q1Θ, q4Θ, q5Θ, q6Θ, q7Θ, q8Θ, q9Θ, q11Θ, q12Θ, q13Θ, q14Θ, q15Θ, q16Θ = _vern7_qΘs(integ, Θ)
 
     @unpack c11, a1101, a1104, a1105, a1106, a1107, a1108, a1109, c12, a1201, a1204,
         a1205, a1206, a1207, a1208, a1209, a1211, c13, a1301, a1304, a1305, a1306, a1307,
@@ -60,6 +107,8 @@ end
         a1411, a1412, a1413, c15, a1501, a1504, a1505, a1506, a1507, a1508, a1509, a1511,
         a1512, a1513, c16, a1601, a1604, a1605, a1606, a1607, a1608, a1609,
         a1611, a1612, a1613 = integ.tab.extra
+
+    @unpack b1, b4, b5, b6, b7, b8, b9 = integ.tab
 
     @unpack k1, k2, k3, k4, k5, k6, k7, k8, k9, k10, uprev, f, tprev, p = integ
 
@@ -122,14 +171,22 @@ end
         tprev + c16 * dt
     )
 
-    return y₀ +
-        dt * (
-        integ.k1 * b1Θ
-            + integ.k4 * b4Θ + integ.k5 * b5Θ + integ.k6 * b6Θ + integ.k7 * b7Θ +
-            integ.k8 * b8Θ + integ.k9 * b9Θ
-            + k11 * b11Θ + k12 * b12Θ + k13 * b13Θ +
-            k14 * b14Θ + k15 * b15Θ + k16 * b16Θ
+    # Step advancement recomputed from tableau weights (NOT from integ.u)
+    step_sum = dt * (
+        b1 * integ.k1 + b4 * integ.k4 + b5 * integ.k5 + b6 * integ.k6 +
+            b7 * integ.k7 + b8 * integ.k8 + b9 * integ.k9
     )
+
+    # Correction term: Σ qᵢ(Θ)*kᵢ for all 13 stages
+    correction = dt * (
+        integ.k1 * q1Θ
+            + integ.k4 * q4Θ + integ.k5 * q5Θ + integ.k6 * q6Θ + integ.k7 * q7Θ +
+            integ.k8 * q8Θ + integ.k9 * q9Θ
+            + k11 * q11Θ + k12 * q12Θ + k13 * q13Θ +
+            k14 * q14Θ + k15 * q15Θ + k16 * q16Θ
+    )
+
+    return y₀ + Θ * step_sum + Θ * (Θ - 1) * correction
 end
 
 @inline function bΘs(integ::T, Θ) where {T <: Union{GPUV9I, GPUAV9I}}

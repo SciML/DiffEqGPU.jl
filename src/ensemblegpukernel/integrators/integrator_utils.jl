@@ -433,22 +433,9 @@ end
         callback_t = top_t
         residual = zero(bottom_condition)
     else
-        # Find callback time via root finding.
-        # Note: get_condition uses integrator.u directly at top_t but uses
-        # the dense-output interpolant at interior points.  In low precision
-        # (Float32), the interpolant polynomial can deviate from integrator.u
-        # at Θ ≈ 1, so the root finder may converge to a point where the
-        # interpolant never actually crosses zero.  When this happens (large
-        # residual relative to top_condition), fall back to the step endpoint
-        # so that _change_t_via_interpolation! uses integrator.u directly.
         zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
         callback_t = gpu_find_root(zero_func, (bottom_t, top_t), callback.rootfind)
         residual = zero_func(callback_t)
-
-        if abs(residual) > abs(top_condition)
-            callback_t = top_t
-            residual = top_condition
-        end
     end
 
     return callback_t, bottom_sign, event_occurred, event_idx, residual
