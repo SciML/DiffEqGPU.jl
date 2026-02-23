@@ -326,7 +326,8 @@ end
 
 @inline function gpu_find_root(f, tup, rootfind)
     sol = solve(IntervalNonlinearProblem{false}(f, tup),
-        BracketingNonlinearSolve.ITP(), abstol = 0.0, reltol = 0.0)
+        BracketingNonlinearSolve.ITP(), abstol = 0.0, reltol = 0.0,
+        verbose = NonlinearVerbosity(None()))
     if rootfind == SciMLBase.LeftRootFind
         return sol.left
     else
