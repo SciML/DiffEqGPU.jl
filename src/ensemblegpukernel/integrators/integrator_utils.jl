@@ -433,7 +433,6 @@ end
         callback_t = top_t
         residual = zero(bottom_condition)
     else
-        # Find callback time via root finding
         zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
         callback_t = gpu_find_root(zero_func, (bottom_t, top_t), callback.rootfind)
         residual = zero_func(callback_t)
