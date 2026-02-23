@@ -8,6 +8,7 @@ using KernelAbstractions
 import KernelAbstractions: get_backend, allocate
 using BracketingNonlinearSolve
 using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
+using SciMLLogging: None
 using ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
