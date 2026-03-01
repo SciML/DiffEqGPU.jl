@@ -12,6 +12,12 @@ steps:
           version: "{{matrix.version}}"
     commands:
       - |
+        julia --project -e '
+          import Pkg
+          # Julia 1.10 does not support [sources]; dev SciMLBase from branch
+          if VERSION < v"1.11"
+            Pkg.develop(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
+          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "CUDA")'
@@ -40,6 +46,12 @@ steps:
           version: "{{matrix.version}}"
     commands:
       - |
+        julia --project -e '
+          import Pkg
+          # Julia 1.10 does not support [sources]; dev SciMLBase from branch
+          if VERSION < v"1.11"
+            Pkg.develop(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
+          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "AMDGPU")'
@@ -68,6 +80,12 @@ steps:
           version: "{{matrix.version}}"
     commands:
       - |
+        julia --project -e '
+          import Pkg
+          # Julia 1.10 does not support [sources]; dev SciMLBase from branch
+          if VERSION < v"1.11"
+            Pkg.develop(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
+          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name="oneAPI")
@@ -102,6 +120,12 @@ steps:
           version: "{{matrix.version}}"
     commands:
       - |
+        julia --project -e '
+          import Pkg
+          # Julia 1.10 does not support [sources]; dev SciMLBase from branch
+          if VERSION < v"1.11"
+            Pkg.develop(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
+          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "Metal")'
