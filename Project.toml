@@ -77,3 +77,7 @@ OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 pocl_jll = "627d6b7a-bbe6-5189-83e7-98cc0a5aeadd"
+
+# Temporary: test against SciMLBase ensemble_rng_redesign branch (Julia 1.11+ only)
+[sources]
+SciMLBase = {url = "https://github.com/isaacsas/SciMLBase.jl.git", rev = "ensemble_rng_redesign"}

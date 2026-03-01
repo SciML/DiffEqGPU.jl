@@ -22,6 +22,7 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
+  # Julia 1.11+ picks up SciMLBase from [sources] in Project.toml automatically
   tests:
     name: "Tests"
     strategy:
@@ -29,7 +30,6 @@ jobs:
       matrix:
         version:
           - "1"
-          - "lts"
           - "pre"
         group:
           - CPU
@@ -44,3 +44,35 @@ jobs:
       julia-version: "${{ matrix.version }}"
       group: "${{ matrix.group }}"
     secrets: "inherit"
+
+  # Julia 1.10 (lts) doesn't support [sources], so we inline the steps
+  # and Pkg.develop SciMLBase from the branch before testing.
+  tests-lts:
+    name: "Tests (lts)"
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: false
+      matrix:
+        group:
+          - CPU
+          - JLArrays
+          - OpenCL
+          - QA
+    steps:
+      - uses: actions/checkout@v4
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "lts"
+      - uses: julia-actions/cache@v2
+      - name: "Dev SciMLBase from branch"
+        run: |
+          julia --project -e '
+            using Pkg
+            Pkg.develop(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
+          '
+      - name: "Build package"
+        run: julia --project -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
+      - name: "Run tests"
+        run: julia --project -e 'using Pkg; Pkg.test()'
+        env:
+          GROUP: ${{ matrix.group }}
