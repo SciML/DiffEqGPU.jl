@@ -46,7 +46,7 @@ jobs:
     secrets: "inherit"
 
   # Julia 1.10 (lts) doesn't support [sources], so we inline the steps
-  # and Pkg.develop SciMLBase from the branch before testing.
+  # and Pkg.add SciMLBase from the branch before testing.
   tests-lts:
     name: "Tests (lts)"
     runs-on: ubuntu-latest
@@ -68,7 +68,7 @@ jobs:
         run: |
           julia --project -e '
             using Pkg
-            Pkg.develop(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
+            Pkg.add(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
           '
       - name: "Build package"
         run: julia --project -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
