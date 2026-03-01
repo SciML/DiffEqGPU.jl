@@ -22,7 +22,8 @@ concurrency:
   cancel-in-progress: ${{ github.ref != 'refs/heads/master' }}
 
 jobs:
-  # Julia 1.11+ picks up SciMLBase from [sources] in Project.toml automatically
+  # [sources] in Project.toml points SciMLBase to the ensemble_rng_redesign branch.
+  # Only Julia 1.11+ supports [sources], so lts is excluded.
   tests:
     name: "Tests"
     strategy:
@@ -44,35 +45,3 @@ jobs:
       julia-version: "${{ matrix.version }}"
       group: "${{ matrix.group }}"
     secrets: "inherit"
-
-  # Julia 1.10 (lts) doesn't support [sources], so we inline the steps
-  # and Pkg.add SciMLBase from the branch before testing.
-  tests-lts:
-    name: "Tests (lts)"
-    runs-on: ubuntu-latest
-    strategy:
-      fail-fast: false
-      matrix:
-        group:
-          - CPU
-          - JLArrays
-          - OpenCL
-          - QA
-    steps:
-      - uses: actions/checkout@v4
-      - uses: julia-actions/setup-julia@v2
-        with:
-          version: "lts"
-      - uses: julia-actions/cache@v2
-      - name: "Dev SciMLBase from branch"
-        run: |
-          julia --project -e '
-            using Pkg
-            Pkg.add(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
-          '
-      - name: "Build package"
-        run: julia --project -e 'using Pkg; Pkg.instantiate(); Pkg.build()'
-      - name: "Run tests"
-        run: julia --project -e 'using Pkg; Pkg.test()'
-        env:
-          GROUP: ${{ matrix.group }}

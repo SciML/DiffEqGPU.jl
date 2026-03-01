@@ -1,23 +1,12 @@
 steps:
-  - label: ":julia: [CUDA] Run tests on Julia v{{matrix.version}}"
-    matrix:
-      setup:
-        version:
-          - "1"
-          - "1.10"
+  - label: ":julia: [CUDA] Run tests on Julia v1"
     env:
       GROUP: CUDA
     plugins:
       - JuliaCI/julia#v1:
-          version: "{{matrix.version}}"
+          version: "1"
     commands:
       - |
-        julia --project -e '
-          import Pkg
-          # Julia 1.10 does not support [sources]; add SciMLBase from branch
-          if VERSION < v"1.11"
-            Pkg.add(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
-          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "CUDA")'
@@ -33,25 +22,14 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
-  - label: ":julia: [AMDGPU] Run tests on Julia v{{matrix.version}}"
-    matrix:
-      setup:
-        version:
-          - "1"
-          - "1.10"
+  - label: ":julia: [AMDGPU] Run tests on Julia v1"
     env:
       GROUP: AMDGPU
     plugins:
       - JuliaCI/julia#v1:
-          version: "{{matrix.version}}"
+          version: "1"
     commands:
       - |
-        julia --project -e '
-          import Pkg
-          # Julia 1.10 does not support [sources]; add SciMLBase from branch
-          if VERSION < v"1.11"
-            Pkg.add(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
-          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "AMDGPU")'
@@ -67,25 +45,14 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
-  - label: ":julia: [oneAPI] Run tests on Julia v{{matrix.version}}"
-    matrix:
-      setup:
-        version:
-          - "1"
-          - "1.10"
+  - label: ":julia: [oneAPI] Run tests on Julia v1"
     env:
       GROUP: oneAPI
     plugins:
       - JuliaCI/julia#v1:
-          version: "{{matrix.version}}"
+          version: "1"
     commands:
       - |
-        julia --project -e '
-          import Pkg
-          # Julia 1.10 does not support [sources]; add SciMLBase from branch
-          if VERSION < v"1.11"
-            Pkg.add(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
-          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name="oneAPI")
@@ -107,25 +74,14 @@ steps:
     # Don't run Buildkite if the commit message includes the text [skip tests]
     if: build.message !~ /\[skip tests\]/
 
-  - label: ":julia: [Metal] Run tests on Julia v{{matrix.version}}"
-    matrix:
-      setup:
-        version:
-          - "1"
-          - "1.10"
+  - label: ":julia: [Metal] Run tests on Julia v1"
     env:
       GROUP: Metal
     plugins:
       - JuliaCI/julia#v1:
-          version: "{{matrix.version}}"
+          version: "1"
     commands:
       - |
-        julia --project -e '
-          import Pkg
-          # Julia 1.10 does not support [sources]; add SciMLBase from branch
-          if VERSION < v"1.11"
-            Pkg.add(url="https://github.com/isaacsas/SciMLBase.jl.git", rev="ensemble_rng_redesign")
-          end'
         julia --project=test -e '
           import Pkg
           Pkg.add(; name = "Metal")'
