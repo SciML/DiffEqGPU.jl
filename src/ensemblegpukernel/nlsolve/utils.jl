@@ -7,17 +7,18 @@
     tmp = nlsolver.tmp
     z_i = nlsolver.z
     c = nlsolver.c
+    mass_matrix = integrator.f.mass_matrix
 
     abstol = 100eps(eltype(z_i))
 
     for i in 1:maxiters
         W_eval = nlsolver.W(tmp + γ * z_i, p, t + c * dt)
         f_eval = integrator.f(tmp + γ * z_i, p, t + c * dt)
-        f_rhs = dt * f_eval - z_i
+        f_rhs = dt * f_eval - mass_matrix * z_i
         Δz = linear_solve(W_eval, f_rhs)
         z_i = z_i - Δz
 
-        if diffeqgpunorm(dt * integrator.f(tmp + γ * z_i, p, t + c * dt) - z_i, t) < abstol
+        if diffeqgpunorm(dt * integrator.f(tmp + γ * z_i, p, t + c * dt) - mass_matrix * z_i, t) < abstol
             break
         end
     end
