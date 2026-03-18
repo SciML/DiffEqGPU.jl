@@ -75,13 +75,16 @@ using ForwardDiff
         # Test with ForwardDiff.Dual types
         @test_opt DiffEqGPU.diffeqgpunorm(ForwardDiff.Dual(1.0f0, 1.0f0), 0.0f0)
         @test_opt DiffEqGPU.diffeqgpunorm(
-            SA[ForwardDiff.Dual(1.0f0, 1.0f0), ForwardDiff.Dual(2.0f0, 1.0f0)], 0.0f0)
+            SA[ForwardDiff.Dual(1.0f0, 1.0f0), ForwardDiff.Dual(2.0f0, 1.0f0)], 0.0f0
+        )
     end
 
     @testset "make_prob_compatible type stability" begin
-        lorenz(u, p, t) = SA[p[1] * (u[2] - u[1]),
+        lorenz(u, p, t) = SA[
+            p[1] * (u[2] - u[1]),
             u[1] * (p[2] - u[3]) - u[2],
-            u[1] * u[2] - p[3] * u[3]]
+            u[1] * u[2] - p[3] * u[3],
+        ]
         u0 = SA[1.0f0, 0.0f0, 0.0f0]
         tspan = (0.0f0, 10.0f0)
         p = SA[10.0f0, 28.0f0, 8.0f0 / 3.0f0]
@@ -90,9 +93,11 @@ using ForwardDiff
     end
 
     @testset "Integrator initialization type stability" begin
-        f_test(u, p, t) = SA[10.0f0 * (u[2] - u[1]),
+        f_test(u, p, t) = SA[
+            10.0f0 * (u[2] - u[1]),
             u[1] * (28.0f0 - u[3]) - u[2],
-            u[1] * u[2] - 8.0f0 / 3.0f0 * u[3]]
+            u[1] * u[2] - 8.0f0 / 3.0f0 * u[3],
+        ]
         u0 = SA[1.0f0, 0.0f0, 0.0f0]
         t0 = 0.0f0
         dt = 0.01f0
@@ -103,22 +108,38 @@ using ForwardDiff
         saveat = ()
 
         # Fixed-step integrator initialization
-        @test_opt DiffEqGPU.init(GPUTsit5(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
-        @test_opt DiffEqGPU.init(GPUVern7(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
-        @test_opt DiffEqGPU.init(GPUVern9(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
-        @test_opt DiffEqGPU.init(GPURosenbrock23(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
-        @test_opt DiffEqGPU.init(GPURodas4(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
-        @test_opt DiffEqGPU.init(GPURodas5P(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
-        @test_opt DiffEqGPU.init(GPUKvaerno3(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
-        @test_opt DiffEqGPU.init(GPUKvaerno5(), f_test, false, u0, t0, dt, p, tstops,
-            callback, save_everystep, saveat)
+        @test_opt DiffEqGPU.init(
+            GPUTsit5(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPUVern7(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPUVern9(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPURosenbrock23(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPURodas4(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPURodas5P(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPUKvaerno3(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPUKvaerno5(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
 
         # Adaptive integrator initialization
         tf = 10.0f0
@@ -127,22 +148,38 @@ using ForwardDiff
         internalnorm = DiffEqGPU.diffeqgpunorm
         saveat_adaptive = ()
 
-        @test_opt DiffEqGPU.init(GPUTsit5(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
-        @test_opt DiffEqGPU.init(GPUVern7(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
-        @test_opt DiffEqGPU.init(GPUVern9(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
-        @test_opt DiffEqGPU.init(GPURosenbrock23(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
-        @test_opt DiffEqGPU.init(GPURodas4(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
-        @test_opt DiffEqGPU.init(GPURodas5P(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
-        @test_opt DiffEqGPU.init(GPUKvaerno3(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
-        @test_opt DiffEqGPU.init(GPUKvaerno5(), f_test, false, u0, t0, tf, dt, p,
-            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive)
+        @test_opt DiffEqGPU.init(
+            GPUTsit5(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPUVern7(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPUVern9(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPURosenbrock23(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPURodas4(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPURodas5P(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPUKvaerno3(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPUKvaerno5(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
     end
 
     @testset "Tableaus type stability" begin

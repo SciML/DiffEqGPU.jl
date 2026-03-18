@@ -95,7 +95,7 @@ function vectorized_solve(
     )
 
     # we build the actual solution object on the CPU because the GPU would create one
-    # containig CuDeviceArrays, which we cannot use on the host (not GC tracked,
+    # containing CuDeviceArrays, which we cannot use on the host (not GC tracked,
     # no useful operations, etc). That's unfortunate though, since this loop is
     # generally slower than the entire GPU execution, and necessitates synchronization
     # EDIT: Done when using with DiffEqGPU
