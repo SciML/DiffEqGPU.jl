@@ -32,6 +32,9 @@ end
 @time @safetestset "GPU Kernelized Stiff ODE Mass Matrix" begin
     include("gpu_kernel_de/stiff_ode/gpu_ode_mass_matrix.jl")
 end
+@time @safetestset "GPU Kernelized DAE Mass Matrix" begin
+    include("gpu_kernel_de/stiff_ode/gpu_ode_modelingtoolkit_dae.jl")
+end
 @time @testset "GPU Kernelized Non Stiff ODE Regression" begin
     include("gpu_kernel_de/gpu_ode_regression.jl")
 end

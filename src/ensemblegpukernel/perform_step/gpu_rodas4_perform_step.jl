@@ -63,7 +63,8 @@
     dtgamma = dt * γ
 
     # Starting
-    W = J - I * inv(dtgamma)
+    mass_matrix = f.mass_matrix
+    W = J - mass_matrix * inv(dtgamma)
     du = f(uprev, p, t)
 
     # Step 1
@@ -73,31 +74,31 @@
     du = f(u, p, t + c2 * dt)
 
     # Step 2
-    linsolve_tmp = du + dtd2 * dT + dtC21 * k1
+    linsolve_tmp = du + dtd2 * dT + mass_matrix * (dtC21 * k1)
     k2 = linear_solve(W, -linsolve_tmp)
     u = uprev + a31 * k1 + a32 * k2
     du = f(u, p, t + c3 * dt)
 
     # Step 3
-    linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
+    linsolve_tmp = du + dtd3 * dT + mass_matrix * (dtC31 * k1 + dtC32 * k2)
     k3 = linear_solve(W, -linsolve_tmp)
     u = uprev + a41 * k1 + a42 * k2 + a43 * k3
     du = f(u, p, t + c4 * dt)
 
     # Step 4
-    linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
+    linsolve_tmp = du + dtd4 * dT + mass_matrix * (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
     k4 = linear_solve(W, -linsolve_tmp)
     u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
     du = f(u, p, t + dt)
 
     # Step 5
-    linsolve_tmp = du + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
+    linsolve_tmp = du + mass_matrix * (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
     k5 = linear_solve(W, -linsolve_tmp)
     u = u + k5
     du = f(u, p, t + dt)
 
     # Step 6
-    linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
+    linsolve_tmp = du + mass_matrix * (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
     k6 = linear_solve(W, -linsolve_tmp)
     integ.u = u + k6
 
@@ -183,7 +184,8 @@ end
         dtgamma = dt * γ
 
         # Starting
-        W = J - I * inv(dtgamma)
+        mass_matrix = f.mass_matrix
+        W = J - mass_matrix * inv(dtgamma)
         du = f(uprev, p, t)
 
         # Step 1
@@ -193,31 +195,31 @@ end
         du = f(u, p, t + c2 * dt)
 
         # Step 2
-        linsolve_tmp = du + dtd2 * dT + dtC21 * k1
+        linsolve_tmp = du + dtd2 * dT + mass_matrix * (dtC21 * k1)
         k2 = linear_solve(W, -linsolve_tmp)
         u = uprev + a31 * k1 + a32 * k2
         du = f(u, p, t + c3 * dt)
 
         # Step 3
-        linsolve_tmp = du + dtd3 * dT + (dtC31 * k1 + dtC32 * k2)
+        linsolve_tmp = du + dtd3 * dT + mass_matrix * (dtC31 * k1 + dtC32 * k2)
         k3 = linear_solve(W, -linsolve_tmp)
         u = uprev + a41 * k1 + a42 * k2 + a43 * k3
         du = f(u, p, t + c4 * dt)
 
         # Step 4
-        linsolve_tmp = du + dtd4 * dT + (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
+        linsolve_tmp = du + dtd4 * dT + mass_matrix * (dtC41 * k1 + dtC42 * k2 + dtC43 * k3)
         k4 = linear_solve(W, -linsolve_tmp)
         u = uprev + a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4
         du = f(u, p, t + dt)
 
         # Step 5
-        linsolve_tmp = du + (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
+        linsolve_tmp = du + mass_matrix * (dtC52 * k2 + dtC54 * k4 + dtC51 * k1 + dtC53 * k3)
         k5 = linear_solve(W, -linsolve_tmp)
         u = u + k5
         du = f(u, p, t + dt)
 
         # Step 6
-        linsolve_tmp = du + (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
+        linsolve_tmp = du + mass_matrix * (dtC61 * k1 + dtC62 * k2 + dtC65 * k5 + dtC64 * k4 + dtC63 * k3)
         k6 = linear_solve(W, -linsolve_tmp)
         u = u + k6
 
