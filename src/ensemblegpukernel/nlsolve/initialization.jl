@@ -19,32 +19,33 @@
     # Create initialization problem
     initprob = initdata.initializeprob
 
-    # Update the problem if needed
+    # Update the problem if needed — pass full prob so MTK can find the SciMLFunction
     if initdata.update_initializeprob! !== nothing
         if initdata.is_update_oop === Val(true)
-            initprob = initdata.update_initializeprob!(initprob, (u = u0, p = p))
+            initprob = initdata.update_initializeprob!(initprob, prob)
         else
-            initdata.update_initializeprob!(initprob, (u = u0, p = p))
+            initdata.update_initializeprob!(initprob, prob)
         end
     end
 
     # Solve initialization problem using SimpleNonlinearSolve
-    sol = solve(initprob, alg; abstol, reltol)
+    sol = SciMLBase.solve(initprob, alg; abstol, reltol)
 
     # Extract results — initialization must succeed
     if !SciMLBase.successful_retcode(sol)
         return u0, p, false
     end
 
-    # Apply result mappings if they exist
+    # Apply result mappings if they exist, converting back to the original u0 type
     u_init = if initdata.initializeprobmap !== nothing
-        initdata.initializeprobmap(sol)
+        raw = initdata.initializeprobmap(sol)
+        typeof(u0)(raw)
     else
         u0
     end
 
     p_init = if initdata.initializeprobpmap !== nothing
-        initdata.initializeprobpmap((u = u0, p = p), sol)
+        initdata.initializeprobpmap(prob, sol)
     else
         p
     end

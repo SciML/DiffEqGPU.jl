@@ -1,4 +1,6 @@
 using DiffEqGPU, StaticArrays, SciMLBase, LinearAlgebra, Test
+using ModelingToolkit, OrdinaryDiffEq
+using ModelingToolkit: t_nounits as t, D_nounits as D
 using KernelAbstractions: CPU
 
 const GROUP = get(ENV, "GROUP", "CUDA")
@@ -13,11 +15,9 @@ else
     const backend = CPU()
 end
 
-# Test DAE support with singular mass matrices
-# This is a simple DAE system: M * u' = f(u, p, t)
-# where M = [1 0; 0 0] (singular mass matrix)
-# u1' = -0.04*u1 + 1e4*u2  (differential equation)
-# 0 = u1 + u2 - 1           (algebraic constraint)
+# ============================================================================
+# Test 1: Direct mass matrix DAE (no MTK, no initialization)
+# ============================================================================
 
 mm = SA[
     1.0f0 0.0f0
@@ -45,7 +45,6 @@ f = SciMLBase.ODEFunction(dae_f, mass_matrix = mm, jac = dae_jac)
 prob = SciMLBase.ODEProblem{false}(f, u0, tspan)
 monteprob = SciMLBase.EnsembleProblem(prob, safetycopy = false)
 
-# Test with GPURosenbrock23
 @testset "GPURosenbrock23 DAE" begin
     sol = solve(
         monteprob, GPURosenbrock23(), EnsembleGPUKernel(backend),
@@ -55,11 +54,9 @@ monteprob = SciMLBase.EnsembleProblem(prob, safetycopy = false)
     )
     @test length(sol.u) == 2
     @test !any(isnan, sol.u[1][end])
-    # Check algebraic constraint: u1 + u2 = 1
     @test abs(sol.u[1][end][1] + sol.u[1][end][2] - 1.0f0) < 0.01f0
 end
 
-# Test with GPURodas4
 @testset "GPURodas4 DAE" begin
     sol = solve(
         monteprob, GPURodas4(), EnsembleGPUKernel(backend),
@@ -72,7 +69,6 @@ end
     @test abs(sol.u[1][end][1] + sol.u[1][end][2] - 1.0f0) < 0.01f0
 end
 
-# Test with GPURodas5P
 @testset "GPURodas5P DAE" begin
     sol = solve(
         monteprob, GPURodas5P(), EnsembleGPUKernel(backend),
@@ -85,7 +81,6 @@ end
     @test abs(sol.u[1][end][1] + sol.u[1][end][2] - 1.0f0) < 0.01f0
 end
 
-# Test with GPUKvaerno3
 @testset "GPUKvaerno3 DAE" begin
     sol = solve(
         monteprob, GPUKvaerno3(), EnsembleGPUKernel(backend),
@@ -98,7 +93,6 @@ end
     @test abs(sol.u[1][end][1] + sol.u[1][end][2] - 1.0f0) < 0.01f0
 end
 
-# Test with GPUKvaerno5
 @testset "GPUKvaerno5 DAE" begin
     sol = solve(
         monteprob, GPUKvaerno5(), EnsembleGPUKernel(backend),
@@ -109,4 +103,48 @@ end
     @test length(sol.u) == 2
     @test !any(isnan, sol.u[1][end])
     @test abs(sol.u[1][end][1] + sol.u[1][end][2] - 1.0f0) < 0.01f0
+end
+
+# ============================================================================
+# Test 2: ModelingToolkit cartesian pendulum DAE with initialization
+# ============================================================================
+
+@testset "MTK Pendulum DAE with initialization" begin
+    @parameters g = 9.81 L = 1.0
+    @variables px(t) py(t) [state_priority = 10] pλ(t)
+
+    eqs = [
+        D(D(px)) ~ pλ * px / L
+        D(D(py)) ~ pλ * py / L - g
+        px^2 + py^2 ~ L^2
+    ]
+
+    @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
+
+    mtk_prob = ODEProblem(
+        pendulum, [py => 0.99], (0.0, 1.0),
+        guesses = [pλ => 0.0, px => 0.1, D(px) => 0.0, D(py) => 0.0]
+    )
+
+    # Verify it has initialization data and a mass matrix
+    @test SciMLBase.has_initialization_data(mtk_prob.f)
+    @test mtk_prob.f.mass_matrix !== LinearAlgebra.I
+
+    # Reference solution with OrdinaryDiffEq
+    ref_sol = solve(mtk_prob, Rodas5P())
+    @test ref_sol.retcode == SciMLBase.ReturnCode.Success
+
+    # GPU ensemble solve
+    monteprob_mtk = EnsembleProblem(mtk_prob, safetycopy = false)
+    sol_mtk = solve(
+        monteprob_mtk, GPURodas5P(), EnsembleGPUKernel(backend),
+        trajectories = 2,
+        dt = 0.01,
+        adaptive = false
+    )
+    @test length(sol_mtk.u) == 2
+    @test !any(isnan, sol_mtk.u[1][end])
+
+    # GPU solution should be close to reference (fixed step so moderate tolerance)
+    @test norm(sol_mtk.u[1][end] - ref_sol.u[end]) < 1.0
 end
