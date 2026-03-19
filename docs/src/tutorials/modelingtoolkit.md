@@ -72,7 +72,7 @@ u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
 Notice it takes in the vector of values for `[σ, ρ, β]` and spits out the new `u0, p`. So
 we can build and solve an MTK generated ODE on the GPU using the following:
 
-```@example mtk
+```julia
 using DiffEqGPU, CUDA
 function prob_func2(prob, i, repeat)
     u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
@@ -86,6 +86,6 @@ sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
 
 We can then using symbolic indexing on the result to inspect it:
 
-```@example mtk
+```julia
 [sol.u[i][y] for i in 1:length(sol.u)]
 ```
