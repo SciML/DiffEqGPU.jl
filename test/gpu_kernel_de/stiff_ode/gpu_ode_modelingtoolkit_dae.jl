@@ -110,15 +110,11 @@ end
 
 # ModelingToolkit is an optional test dependency — skip this test if not available.
 # This avoids compat conflicts in the alldeps minimum-version resolution test.
-const HAS_MTK = try
-    @eval using ModelingToolkit
-    @eval using ModelingToolkit: t_nounits as t, D_nounits as D
-    true
-catch
-    false
-end
+const HAS_MTK = Base.identify_package("ModelingToolkit") !== nothing
 
 if HAS_MTK
+    using ModelingToolkit
+    using ModelingToolkit: t_nounits as t, D_nounits as D
     # NOTE: This test is currently broken because ModelingToolkit problems with initialization
     # data contain MTKParameters which use Vector types that cannot be stored inline in CuArrays.
     # This is a known limitation: GPU kernels require element types that are allocated inline.
