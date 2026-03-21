@@ -19,7 +19,7 @@ to ensure that the problem that is built uses static structures. For example thi
 that the `u0` and `p` specifications should use static arrays. This looks as follows:
 
 ```@example mtk
-using OrdinaryDiffEqTsit5, ModelingToolkit, StaticArrays
+using OrdinaryDiffEq, ModelingToolkit, StaticArrays
 using ModelingToolkit: t_nounits as t, D_nounits as D
 
 @parameters σ ρ β
@@ -30,14 +30,14 @@ eqs = [D(D(x)) ~ σ * (y - x),
     D(z) ~ x * y - β * z]
 
 @mtkbuild sys = ODESystem(eqs, t)
-u0 = SA[D(x) => 2.0f0,
-x => 1.0f0,
-y => 0.0f0,
-z => 0.0f0]
+u0 = @SVector [D(x) => 2.0f0,
+    x => 1.0f0,
+    y => 0.0f0,
+    z => 0.0f0]
 
-p = SA[σ => 28.0f0,
-ρ => 10.0f0,
-β => 8.0f0 / 3.0f0]
+p = @SVector [σ => 28.0f0,
+    ρ => 10.0f0,
+    β => 8.0f0 / 3.0f0]
 
 tspan = (0.0f0, 100.0f0)
 prob = ODEProblem{false}(sys, u0, tspan, p)
@@ -60,21 +60,22 @@ form by changing those 3 values by using the `setsym_oop` as follows:
 ```@example mtk
 using SymbolicIndexingInterface
 sym_setter = setsym_oop(sys, [σ, ρ, β])
+nothing # hide
 ```
 
 The return `sym_setter` is our optimized function, let's see it in action:
 
 ```@example mtk
-u0, p = sym_setter(prob, @SVector(rand(Float32, 3)))
+u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
 ```
 
 Notice it takes in the vector of values for `[σ, ρ, β]` and spits out the new `u0, p`. So
 we can build and solve an MTK generated ODE on the GPU using the following:
 
-```@example mtk
+```julia
 using DiffEqGPU, CUDA
 function prob_func2(prob, i, repeat)
-    u0, p = sym_setter(prob, @SVector(rand(Float32, 3)))
+    u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
     remake(prob, u0 = u0, p = p)
 end
 
@@ -85,6 +86,6 @@ sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
 
 We can then using symbolic indexing on the result to inspect it:
 
-```@example mtk
+```julia
 [sol.u[i][y] for i in 1:length(sol.u)]
 ```
