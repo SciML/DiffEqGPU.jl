@@ -55,7 +55,7 @@ sol = solve(prob, Tsit5())
 ## Example of Parameter-Parallelism with GPU Ensemble Methods
 
 ```julia
-using DiffEqGPU, CUDA, OrdinaryDiffEq, StaticArrays
+using DiffEqGPU, CUDA, OrdinaryDiffEqCore, StaticArrays
 
 function lorenz(u, p, t)
     σ = p[1]
