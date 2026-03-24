@@ -5,15 +5,19 @@ and thus can be thrown into deep learning training loops. The following is an ex
 of this use:
 
 ```@example ad
-using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA, Test
+using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA
+
 CUDA.allowscalar(false)
+
+pa = [1.0, 2.0]
+u0 = [3.0]
 
 function modelf(du, u, p, t)
     du[1] = 1.01 * u[1] * p[1] * p[2]
 end
 
-function model()
-    prob = ODEProblem(modelf, u0, (0.0, 1.0), pa)
+function model(p)
+    prob = ODEProblem(modelf, u0, (0.0, 1.0), p)
 
     function prob_func(prob, i, repeat)
         remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
@@ -25,22 +29,20 @@ function model()
 end
 
 # loss function
-loss() = sum(abs2, 1.0 .- Array(model()))
+loss(p) = sum(abs2, 1.0 .- Array(model(p)))
 
-data = Iterators.repeated((), 10)
-
-cb = function () # callback function to observe training
-    @show loss()
-end
-
-pa = [1.0, 2.0]
-u0 = [3.0]
-opt = ADAM(0.1)
 println("Starting to train")
 
-l1 = loss()
+l1 = loss(pa)
+@show l1
 
-Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)
+# Use Flux's gradient descent with explicit parameter updates
+opt_state = Flux.setup(Adam(0.1), pa)
+for epoch in 1:10
+    grads = Flux.gradient(loss, pa)
+    Flux.update!(opt_state, pa, grads[1])
+    @show loss(pa)
+end
 ```
 
 Forward-mode automatic differentiation works as well, as demonstrated by its capability

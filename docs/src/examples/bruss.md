@@ -87,5 +87,10 @@ du2[521] # -318.1677459142322
 
 prob_ode_brusselator_2d_cuda = ODEProblem(brusselator_2d, CuArray(u0), (0.0f0, 11.5f0), p,
     tstops = [1.1f0])
-solve(prob_ode_brusselator_2d_cuda, Rosenbrock23(), save_everystep = false);
+# Note: Solving requires allowscalar(true) during initialization
+# This demonstrates the problem setup for GPU-based PDE solving
+CUDA.allowscalar(true)
+sol = solve(prob_ode_brusselator_2d_cuda, Rosenbrock23(), save_everystep = false)
+CUDA.allowscalar(false)
+sol.retcode
 ```
