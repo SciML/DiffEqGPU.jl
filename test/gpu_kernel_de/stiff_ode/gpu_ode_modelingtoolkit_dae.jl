@@ -112,7 +112,7 @@ end
 # NOTE: This test is currently broken because ModelingToolkit problems with initialization
 # data contain MTKParameters which use Vector types that cannot be stored inline in CuArrays.
 # This is a known limitation: GPU kernels require element types that are allocated inline.
-# See: https://github.com/SciML/DiffEqGPU.jl/issues/XXX
+# See: https://github.com/SciML/DiffEqGPU.jl/issues/375
 # Once MTK supports GPU-compatible parameter storage, this test can be re-enabled.
 @testset "MTK Pendulum DAE with initialization" begin
     @parameters g = 9.81 L = 1.0
