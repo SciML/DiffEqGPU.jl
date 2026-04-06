@@ -62,6 +62,7 @@ include("ensemblegpukernel/perform_step/gpu_vern9_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_em_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_siea_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_rosenbrock23_perform_step.jl")
+include("ensemblegpukernel/perform_step/gpu_rodas3_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_rodas4_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_rodas5P_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_kvaerno3_perform_step.jl")
@@ -78,7 +79,8 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 ## Stiff ODE solvers
-export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
+export GPURosenbrock23, GPURodas3, GPURodas4, GPURodas42, GPURodas5P, GPUKvaerno3,
+	GPUKvaerno5
 
 export terminate!
 
