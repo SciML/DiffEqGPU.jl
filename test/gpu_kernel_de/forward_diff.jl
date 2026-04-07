@@ -34,8 +34,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 for alg in (
         GPUTsit5(), GPUVern7(), GPUVern9(), GPURosenbrock23(autodiff = false),
-    GPURodas3(autodiff = false), GPURodas4(autodiff = false),
-    GPURodas42(autodiff = false), GPURodas5P(autodiff = false),
+        GPURodas3(autodiff = false), GPURodas4(autodiff = false),
+        GPURodas42(autodiff = false), GPURodas5P(autodiff = false),
         GPUKvaerno3(autodiff = false), GPUKvaerno5(autodiff = false),
     )
     @info alg

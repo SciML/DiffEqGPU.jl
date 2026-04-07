@@ -20,8 +20,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 osol = solve(prob, Rodas5P(), dt = 0.01f0, save_everystep = false)
 
 for alg in (
-    GPURosenbrock23(autodiff = false), GPURodas3(autodiff = false),
-    GPURodas4(autodiff = false), GPURodas42(autodiff = false),
+        GPURosenbrock23(autodiff = false), GPURodas3(autodiff = false),
+        GPURodas4(autodiff = false), GPURodas42(autodiff = false),
         GPURodas5P(autodiff = false), GPUKvaerno3(autodiff = false),
         GPUKvaerno5(autodiff = false),
     )

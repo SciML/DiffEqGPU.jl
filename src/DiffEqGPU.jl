@@ -80,7 +80,7 @@ export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFa
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 ## Stiff ODE solvers
 export GPURosenbrock23, GPURodas3, GPURodas4, GPURodas42, GPURodas5P, GPUKvaerno3,
-	GPUKvaerno5
+    GPUKvaerno5
 
 export terminate!
 
