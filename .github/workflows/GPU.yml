@@ -17,7 +17,7 @@ concurrency:
 jobs:
   cuda-tests:
     name: "CUDA Tests (Julia ${{ matrix.version }})"
-    runs-on: [self-hosted, Linux, X64, gpu-t4]
+    runs-on: [self-hosted, Linux, X64, gpu-v100]
     timeout-minutes: 120
     strategy:
       fail-fast: false
