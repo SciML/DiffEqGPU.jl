@@ -10,14 +10,29 @@ function SciMLBase.__solve(
         };
         trajectories, batch_size = trajectories,
         unstable_check = (dt, u, p, t) -> false, adaptive = true,
+        seed = nothing,
+        rng = nothing,
+        rng_func = SciMLBase.default_rng_func,
         kwargs...
     )
     if trajectories == 1
         return SciMLBase.__solve(
             ensembleprob, alg, EnsembleSerial(); trajectories = 1,
-            kwargs...
+            seed, rng, rng_func, kwargs...
         )
     end
+
+    # Pre-generate per-trajectory seeds for reproducibility (matching SciMLBase v3 protocol)
+    sim_seeds = (rng !== nothing || seed !== nothing) ?
+        SciMLBase.generate_sim_seeds(rng, seed, trajectories) : nothing
+
+    # Bundle ensemble RNG state for passing to SciMLBase.solve_batch (CPU offload path)
+    ensemble_rng_state = (;
+        sim_seeds,
+        _solve_rng_mode = Val(:none),
+        rng_func,
+        master_rng = rng,
+    )
 
     cpu_trajectories = (
             (
@@ -53,8 +68,8 @@ function SciMLBase.__solve(
 
         function f()
             return SciMLBase.solve_batch(
-                ensembleprob, _alg, EnsembleThreads(), cpu_II, nothing;
-                kwargs...
+                ensembleprob, _alg, EnsembleThreads(), cpu_II, nothing,
+                ensemble_rng_state; kwargs...
             )
         end
 
@@ -69,6 +84,7 @@ function SciMLBase.__solve(
         time = @elapsed sol = batch_solve(
             ensembleprob, alg, ensemblealg,
             1:gpu_trajectories, adaptive;
+            sim_seeds, rng_func, master_rng = rng,
             unstable_check = unstable_check, kwargs...
         )
         if cpu_trajectories != 0
@@ -83,6 +99,7 @@ function SciMLBase.__solve(
         similar(
             batch_solve(
                 ensembleprob, alg, ensemblealg, 1:batch_size, adaptive;
+                sim_seeds, rng_func, master_rng = rng,
                 unstable_check = unstable_check, kwargs...
             ),
             0
@@ -100,6 +117,7 @@ function SciMLBase.__solve(
                 end
                 batch_data = batch_solve(
                     ensembleprob, alg, ensemblealg, I, adaptive;
+                    sim_seeds, rng_func, master_rng = rng,
                     unstable_check = unstable_check, kwargs...
                 )
                 if ensembleprob.reduction !== SciMLBase.DEFAULT_REDUCTION
@@ -120,6 +138,7 @@ function SciMLBase.__solve(
                 end
                 x = batch_solve(
                     ensembleprob, alg, ensemblealg, I, adaptive;
+                    sim_seeds, rng_func, master_rng = rng,
                     unstable_check = unstable_check, kwargs...
                 )
                 yield()
@@ -145,10 +164,20 @@ function SciMLBase.__solve(
     end
 end
 
+function _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
+    sim_seed = sim_seeds !== nothing ? sim_seeds[i] : nothing
+    pre_ctx = SciMLBase.EnsembleContext(i, 1, 0, sim_seed, nothing, master_rng)
+    sim_rng = rng_func(pre_ctx)
+    return @set pre_ctx.rng = sim_rng
+end
+
 function batch_solve(
         ensembleprob, alg,
         ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
         adaptive;
+        sim_seeds = nothing,
+        rng_func = SciMLBase.default_rng_func,
+        master_rng = nothing,
         kwargs...
     )
     @assert !isempty(I)
@@ -157,17 +186,18 @@ function batch_solve(
     return if ensemblealg isa EnsembleGPUKernel
         if ensembleprob.safetycopy
             probs = map(I) do i
+                ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
                 make_prob_compatible(
                     ensembleprob.prob_func(
                         deepcopy(ensembleprob.prob),
-                        i,
-                        1
+                        ctx
                     )
                 )
             end
         else
             probs = map(I) do i
-                make_prob_compatible(ensembleprob.prob_func(ensembleprob.prob, i, 1))
+                ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
+                make_prob_compatible(ensembleprob.prob_func(ensembleprob.prob, ctx))
             end
         end
         # Using inner saveat requires all of them to be of same size,
@@ -246,7 +276,7 @@ function batch_solve(
                                 ReturnCode.Terminated :
                                 ReturnCode.Success
                             ),
-                            i
+                            _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
                         )[1]
                     end
                     for i in eachindex(probs)
@@ -258,11 +288,13 @@ function batch_solve(
     else
         if ensembleprob.safetycopy
             probs = map(I) do i
-                ensembleprob.prob_func(deepcopy(ensembleprob.prob), i, 1)
+                ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
+                ensembleprob.prob_func(deepcopy(ensembleprob.prob), ctx)
             end
         else
             probs = map(I) do i
-                ensembleprob.prob_func(ensembleprob.prob, i, 1)
+                ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
+                ensembleprob.prob_func(ensembleprob.prob, ctx)
             end
         end
         u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
@@ -316,7 +348,7 @@ function batch_solve(
                             stats = sol.stats,
                             retcode = sol.retcode
                         ),
-                        i
+                        _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
                     )[1]
                     for i in 1:length(probs)
             ]
@@ -339,7 +371,7 @@ function batch_solve(
                             stats = sol.stats,
                             retcode = sol.retcode
                         ),
-                        i
+                        _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
                     )[1]
                     for i in 1:length(probs)
             ]
@@ -539,13 +571,13 @@ function ChainRulesCore.rrule(
 end
 
 function solve_batch(
-        prob, alg, ensemblealg::EnsembleThreads, II, pmap_batch_size;
-        kwargs...
+        prob, alg, ensemblealg::EnsembleThreads, II, pmap_batch_size,
+        ensemble_rng_state; kwargs...
     )
     if length(II) == 1 || Threads.nthreads() == 1
         return SciMLBase.solve_batch(
-            prob, alg, EnsembleSerial(), II, pmap_batch_size;
-            kwargs...
+            prob, alg, EnsembleSerial(), II, pmap_batch_size,
+            ensemble_rng_state; kwargs...
         )
     end
 
@@ -565,8 +597,8 @@ function solve_batch(
             I_local = II[(batch_size * (i - 1) + 1):(batch_size * i)]
         end
         SciMLBase.solve_batch(
-            prob, alg, EnsembleSerial(), I_local, pmap_batch_size;
-            kwargs...
+            prob, alg, EnsembleSerial(), I_local, pmap_batch_size,
+            ensemble_rng_state; kwargs...
         )
     end
     return SciMLBase.tighten_container_eltype(batch_data)

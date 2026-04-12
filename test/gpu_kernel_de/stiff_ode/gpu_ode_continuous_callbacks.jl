@@ -27,7 +27,7 @@ p = @SVector [10.0f0]
 func = ODEFunction(f, jac = f_jac, tgrad = f_tgrad)
 prob = ODEProblem{false}(func, u0, tspan, p)
 
-prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
+prob_func = (prob, ctx) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
 
 function affect!(integrator)

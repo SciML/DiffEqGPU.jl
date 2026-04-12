@@ -14,8 +14,8 @@ addprocs(2)
     p = (10.0f0, 28.0f0, 8 / 3.0f0)
     Random.seed!(1)
     pre_p_distributed = [rand(Float32, 3) for i in 1:10]
-    function prob_func_distributed(prob, i, repeat)
-        remake(prob, p = pre_p_distributed[i] .* p)
+    function prob_func_distributed(prob, ctx)
+        remake(prob, p = pre_p_distributed[ctx.sim_id] .* p)
     end
 end
 

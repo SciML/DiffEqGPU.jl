@@ -29,7 +29,7 @@ tspan = (0.0f0, 10.0f0)
 
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
-prob_func = (prob, i, repeat) -> remake(prob, p = p)
+prob_func = (prob, ctx) -> remake(prob, p = p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 for alg in (

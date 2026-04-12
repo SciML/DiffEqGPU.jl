@@ -13,7 +13,7 @@ tspan = (0.0f0, 100.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
 prob = ODEProblem(lorenz, u0, tspan, p)
 const pre_p = [rand(Float32, 3) for i in 1:10]
-prob_func = (prob, i, repeat) -> remake(prob, p = pre_p[i] .* p)
+prob_func = (prob, ctx) -> remake(prob, p = pre_p[ctx.sim_id] .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 @info "Explicit Methods"
@@ -254,7 +254,8 @@ u0 = Float32[1.0; 0.0; 0.0]
 tspan = (0.0f0, 100.0f0)
 p = LorenzParameters(10.0f0, 28.0f0, 8 / 3.0f0)
 prob = ODEProblem(lorenzp, u0, tspan, p)
-function param_prob_func(prob, i, repeat)
+function param_prob_func(prob, ctx)
+    i = ctx.sim_id
     p = LorenzParameters(
         pre_p[i][1] .* 10.0f0,
         pre_p[i][2] .* 28.0f0,
@@ -277,11 +278,11 @@ saveats = 1.0f0:1.0f0:10.0f0
 prob = ODEProblem(lorenz, u0, tspan, p)
 monteprob = EnsembleProblem(
     prob_jac,
-    prob_func = (prob, i, repeat) -> remake(
+    prob_func = (prob, ctx) -> remake(
         prob;
         tspan = (
             0.0f0,
-            saveats[i],
+            saveats[ctx.sim_id],
         )
     )
 )

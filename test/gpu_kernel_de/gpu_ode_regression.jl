@@ -18,7 +18,7 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
 algs = (GPUTsit5(), GPUVern7(), GPUVern9())
 for alg in algs
-    prob_func = (prob, i, repeat) -> remake(prob, p = p)
+    prob_func = (prob, ctx) -> remake(prob, p = p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
     @info typeof(alg)
 
@@ -125,7 +125,7 @@ for alg in algs
 
     ## With random parameters
 
-    prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
+    prob_func = (prob, ctx) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
     local sol = solve(
