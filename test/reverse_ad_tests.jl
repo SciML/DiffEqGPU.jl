@@ -10,8 +10,8 @@ end
 function model(θ, ensemblealg)
     prob = ODEProblem(modelf, [θ[1]], (0.0, 1.0), [θ[2], θ[3]])
 
-    function prob_func(prob, i, repeat)
-        return remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+    function prob_func(prob, ctx)
+        return remake(prob, u0 = 0.5 .+ ctx.sim_id / 100 .* prob.u0)
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)

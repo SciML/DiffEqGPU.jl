@@ -19,7 +19,7 @@ tspan = (0.0f0, 10.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
 prob = SDEProblem(lorenz, multiplicative_noise, u0, tspan, p)
 const pre_p = [rand(Float32, 3) for i in 1:10]
-prob_func = (prob, i, repeat) -> remake(prob, p = pre_p[i] .* p)
+prob_func = (prob, ctx) -> remake(prob, p = pre_p[ctx.sim_id] .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 @info "Explicit Methods"
@@ -54,7 +54,7 @@ tspan = (0.0f0, 10.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
 prob = SDEProblem(lorenz, multiplicative_noise, u0, tspan, p, noise_rate_prototype = NRate)
 
-prob_func = (prob, i, repeat) -> remake(prob, p = p)
+prob_func = (prob, ctx) -> remake(prob, p = p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 
 @test_throws "Incompatible problem detected. EnsembleGPUArray currently requires `prob.noise_rate_prototype === nothing`, i.e. only diagonal noise is currently supported. Track https://github.com/SciML/DiffEqGPU.jl/issues/331 for more information." sol = solve(

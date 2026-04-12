@@ -14,7 +14,7 @@ tspan = (0.0f0, 10.0f0)
 
 prob = ODEProblem{false}(f, u0, tspan, p)
 
-prob_func = (prob, i, repeat) -> remake(prob, p = p)
+prob_func = (prob, ctx) -> remake(prob, p = p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 osol = solve(prob, Rodas5P(), dt = 0.01f0, save_everystep = false)

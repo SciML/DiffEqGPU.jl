@@ -30,7 +30,7 @@ large_prob = ODEProblem(f_large, large_u0, (0.0f0, 10.0f0))
 
 algs = (GPURosenbrock23(), GPURodas4(), GPURodas5P(), GPUKvaerno3(), GPUKvaerno5())
 for alg in algs
-    prob_func = (prob, i, repeat) -> remake(prob, p = p)
+    prob_func = (prob, ctx) -> remake(prob, p = p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
     @info typeof(alg)
 
@@ -147,7 +147,7 @@ for alg in algs
 
     ## With random parameters
 
-    prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 1)) .* p)
+    prob_func = (prob, ctx) -> remake(prob, p = (@SVector rand(Float32, 1)) .* p)
     monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
     local sol = solve(

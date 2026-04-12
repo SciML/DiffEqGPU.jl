@@ -15,7 +15,7 @@ dts = 1 .// 2 .^ (5:-1:2)
 
 ensemble_prob = EnsembleProblem(
     prob;
-    output_func = (sol, i) -> (sol.u[end], false)
+    output_func = (sol, ctx) -> (sol.u[end], false)
 )
 
 @info "EM"

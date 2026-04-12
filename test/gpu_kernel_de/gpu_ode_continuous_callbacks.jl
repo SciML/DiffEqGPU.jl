@@ -13,7 +13,7 @@ u0 = @SVector[45.0f0, 0.0f0]
 tspan = (0.0f0, 15.0f0)
 p = @SVector [10.0f0]
 prob = ODEProblem{false}(f, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
+prob_func = (prob, ctx) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
 
 function affect!(integrator)
