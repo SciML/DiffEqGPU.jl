@@ -23,7 +23,7 @@ SymbolicIndexingInterface = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
 [compat]
 Adapt = "3, 4"
 BenchmarkTools = "1"
-CUDA = "4, 5"
+CUDA = "4, 5, 6.0"
 DiffEqBase = "6.120"
 DiffEqGPU = "1,2, 3"
 Documenter = "1"
