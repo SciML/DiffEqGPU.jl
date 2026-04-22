@@ -365,6 +365,295 @@ const GPUARodas4I = GPUARodas4Integrator
     )
 end
 
+@inline function init(
+        alg::GPURodas42, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST
+    ) where {
+        F, P, T,
+        S,
+        TS, CB, ST,
+    }
+    !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(T)
+
+    tab = Rodas42Tableau(T, T)
+
+    return integ = GPURodas4I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f,
+        copy(u0),
+        copy(u0),
+        copy(u0), t0,
+        t0,
+        t0,
+        dt,
+        sign(dt), p,
+        true,
+        tstops, 1,
+        callback,
+        save_everystep,
+        saveat, 1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0), tab,
+        DiffEqBase.ReturnCode.Default
+    )
+end
+
+@inline function init(
+        alg::GPURodas42, f::F, IIP::Bool, u0::S, t0::T, tf::T,
+        dt::T, p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST
+    ) where {
+        F, P, S, T, N, TOL, TS,
+        CB, ST,
+    }
+    !IIP && @assert S <: SArray
+    qoldinit = T(1.0e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(T)
+
+    tab = Rodas42Tableau(T, T)
+
+    return integ = GPUARodas4I{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
+        typeof(alg),
+    }(
+        alg,
+        f,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        tf,
+        dt,
+        dt,
+        sign(
+            tf -
+                t0
+        ),
+        p,
+        true,
+        tstops,
+        1,
+        callback,
+        false,
+        saveat,
+        1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        tab,
+        qoldinit,
+        abstol,
+        reltol,
+        internalnorm,
+        DiffEqBase.ReturnCode.Default
+    )
+end
+
+##########################
+# Rodas 3
+##########################
+
+mutable struct GPURodas3Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    alg::AlgType
+    f::F
+    uprev::S
+    u::S
+    tmp::S
+    tprev::T
+    t::T
+    t0::T
+    dt::T
+    tdir::T
+    p::P
+    u_modified::Bool
+    tstops::TS
+    tstops_idx::Int
+    callback::CB
+    save_everystep::Bool
+    saveat::ST
+    cur_t::Int
+    step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
+    k1::S
+    k2::S
+    tab::TabType
+    retcode::DiffEqBase.ReturnCode.T
+end
+const GPURodas3I = GPURodas3Integrator
+
+@inline function init(
+        alg::GPURodas3, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+        p::P, tstops::TS,
+        callback::CB,
+        save_everystep::Bool,
+        saveat::ST
+    ) where {
+        F, P, T,
+        S,
+        TS, CB, ST,
+    }
+    !IIP && @assert S <: SArray
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(T)
+
+    tab = Rodas3Tableau(T, T)
+
+    return integ = GPURodas3I{IIP, S, T, ST, P, F, TS, CB, typeof(tab), typeof(alg)}(
+        alg, f,
+        copy(u0),
+        copy(u0),
+        copy(u0), t0,
+        t0,
+        t0,
+        dt,
+        sign(dt), p,
+        true,
+        tstops, 1,
+        callback,
+        save_everystep,
+        saveat, 1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0), tab,
+        DiffEqBase.ReturnCode.Default
+    )
+end
+
+mutable struct GPUARodas3Integrator{
+        IIP,
+        S,
+        T,
+        ST,
+        P,
+        F,
+        N,
+        TOL,
+        Q,
+        TS,
+        CB,
+        TabType,
+        AlgType,
+    } <:
+    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    alg::AlgType
+    f::F
+    uprev::S
+    u::S
+    tmp::S
+    tprev::T
+    t::T
+    t0::T
+    tf::T
+    dt::T
+    dtnew::T
+    tdir::T
+    p::P
+    u_modified::Bool
+    tstops::TS
+    tstops_idx::Int
+    callback::CB
+    save_everystep::Bool
+    saveat::ST
+    cur_t::Int
+    step_idx::Int
+    event_last_time::Int
+    vector_event_last_time::Int
+    last_event_error::T
+    k1::S
+    k2::S
+    tab::TabType
+    qold::Q
+    abstol::TOL
+    reltol::TOL
+    internalnorm::N
+    retcode::DiffEqBase.ReturnCode.T
+end
+
+const GPUARodas3I = GPUARodas3Integrator
+
+@inline function init(
+        alg::GPURodas3, f::F, IIP::Bool, u0::S, t0::T, tf::T,
+        dt::T, p::P,
+        abstol::TOL, reltol::TOL,
+        internalnorm::N, tstops::TS,
+        callback::CB,
+        saveat::ST
+    ) where {
+        F, P, S, T, N, TOL, TS,
+        CB, ST,
+    }
+    !IIP && @assert S <: SArray
+    qoldinit = T(1.0e-4)
+    event_last_time = 1
+    vector_event_last_time = 0
+    last_event_error = zero(T)
+
+    tab = Rodas3Tableau(T, T)
+
+    return integ = GPUARodas3I{
+        IIP, S, T, ST, P, F, N, TOL, typeof(qoldinit), TS, CB, typeof(tab),
+        typeof(alg),
+    }(
+        alg,
+        f,
+        copy(u0),
+        copy(u0),
+        copy(u0),
+        t0,
+        t0,
+        t0,
+        tf,
+        dt,
+        dt,
+        sign(
+            tf -
+                t0
+        ),
+        p,
+        true,
+        tstops,
+        1,
+        callback,
+        false,
+        saveat,
+        1, 1,
+        event_last_time,
+        vector_event_last_time,
+        last_event_error,
+        copy(u0),
+        copy(u0),
+        tab,
+        qoldinit,
+        abstol,
+        reltol,
+        internalnorm,
+        DiffEqBase.ReturnCode.Default
+    )
+end
+
 ##########################
 # Rodas 5P
 ##########################
@@ -934,6 +1223,26 @@ end
 end
 
 @inline function DiffEqBase.u_modified!(integrator::GPUARB23I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPURodas3Integrator
+@inline function (integrator::GPURodas3I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPURodas3I, bool::Bool)
+    return integrator.u_modified = bool
+end
+
+# GPUARodas3Integrator
+@inline function (integrator::GPUARodas3I)(t)
+    Θ = (t - integrator.tprev) / integrator.dt
+    return _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+end
+
+@inline function DiffEqBase.u_modified!(integrator::GPUARodas3I, bool::Bool)
     return integrator.u_modified = bool
 end
 
