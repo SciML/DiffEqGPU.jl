@@ -55,8 +55,8 @@ prob = ODEProblem(f, u0, (0.0f0, 1.0f0)) # Float32 is better on GPUs!
 sol = solve(prob, Tsit5())
 ```
 
-Notice that the solution values `sol[i]` are CUDA-based arrays, which can be moved back
-to the CPU using `Array(sol[i])`.
+Notice that the solution values `sol.u[i]` are CUDA-based arrays, which can be moved back
+to the CPU using `Array(sol.u[i])`.
 
 More details on effective use of within-method GPU parallelism can be found in
 [the within-method GPU parallelism tutorial](@ref withingpu).
@@ -84,7 +84,7 @@ u0 = @SVector [1.0f0; 0.0f0; 0.0f0]
 tspan = (0.0f0, 10.0f0)
 p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
+prob_func = (prob, ctx) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),

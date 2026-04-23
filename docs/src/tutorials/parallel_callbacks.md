@@ -9,7 +9,7 @@ end
 
 u0 = @SVector [10.0f0]
 prob = ODEProblem{false}(f, u0, (0.0f0, 10.0f0))
-prob_func = (prob, i, repeat) -> remake(prob, p = prob.p)
+prob_func = (prob, ctx) -> remake(prob, p = prob.p)
 monteprob = EnsembleProblem(prob, safetycopy = false)
 
 condition(u, t, integrator) = t == 4.0f0
