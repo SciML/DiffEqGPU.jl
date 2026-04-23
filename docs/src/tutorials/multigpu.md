@@ -46,7 +46,7 @@ Then set up the calls to work with distributed processes:
     tspan = (0.0f0, 100.0f0)
     p = [10.0f0, 28.0f0, 8 / 3.0f0]
     Random.seed!(1)
-    function prob_func_distributed(prob, i, repeat)
+    function prob_func_distributed(prob, ctx)
         remake(prob, p = rand(3) .* p)
     end
 end
@@ -94,8 +94,8 @@ addprocs(2)
     p = [10.0f0, 28.0f0, 8 / 3.0f0]
     Random.seed!(1)
     pre_p_distributed = [rand(Float32, 3) for i in 1:100_000]
-    function prob_func_distributed(prob, i, repeat)
-        remake(prob, p = pre_p_distributed[i] .* p)
+    function prob_func_distributed(prob, ctx)
+        remake(prob, p = pre_p_distributed[ctx.sim_id] .* p)
     end
 end
 

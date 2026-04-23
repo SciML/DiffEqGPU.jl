@@ -1,7 +1,7 @@
 function SciMLBase.__solve(
         ensembleprob::SciMLBase.AbstractEnsembleProblem,
         alg::Union{
-            SciMLBase.DEAlgorithm, Nothing,
+            SciMLBase.AbstractDEAlgorithm, Nothing,
             DiffEqGPU.GPUODEAlgorithm, DiffEqGPU.GPUSDEAlgorithm,
         },
         ensemblealg::Union{
