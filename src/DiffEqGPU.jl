@@ -82,6 +82,13 @@ include("solve.jl")
 export EnsembleProblem, EnsembleSolution, EnsembleSerial, EnsembleThreads,
     EnsembleDistributed
 
+# Re-export DAE init algorithms. v7's default is `CheckInit` (validate-only),
+# which doesn't work for OOP `SVector` mass-matrix problems. Users solving
+# such DAEs alongside DiffEqGPU's GPU ensemble paths need easy access to the
+# pre-v7 default `BrownFullBasicInit` (auto-fix) without an extra `using
+# DiffEqBase`.
+export BrownFullBasicInit, CheckInit
+
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
