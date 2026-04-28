@@ -1,4 +1,8 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra
+# OrdinaryDiffEq v7's umbrella only re-exports Rosenbrock23 and Rodas5P from
+# the Rosenbrock family (see NEWS.md "Package scope reduction"). Pull Rodas4
+# from its sublibrary explicitly.
+using OrdinaryDiffEqRosenbrock: Rodas4
 @info "Callbacks"
 
 include("../../utils.jl")

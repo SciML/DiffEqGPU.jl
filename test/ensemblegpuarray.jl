@@ -1,4 +1,8 @@
 using DiffEqGPU, OrdinaryDiffEq, Test
+# v7's umbrella narrowed its solver re-exports; pull Rodas5 / TRBDF2 from
+# their sublibraries explicitly.
+using OrdinaryDiffEqRosenbrock: Rodas5
+using OrdinaryDiffEqSDIRK: TRBDF2
 
 include("utils.jl")
 
