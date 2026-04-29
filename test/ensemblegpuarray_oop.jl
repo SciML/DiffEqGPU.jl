@@ -1,4 +1,5 @@
 using DiffEqGPU, OrdinaryDiffEq, StaticArrays
+using OrdinaryDiffEqSDIRK: TRBDF2  # not in OrdinaryDiffEq v7 umbrella exports
 
 include("utils.jl")
 

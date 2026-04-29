@@ -1,4 +1,9 @@
 using DiffEqGPU, OrdinaryDiffEq, Test
+# v7's umbrella narrowed its solver re-exports; pull every non-default solver
+# this file references from its sublibrary explicitly.
+using OrdinaryDiffEqRosenbrock: Rodas5
+using OrdinaryDiffEqSDIRK: TRBDF2
+using OrdinaryDiffEqStabilizedRK: ROCK4
 
 include("utils.jl")
 

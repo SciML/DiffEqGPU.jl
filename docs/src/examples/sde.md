@@ -25,7 +25,7 @@ tspan = (0.0f0, 10.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
 prob = SDEProblem(lorenz, multiplicative_noise, u0, tspan, p)
 const pre_p = [rand(Float32, 3) for i in 1:10_000]
-prob_func = (prob, i, repeat) -> remake(prob, p = pre_p[i] .* p)
+prob_func = (prob, ctx) -> remake(prob, p = pre_p[ctx.sim_id] .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 sol = solve(
     monteprob, SOSRI(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,

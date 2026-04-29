@@ -74,6 +74,21 @@ include("ensemblegpukernel/tableaus/kvaerno_tableaus.jl")
 include("utils.jl")
 include("algorithms.jl")
 include("solve.jl")
+# Re-export the ensemble interface from SciMLBase. Pre-OrdinaryDiffEq v7,
+# `using OrdinaryDiffEq` transitively exposed these via `@reexport using
+# SciMLBase` in DiffEqBase. v7 dropped that umbrella re-export, so users of
+# `using DiffEqGPU` would otherwise have to add `using SciMLBase` just to
+# build an `EnsembleProblem` to pass to DiffEqGPU's own ensemble algorithms.
+export EnsembleProblem, EnsembleSolution, EnsembleSerial, EnsembleThreads,
+    EnsembleDistributed
+
+# Re-export DAE init algorithms. v7's default is `CheckInit` (validate-only),
+# which doesn't work for OOP `SVector` mass-matrix problems. Users solving
+# such DAEs alongside DiffEqGPU's GPU ensemble paths need easy access to the
+# pre-v7 default `BrownFullBasicInit` (auto-fix) without an extra `using
+# DiffEqBase`.
+export BrownFullBasicInit, CheckInit
+
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
 export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA

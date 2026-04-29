@@ -19,8 +19,8 @@ end
 function model(p)
     prob = ODEProblem(modelf, u0, (0.0, 1.0), p)
 
-    function prob_func(prob, i, repeat)
-        remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+    function prob_func(prob, ctx)
+        remake(prob, u0 = 0.5 .+ ctx.sim_id / 100 .* prob.u0)
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
@@ -62,7 +62,7 @@ u0 = [ForwardDiff.Dual(1.0f0, (1.0, 0.0, 0.0)), ForwardDiff.Dual(0.0f0, (0.0, 1.
 tspan = (0.0f0, 100.0f0)
 p = (10.0f0, 28.0f0, 8 / 3.0f0)
 prob = ODEProblem{true, SciMLBase.FullSpecialize}(lorenz, u0, tspan, p)
-prob_func = (prob, i, repeat) -> remake(prob, p = rand(Float32, 3) .* p)
+prob_func = (prob, ctx) -> remake(prob, p = rand(Float32, 3) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func)
 @time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
     trajectories = 10_000,

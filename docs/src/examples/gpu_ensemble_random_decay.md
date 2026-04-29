@@ -44,7 +44,7 @@ prob = ODEProblem{false}(decay_static, u0, tspan, base_param) # Use {false} for 
 
 # Define a probability function that randomizes λ for each ensemble member.
 # Each trajectory's λ is sampled uniformly from [0.5, 1.5].
-prob_func = (prob, i, repeat) -> begin
+prob_func = (prob, ctx) -> begin
     new_λ = 0.5f0 + 1.0f0 * rand(Float32)
     remake(prob, p = @SVector [new_λ])
 end

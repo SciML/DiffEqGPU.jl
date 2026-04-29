@@ -74,7 +74,7 @@ we can build and solve an MTK generated ODE on the GPU using the following:
 
 ```@example mtk
 using DiffEqGPU, CUDA
-function prob_func2(prob, i, repeat)
+function prob_func2(prob, ctx)
     u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
     remake(prob, u0 = u0, p = p)
 end

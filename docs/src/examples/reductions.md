@@ -22,12 +22,12 @@ end
 
 prob = ODEProblem(f!, [0.5], (0.0, 1.0))
 
-function output_func(sol, i)
+function output_func(sol, ctx)
     last(sol), false
 end
 
-function prob_func(prob, i, repeat)
-    remake(prob, u0 = ra[i] * prob.u0)
+function prob_func(prob, ctx)
+    remake(prob, u0 = ra[ctx.sim_id] * prob.u0)
 end
 
 function reduction(u, batch, I)

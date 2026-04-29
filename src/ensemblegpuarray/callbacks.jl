@@ -17,22 +17,25 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
         return nothing
     end
 
-    affect! = function (integrator, event_idx)
+    # DiffEqBase v7's `apply_callback!` for `VectorContinuousCallback` invokes
+    # `callback.affect!(integrator, simultaneous_events::Vector{Int8})` once per
+    # step. Each entry of the mask is 0 (no trigger), -1 (upcrossing) or
+    # +1 (downcrossing) — see OrdinaryDiffEq v7 NEWS.md, "Breaking:
+    # VectorContinuousCallback affect! signature changed". We copy the host
+    # mask to a backend-native array, dispatch one GPU thread per trajectory,
+    # and route up/down crossings to the user's original `affect!` /
+    # `affect_neg!`. v7 no longer dispatches to `VectorContinuousCallback`'s
+    # `affect_neg!` field, so we don't supply one.
+    affect! = function (integrator, simultaneous_events::AbstractVector)
         version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
-        return continuous_affect!_kernel(version)(
-            _affect!, event_idx, integrator.u,
-            integrator.t, integrator.p;
-            ndrange = size(integrator.u, 2),
-            workgroupsize = wgs
+        se_device = similar(
+            integrator.u, eltype(simultaneous_events),
+            length(simultaneous_events)
         )
-    end
-
-    affect_neg! = function (integrator, event_idx)
-        version = get_backend(integrator.u)
-        wgs = workgroupsize(version, size(integrator.u, 2))
+        copyto!(se_device, simultaneous_events)
         return continuous_affect!_kernel(version)(
-            _affect_neg!, event_idx, integrator.u,
+            _affect!, _affect_neg!, se_device, integrator.u,
             integrator.t, integrator.p;
             ndrange = size(integrator.u, 2),
             workgroupsize = wgs
@@ -40,7 +43,7 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     end
 
     return VectorContinuousCallback(
-        condition, affect!, affect_neg!, I,
+        condition, affect!, I,
         save_positions = callback.save_positions
     )
 end
