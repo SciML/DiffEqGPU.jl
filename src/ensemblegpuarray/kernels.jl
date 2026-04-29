@@ -152,13 +152,6 @@ end
     @views @inbounds out[i] = condition(u[:, i], t, FakeIntegrator(u[:, i], t, p[:, i]))
 end
 
-# v7: per-trajectory dispatch driven by the `simultaneous_events::Vector{Int8}`
-# mask DiffEqBase passes to `VectorContinuousCallback`'s `affect!`. -1 marks an
-# upcrossing → call the user's `affect!`; +1 marks a downcrossing → call
-# `affect_neg!`. (See OrdinaryDiffEq v7 NEWS.md, "Breaking:
-# VectorContinuousCallback affect! signature changed".) Iterating one thread
-# per trajectory replaces the v6 `for i in event_idx` loop, which only worked
-# because v6 passed the index of the *first* triggering trajectory as a scalar.
 @kernel function continuous_affect!_kernel(
         affect!, affect_neg!, simultaneous_events, u, t, p
     )

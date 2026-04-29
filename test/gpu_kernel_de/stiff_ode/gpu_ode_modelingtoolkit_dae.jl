@@ -53,10 +53,6 @@ monteprob = SciMLBase.EnsembleProblem(prob, safetycopy = false)
         adaptive = false
     )
     @test length(sol.u) == 2
-    # `sol.u[1].u[end]` rather than `sol.u[1][end]`: under RecursiveArrayTools v4
-    # an `ODESolution` is an `AbstractArray` and `[end]` returns the last scalar
-    # element, not the last timestep. See OrdinaryDiffEq v7 NEWS.md, "ODESolution
-    # is now an AbstractArray".
     @test !any(isnan, sol.u[1].u[end])
     @test abs(sol.u[1].u[end][1] + sol.u[1].u[end][2] - 1.0f0) < 0.01f0
 end

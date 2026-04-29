@@ -1,5 +1,3 @@
-# OrdinaryDiffEq v7 no longer re-exports SciMLBase, so pull SciMLBase in
-# directly — this test references `SciMLBase.FullSpecialize` on line 17.
 using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test
 using SciMLBase
 

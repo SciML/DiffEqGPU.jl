@@ -1,7 +1,7 @@
 using Distributed
 addprocs(2)
 @everywhere using DiffEqGPU, OrdinaryDiffEq, Test, Random
-@everywhere using OrdinaryDiffEqStabilizedRK: ROCK4  # v7 narrowed umbrella exports
+@everywhere using OrdinaryDiffEqStabilizedRK: ROCK4
 @everywhere include("utils.jl")
 
 @everywhere begin
