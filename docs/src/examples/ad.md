@@ -5,43 +5,53 @@ and thus can be thrown into deep learning training loops. The following is an ex
 of this use:
 
 ```@example ad
-using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA
+using OrdinaryDiffEq, SciMLSensitivity, Lux, Optimisers, Zygote, DiffEqGPU, CUDA, Random
 
 CUDA.allowscalar(false)
 
-pa = [1.0, 2.0]
-u0 = [3.0]
+# A tiny Lux model whose parameters are what we train. It maps a constant
+# input to the two ODE parameters.
+const dense = Dense(1 => 2)
+const x = Float32[1.0]
+rng = Random.default_rng()
+Random.seed!(rng, 0)
+ps, st = Lux.setup(rng, dense)
+
+u0 = Float32[3.0]
 
 function modelf(du, u, p, t)
-    du[1] = 1.01 * u[1] * p[1] * p[2]
+    du[1] = 1.01f0 * u[1] * p[1] * p[2]
 end
 
 function model(p)
-    prob = ODEProblem(modelf, u0, (0.0, 1.0), p)
+    prob = ODEProblem(modelf, u0, (0.0f0, 1.0f0), p)
 
     function prob_func(prob, ctx)
-        remake(prob, u0 = 0.5 .+ ctx.sim_id / 100 .* prob.u0)
+        remake(prob, u0 = 0.5f0 .+ Float32(ctx.sim_id) / 100 .* prob.u0)
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), saveat = 0.1,
+    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), saveat = 0.1f0,
         trajectories = 10)
 end
 
-# loss function
-loss(p) = sum(abs2, 1.0 .- Array(model(p)))
+# loss function: run the Lux model to produce ODE parameters, then score the ensemble
+function loss(ps)
+    p_vec, _ = dense(x, ps, st)
+    sum(abs2, 1.0f0 .- Array(model(p_vec)))
+end
 
 println("Starting to train")
 
-l1 = loss(pa)
+l1 = loss(ps)
 @show l1
 
-# Use Flux's gradient descent with explicit parameter updates
-opt_state = Flux.setup(Adam(0.1), pa)
+# Optimisers.jl handles parameter updates; Zygote.jl handles gradients
+opt_state = Optimisers.setup(Optimisers.Adam(0.1f0), ps)
 for epoch in 1:10
-    grads = Flux.gradient(loss, pa)
-    Flux.update!(opt_state, pa, grads[1])
-    @show loss(pa)
+    grads = Zygote.gradient(loss, ps)
+    Optimisers.update!(opt_state, ps, grads[1])
+    @show loss(ps)
 end
 ```
 
