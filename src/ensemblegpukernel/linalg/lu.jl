@@ -2,11 +2,7 @@
 # https://github.com/JuliaArrays/StaticArrays.jl/blob/master/src/lu.jl
 
 # LU decomposition
-pivot_options = if isdefined(LinearAlgebra, :PivotingStrategy) # introduced in Julia v1.7
-    (:(Val{true}), :(Val{false}), :NoPivot, :RowMaximum)
-else
-    (:(Val{true}), :(Val{false}))
-end
+pivot_options = (:(Val{true}), :(Val{false}), :NoPivot, :RowMaximum)
 for pv in pivot_options
     # ... define each `pivot::Val{true/false}` method individually to avoid ambiguties
     @eval function static_lu(A::StaticLUMatrix, pivot::$pv; check = true)
@@ -39,11 +35,7 @@ function _first_zero_on_diagonal(A::StaticLUMatrix{M, N, T}) where {M, N, T}
 end
 
 @generated function _lu(A::StaticLUMatrix{M, N, T}, pivot, check) where {M, N, T}
-    _pivot = if isdefined(LinearAlgebra, :PivotingStrategy) # v1.7 feature
-        pivot === RowMaximum ? Val(true) : pivot === NoPivot ? Val(false) : pivot()
-    else
-        pivot()
-    end
+    _pivot = pivot === RowMaximum ? Val(true) : pivot === NoPivot ? Val(false) : pivot()
     return quote
         L, U, P = __lu(A, $(_pivot))
         if check

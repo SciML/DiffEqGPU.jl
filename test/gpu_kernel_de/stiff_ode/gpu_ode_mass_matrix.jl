@@ -35,14 +35,6 @@ monteprob = EnsembleProblem(prob, safetycopy = false)
 
 alg = GPURosenbrock23()
 
-# OrdinaryDiffEq v7 changed the default DAE initialization from
-# `BrownFullBasicInit` (auto-fix) to `CheckInit` (validate-only). SciMLBase's
-# OOP `CheckInit` then calls `tmp .= …` on the f-evaluation result, but for
-# an out-of-place `SVector` problem that result is itself an `SVector`, so
-# the in-place broadcast errors with `setindex!(::SVector, …)`. Pass the
-# pre-v7 default explicitly to restore the auto-fix behaviour for the bench
-# solve. See OrdinaryDiffEq v7 NEWS.md, "Default DAE initialization changed
-# to CheckInit".
 bench_sol = solve(
     prob, Rosenbrock23(), dt = 0.1, abstol = 1.0f-5, reltol = 1.0f-5,
     initializealg = BrownFullBasicInit()

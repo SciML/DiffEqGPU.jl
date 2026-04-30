@@ -17,15 +17,6 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
         return nothing
     end
 
-    # DiffEqBase v7's `apply_callback!` for `VectorContinuousCallback` invokes
-    # `callback.affect!(integrator, simultaneous_events::Vector{Int8})` once per
-    # step. Each entry of the mask is 0 (no trigger), -1 (upcrossing) or
-    # +1 (downcrossing) — see OrdinaryDiffEq v7 NEWS.md, "Breaking:
-    # VectorContinuousCallback affect! signature changed". We copy the host
-    # mask to a backend-native array, dispatch one GPU thread per trajectory,
-    # and route up/down crossings to the user's original `affect!` /
-    # `affect_neg!`. v7 no longer dispatches to `VectorContinuousCallback`'s
-    # `affect_neg!` field, so we don't supply one.
     affect! = function (integrator, simultaneous_events::AbstractVector)
         version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
