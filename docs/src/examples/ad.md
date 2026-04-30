@@ -4,7 +4,7 @@
 and thus can be thrown into deep learning training loops. The following is an example
 of this use:
 
-```julia
+```@example ad
 using OrdinaryDiffEq, SciMLSensitivity, Flux, DiffEqGPU, CUDA
 
 CUDA.allowscalar(false)
