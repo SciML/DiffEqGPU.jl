@@ -57,6 +57,18 @@ monteprob = SciMLBase.EnsembleProblem(prob, safetycopy = false)
     @test abs(sol.u[1].u[end][1] + sol.u[1].u[end][2] - 1.0f0) < 0.01f0
 end
 
+@testset "GPURodas3 DAE" begin
+    sol = solve(
+        monteprob, GPURodas3(), EnsembleGPUKernel(backend),
+        trajectories = 2,
+        dt = 0.001f0,
+        adaptive = false
+    )
+    @test length(sol.u) == 2
+    @test !any(isnan, sol.u[1][end])
+    @test abs(sol.u[1][end][1] + sol.u[1][end][2] - 1.0f0) < 0.01f0
+end
+
 @testset "GPURodas4 DAE" begin
     sol = solve(
         monteprob, GPURodas4(), EnsembleGPUKernel(backend),
@@ -67,6 +79,18 @@ end
     @test length(sol.u) == 2
     @test !any(isnan, sol.u[1].u[end])
     @test abs(sol.u[1].u[end][1] + sol.u[1].u[end][2] - 1.0f0) < 0.01f0
+end
+
+@testset "GPURodas42 DAE" begin
+    sol = solve(
+        monteprob, GPURodas42(), EnsembleGPUKernel(backend),
+        trajectories = 2,
+        dt = 0.001f0,
+        adaptive = false
+    )
+    @test length(sol.u) == 2
+    @test !any(isnan, sol.u[1][end])
+    @test abs(sol.u[1][end][1] + sol.u[1][end][2] - 1.0f0) < 0.01f0
 end
 
 @testset "GPURodas5P DAE" begin
