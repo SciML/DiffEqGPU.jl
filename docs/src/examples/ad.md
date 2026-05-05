@@ -9,12 +9,12 @@ using OrdinaryDiffEq, SciMLSensitivity, Lux, Optimisers, Zygote, DiffEqGPU, CUDA
 
 CUDA.allowscalar(false)
 
-# A tiny Lux model whose parameters are what we train. It maps a constant
-# input to the two ODE parameters.
+# A tiny Lux model whose trainable parameters become the two ODE parameters
+# (a `Dense(1 => 2)` applied to a constant input).
 const dense = Dense(1 => 2)
 const x = Float32[1.0]
 rng = Random.default_rng()
-Random.seed!(rng, 0)
+Random.seed!(rng, 0)  # reproducibility
 ps, st = Lux.setup(rng, dense)
 
 u0 = Float32[3.0]
