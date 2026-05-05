@@ -14,7 +14,7 @@ end
 prob = ODEProblem(f!, [0.5], (0.0, 1.0))
 
 function output_func(sol, ctx)
-    return last(sol), false
+    return sol.u[end], false
 end
 
 function prob_func(prob, ctx)
