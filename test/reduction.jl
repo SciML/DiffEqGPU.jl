@@ -14,7 +14,11 @@ end
 prob = ODEProblem(f!, [0.5], (0.0, 1.0))
 
 function output_func(sol, ctx)
-    return last(sol), false
+    # Use `sol.u[end]` rather than `last(sol)` so each per-trajectory output
+    # stays a state vector. In SciMLBase v3, `last(sol)` returns a scalar for
+    # single-component ODEs, which makes `sum(sim1.u)` a scalar and breaks the
+    # comparison against `sim2.u` (a 1-element vector from `u_init = [0.0]`).
+    return sol.u[end], false
 end
 
 function prob_func(prob, ctx)
