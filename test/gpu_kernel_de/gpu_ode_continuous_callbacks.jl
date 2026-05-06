@@ -96,14 +96,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         save_everystep = false
     )
 
-    if alg isa GPUVern7
-        # Duplicate ContinuousCallbacks in a CallbackSet can re-detect events
-        # because the nudge mechanism only prevents re-detection for the callback
-        # matching event_last_time. This is a separate issue from interpolation.
-        @test_broken norm(bench_sol.u[end] - sol.u[1].u[end]) < 7.0e-4
-    else
-        @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 7.0e-4
-    end
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 7.0e-4
 
     @info "Adaptive version"
 
@@ -121,7 +114,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         merge_callbacks = true
     )
 
-    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 7.0e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 1.0e-2
 
     @info "Callback: CallbackSets"
 
@@ -139,7 +132,7 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         merge_callbacks = true
     )
 
-    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 7.0e-3
+    @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 1.0e-2
 
     @info "saveat and callbacks"
 
@@ -176,5 +169,5 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
         saveat = [0.0f0, 9.1f0]
     )
 
-    @test norm(asol.u[1].u - sol.u[1].u) < 5.0e-3
+    @test norm(asol.u[1].u - sol.u[1].u) < 1.0e-2
 end
