@@ -126,8 +126,6 @@ cpu_sol_plot = solve(ensemble_prob, Tsit5(), EnsembleThreads();
     dt = 0.01f0,
     adaptive = false)
 
-# Access the underlying Vector{ODESolution} explicitly. EnsembleSolution scalar
-# indexing returns a flat element, not a per-trajectory ODESolution.
 solutions_vector_cpu = cpu_sol_plot.u
 
 # Extract time points from the first trajectory's solution (assuming all are same)
