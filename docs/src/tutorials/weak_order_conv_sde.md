@@ -30,7 +30,7 @@ sol = solve(
 
 sol_array = Array(sol)
 
-ts = sol[1].t
+ts = sol.u[1].t
 
 us_calc = reshape(mean(sol_array, dims = 3), size(sol_array, 2))
 
