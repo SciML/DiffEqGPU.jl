@@ -1,4 +1,4 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, Statistics
+using DiffEqGPU, OrdinaryDiffEq, StochasticDiffEq, StaticArrays, LinearAlgebra, Statistics
 using DiffEqDevTools
 
 include("../utils.jl")
