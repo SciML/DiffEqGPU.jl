@@ -1,11 +1,14 @@
 # Using GPU-accelerated Ensembles with Automatic Differentiation
 
-`EnsembleGPUArray` comes with derivative overloads for reverse mode automatic differentiation,
-and thus can be thrown into deep learning training loops. The following is an example
-of this use:
+`EnsembleGPUArray` carries a custom forward-mode rrule that propagates
+`ForwardDiff.Dual` numbers through the parallel solve, so it can sit inside
+a Lux/Optimisers training loop driven by ForwardDiff.jl gradients. Below
+the parameters of a tiny Lux model become the inputs to a parallel ensemble
+of ODEs, and the `Dense` weights get updated to drive the integrated states
+toward 1.
 
 ```@example ad
-using OrdinaryDiffEq, SciMLSensitivity, Lux, Optimisers, Zygote, DiffEqGPU, CUDA, Random
+using OrdinaryDiffEq, Lux, Optimisers, ForwardDiff, DiffEqGPU, CUDA, Random
 
 CUDA.allowscalar(false)
 
@@ -16,6 +19,9 @@ const x = Float32[1.0]
 rng = Random.default_rng()
 Random.seed!(rng, 0)
 ps, st = Lux.setup(rng, dense)
+# Optimisers.destructure flattens `ps` into a vector + reconstructor closure;
+# ForwardDiff differentiates over that flat vector.
+flat_ps, restore = Optimisers.destructure(ps)
 
 u0 = Float32[3.0]
 
@@ -23,35 +29,45 @@ function modelf(du, u, p, t)
     du[1] = 1.01f0 * u[1] * p[1] * p[2]
 end
 
-function model(p)
-    prob = ODEProblem(modelf, u0, (0.0f0, 1.0f0), p)
+# Element type T flows in from ForwardDiff so that u0 / tspan / saveat all
+# match the Dual eltype of the perturbed parameters during gradient calls.
+function model(p, ::Type{T} = Float32) where {T}
+    prob = ODEProblem(modelf, T.(u0), T.((0.0f0, 1.0f0)), p)
 
     function prob_func(prob, ctx)
-        remake(prob, u0 = 0.5f0 .+ Float32(ctx.sim_id) / 100 .* prob.u0)
+        remake(prob, u0 = T(0.5) .+ T(ctx.sim_id) / T(100) .* prob.u0)
     end
 
     ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
-    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), saveat = 0.1f0,
-        trajectories = 10)
+    solve(
+        ensemble_prob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+        saveat = T(0.1), trajectories = 10
+    )
 end
 
 # loss function: run the Lux model to produce ODE parameters, then score the ensemble
-function loss(ps)
-    p_vec, _ = dense(x, ps, st)
-    sum(abs2, 1.0f0 .- Array(model(p_vec)))
+function loss(flat_ps)
+    p_vec, _ = dense(x, restore(flat_ps), st)
+    T = eltype(p_vec)
+    sum(abs2, T(1.0) .- Array(model(p_vec, T)))
 end
 
 println("Starting to train")
 
-l1 = loss(ps)
+l1 = loss(flat_ps)
 @show l1
 
-# Optimisers.jl handles parameter updates; Zygote.jl handles gradients
-opt_state = Optimisers.setup(Optimisers.Adam(0.1f0), ps)
+# Optimisers.jl handles parameter updates; ForwardDiff.jl handles gradients.
+# Reverse-mode (Zygote / SciMLSensitivity) through the EnsembleProblem adjoint
+# is currently broken on the CI Julia + Zygote stack
+# (https://github.com/SciML/SciMLSensitivity.jl reports the `ProjectTo`
+# DimensionMismatch on `Vector{Vector{Vector{Float32}}}`); ForwardDiff is
+# the supported path through `EnsembleGPUArray` for now.
+opt_state = Optimisers.setup(Optimisers.Adam(0.1f0), flat_ps)
 for epoch in 1:10
-    grads = Zygote.gradient(loss, ps)
-    Optimisers.update!(opt_state, ps, grads[1])
-    @show loss(ps)
+    grads = ForwardDiff.gradient(loss, flat_ps)
+    Optimisers.update!(opt_state, flat_ps, grads)
+    @show loss(flat_ps)
 end
 ```
 
