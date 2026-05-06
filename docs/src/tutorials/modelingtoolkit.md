@@ -19,7 +19,7 @@ to ensure that the problem that is built uses static structures. For example thi
 that the `u0` and `p` specifications should use static arrays. This looks as follows:
 
 ```@example mtk
-using OrdinaryDiffEq, ModelingToolkit, StaticArrays
+using OrdinaryDiffEq, ModelingToolkit, StaticArrays, SciMLBase
 using ModelingToolkit: t_nounits as t, D_nounits as D
 
 @parameters σ ρ β
@@ -29,7 +29,18 @@ eqs = [D(D(x)) ~ σ * (y - x),
     D(y) ~ x * (ρ - z) - y,
     D(z) ~ x * y - β * z]
 
-@mtkbuild sys = ODESystem(eqs, t)
+# Two MTK options matter for `EnsembleGPUKernel` below
+# (see SciML/DiffEqGPU.jl#375):
+#   * `split = false` keeps all parameters in a single SVector instead of
+#     splitting them into multiple `Vector`-backed `MTKParameters` fields,
+#     which CuArray cannot store inline.
+#   * `build_initializeprob = false` (passed to ODEProblem) skips the
+#     `OverrideInitData` initialization-problem metadata; otherwise the
+#     `MTKChainRulesCoreExt` path errors with
+#     `type Nothing has no field oop_reconstruct_u0_p` during the GPU
+#     `remake` in the ensemble below.
+@mtkcompile sys = System(eqs, t) split=false
+
 u0 = @SVector [D(x) => 2.0f0,
     x => 1.0f0,
     y => 0.0f0,
@@ -40,10 +51,9 @@ p = @SVector [σ => 28.0f0,
     β => 8.0f0 / 3.0f0]
 
 tspan = (0.0f0, 100.0f0)
-# `build_initializeprob = false` keeps the constructed ODEProblem free of the
-# initialization-problem metadata that contains non-inline fields, which is
-# required for EnsembleGPUKernel below (see SciML/DiffEqGPU.jl#375).
-prob = ODEProblem{false}(sys, u0, tspan, p; build_initializeprob = false)
+prob = ODEProblem{false, SciMLBase.FullSpecialize}(
+    sys, [u0; p], tspan; build_initializeprob = false
+)
 sol = solve(prob, Tsit5())
 ```
 
