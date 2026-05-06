@@ -4,7 +4,7 @@ The following is a demonstration of a GPU-accelerated implicit solve of a stiff
 nonlinear partial differential equation (the Brusselator model):
 
 ```@example bruss
-using OrdinaryDiffEq, ADTypes, CUDA, LinearAlgebra
+using OrdinaryDiffEq, CUDA, LinearAlgebra
 
 const N = 32
 const xyd_brusselator = range(0, stop = 1, length = N)
@@ -90,10 +90,7 @@ prob_ode_brusselator_2d_cuda = ODEProblem(brusselator_2d, CuArray(u0), (0.0f0, 1
 # Note: Solving requires allowscalar(true) during initialization
 # This demonstrates the problem setup for GPU-based PDE solving
 CUDA.allowscalar(true)
-sol = solve(
-    prob_ode_brusselator_2d_cuda, Rosenbrock23(autodiff = AutoFiniteDiff()),
-    save_everystep = false
-)
+sol = solve(prob_ode_brusselator_2d_cuda, Rosenbrock23(), save_everystep = false)
 CUDA.allowscalar(false)
 sol.retcode
 ```
