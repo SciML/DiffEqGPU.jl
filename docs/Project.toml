@@ -1,4 +1,5 @@
 [deps]
+ADTypes = "47edcb42-4c32-4615-8424-f2b9edc5f35b"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 BenchmarkTools = "6e4b80f9-dd63-53aa-95a3-0cdb28fa8baf"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -23,6 +24,7 @@ SymbolicIndexingInterface = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
 [compat]
+ADTypes = "1"
 Adapt = "4"
 BenchmarkTools = "1"
 CUDA = "6"
