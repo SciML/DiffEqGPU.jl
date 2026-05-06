@@ -1,12 +1,17 @@
 # GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation
 
 The following is a demonstration of a GPU-accelerated implicit solve of a stiff
-nonlinear partial differential equation (the Brusselator model):
+nonlinear partial differential equation (the Brusselator model). The user
+function below uses scalar indexing into the `CuArray` state, so each step of
+the implicit solver triggers many small GPU kernel launches; we keep the grid
+modest (`N = 8`) to keep the doc build runtime reasonable. For large-grid
+GPU PDEs you would write a true broadcast/kernel form; this example is for
+demonstrating the wiring with `OrdinaryDiffEq` and `CuArray`.
 
 ```@example bruss
 using OrdinaryDiffEq, CUDA, LinearAlgebra
 
-const N = 32
+const N = 8
 const xyd_brusselator = range(0, stop = 1, length = N)
 brusselator_f(x, y, t) = (((x - 0.3)^2 + (y - 0.6)^2) <= 0.1^2) * (t >= 1.1) * 5.0
 limit(a, N) = a == N + 1 ? 1 : a == 0 ? N : a
@@ -67,23 +72,11 @@ function init_brusselator_2d(xyd)
     u
 end
 u0 = init_brusselator_2d(xyd_brusselator)
-prob_ode_brusselator_2d = ODEProblem(brusselator_2d, u0, (0.0, 11.5), p)
 
+# Sanity check the RHS on the CPU before moving to GPU.
 du = similar(u0)
 brusselator_2d(du, u0, p, 0.0)
-du[34] # 802.9807693762164
-du[1058] # 985.3120721709204
-du[2000] # -403.5817880634729
-du[end] # 1431.1460373522068
-du[521] # -323.1677459142322
-
-du2 = similar(u0)
-brusselator_2d(du2, u0, p, 1.3)
-du2[34] # 802.9807693762164
-du2[1058] # 985.3120721709204
-du2[2000] # -403.5817880634729
-du2[end] # 1431.1460373522068
-du2[521] # -318.1677459142322
+du[1, 1, 1], du[end, end, 2]
 
 # The brusselator RHS only depends on `t` through the source term in
 # `brusselator_f`, which is a step function activating at t=1.1 (handled
