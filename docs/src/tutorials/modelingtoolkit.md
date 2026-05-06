@@ -40,7 +40,10 @@ p = @SVector [σ => 28.0f0,
     β => 8.0f0 / 3.0f0]
 
 tspan = (0.0f0, 100.0f0)
-prob = ODEProblem{false}(sys, u0, tspan, p)
+# `build_initializeprob = false` keeps the constructed ODEProblem free of the
+# initialization-problem metadata that contains non-inline fields, which is
+# required for EnsembleGPUKernel below (see SciML/DiffEqGPU.jl#375).
+prob = ODEProblem{false}(sys, u0, tspan, p; build_initializeprob = false)
 sol = solve(prob, Tsit5())
 ```
 
@@ -84,8 +87,13 @@ sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
     trajectories = 10_000)
 ```
 
-We can then using symbolic indexing on the result to inspect it:
+We can then use symbolic indexing on the result to inspect it. The
+per-trajectory solutions returned by `EnsembleGPUKernel` are minimal
+`ImmutableODESolution`s (their state vectors are plain `SVector`s and don't
+carry the symbolic metadata themselves), so we use a `getu` accessor built
+from `sys` to pick out the `y` component of each trajectory's final state:
 
 ```@example mtk
-[sol.u[i][y] for i in 1:length(sol.u)]
+y_at_end = SymbolicIndexingInterface.getu(sys, y)
+[y_at_end(sol.u[i].u[end]) for i in 1:length(sol.u)]
 ```

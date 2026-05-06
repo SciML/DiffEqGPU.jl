@@ -85,10 +85,18 @@ du2[2000] # -403.5817880634729
 du2[end] # 1431.1460373522068
 du2[521] # -318.1677459142322
 
-prob_ode_brusselator_2d_cuda = ODEProblem(brusselator_2d, CuArray(u0), (0.0f0, 11.5f0), p,
-    tstops = [1.1f0])
-# Note: Solving requires allowscalar(true) during initialization
-# This demonstrates the problem setup for GPU-based PDE solving
+# The brusselator RHS only depends on `t` through the source term in
+# `brusselator_f`, which is a step function activating at t=1.1 (handled
+# explicitly via `tstops`). Away from that discontinuity, `df/dt = 0`. We
+# supply this tgrad analytically so OrdinaryDiffEq does not try to AD it,
+# which fails on a CuArray-backed user function.
+brusselator_tgrad(du, u, p, t) = (du .= 0)
+brusselator_f_cuda = ODEFunction(brusselator_2d, tgrad = brusselator_tgrad)
+prob_ode_brusselator_2d_cuda = ODEProblem(
+    brusselator_f_cuda, CuArray(u0), (0.0f0, 11.5f0), p, tstops = [1.1f0]
+)
+# The user function indexes into a CPU `Vector` (`xyd`) and writes scalar
+# entries into the CuArray, so allow scalar GPU ops for the duration.
 CUDA.allowscalar(true)
 sol = solve(prob_ode_brusselator_2d_cuda, Rosenbrock23(), save_everystep = false)
 CUDA.allowscalar(false)
