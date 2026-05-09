@@ -25,7 +25,7 @@ Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 [compat]
 Adapt = "4"
 BenchmarkTools = "1"
-CUDA = "6"
+CUDA = "5, 6"
 DiffEqBase = "7"
 DiffEqGPU = "3"
 Documenter = "1"

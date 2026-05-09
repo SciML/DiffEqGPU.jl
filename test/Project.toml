@@ -34,7 +34,7 @@ pocl_jll = "627d6b7a-bbe6-5189-83e7-98cc0a5aeadd"
 [compat]
 Adapt = "4"
 BenchmarkTools = "1"
-CUDA = "6"
+CUDA = "5, 6"
 DiffEqDevTools = "3, 4.0"
 DiffEqGPU = "3"
 ForwardDiff = "1"
