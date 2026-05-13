@@ -104,8 +104,6 @@ func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
 prob_jac = ODEProblem(func, u0, tspan, p)
 monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
 
-solve(
-    monteprob_jac, Rosenbrock23(), EnsembleGPUArray(CUDA.CUDABackend()),
-    trajectories = 10_000, saveat = 1.0f0
-)
+solve(monteprob_jac, Rodas5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,
+    saveat = 1.0f0)
 ```
