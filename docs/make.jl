@@ -10,7 +10,7 @@ makedocs(
     authors = "Chris Rackauckas",
     modules = [DiffEqGPU],
     clean = true, doctest = false, linkcheck = true,
-    warnonly = [:missing_docs, :linkcheck],
+    warnonly = [:missing_docs],
     format = Documenter.HTML(
         assets = ["assets/favicon.ico"],
         canonical = "https://docs.sciml.ai/DiffEqGPU/stable/"
