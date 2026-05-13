@@ -6,7 +6,8 @@ With the lower overhead of `EnsembleGPUKernel` API, these calculations can be do
 The example below provides a way to calculate the expectation time-series of a linear SDE:
 
 ```@example kernel_sde
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, Statistics
+using DiffEqGPU, OrdinaryDiffEq, StochasticDiffEq, StaticArrays, LinearAlgebra, Statistics
+using CUDA
 
 num_trajectories = 10_000
 
@@ -22,12 +23,14 @@ prob = SDEProblem(f, g, u₀, tspan, p; seed = 1234)
 
 monteprob = EnsembleProblem(prob)
 
-sol = solve(monteprob, GPUEM(), EnsembleGPUKernel(0.0), dt = Float32(1 // 2^8),
-    trajectories = num_trajectories, adaptive = false)
+sol = solve(
+    monteprob, GPUEM(), EnsembleGPUKernel(CUDA.CUDABackend(), 0.0),
+    dt = Float32(1 // 2^8), trajectories = num_trajectories, adaptive = false
+)
 
 sol_array = Array(sol)
 
-ts = sol[1].t
+ts = sol.u[1].t
 
 us_calc = reshape(mean(sol_array, dims = 3), size(sol_array, 2))
 

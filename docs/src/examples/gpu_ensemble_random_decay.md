@@ -126,8 +126,10 @@ cpu_sol_plot = solve(ensemble_prob, Tsit5(), EnsembleThreads();
     dt = 0.01f0,
     adaptive = false)
 
+solutions_vector_cpu = cpu_sol_plot.u
+
 # Extract time points from the first trajectory's solution (assuming all are same)
-t_vals_cpu = cpu_sol_plot[1].t
+t_vals_cpu = solutions_vector_cpu[1].t
 num_times_cpu = length(t_vals_cpu)
 
 # Create a matrix to hold the results: rows=time, columns=trajectories
@@ -136,13 +138,13 @@ ensemble_vals_cpu = fill(NaN32, num_times_cpu, num_trajectories) # Use Float32
 
 # Extract the state value (u[1]) from each trajectory at each time point
 for i in 1:num_trajectories
+    sol = solutions_vector_cpu[i]
     # Check if the trajectory simulation was successful and data looks valid
-    if cpu_sol_plot[i].retcode == ReturnCode.Success &&
-       length(cpu_sol_plot[i].u) == num_times_cpu
+    if sol.retcode == ReturnCode.Success && length(sol.u) == num_times_cpu
         # sol.u is a Vector{SVector{1, Float32}}. We need the element from each SVector.
-        ensemble_vals_cpu[:, i] .= getindex.(cpu_sol_plot[i].u, 1)
+        ensemble_vals_cpu[:, i] .= getindex.(sol.u, 1)
     else
-        @warn "CPU Trajectory $i failed or had unexpected length. Retcode: $(cpu_sol_plot[i].retcode). Length: $(length(cpu_sol_plot[i].u)). Skipping."
+        @warn "CPU Trajectory $i failed or had unexpected length. Retcode: $(sol.retcode). Length: $(length(sol.u)). Skipping."
         # Column remains NaN
     end
 end
