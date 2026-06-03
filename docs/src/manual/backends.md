@@ -1,7 +1,7 @@
 # Compute Backends (GPU Choices)
 
 DiffEqGPU.jl supports a multitude of different GPU devices. These must be chosen during the
-construction of the `EnsembleGPUArray` and `EnsembleGPUKernel` construction and correpond
+construction of the `EnsembleGPUArray` and `EnsembleGPUKernel` construction and correspond
 to the compute backends of [KernelAbstractions.jl](https://github.com/JuliaGPU/KernelAbstractions.jl).
 The choices for backends are:
 

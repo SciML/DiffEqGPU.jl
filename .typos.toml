@@ -1,4 +1,8 @@
 [default.extend-words]
+# Domain-specific identifiers (not typos)
+gam = "gam"     # gamma type/coefficient (gamType, γ)
+yhat = "yhat"   # ŷ, predictor value in implicit solvers
+
 # Julia-specific functions
 indexin = "indexin"
 findfirst = "findfirst"
