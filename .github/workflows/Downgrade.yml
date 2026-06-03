@@ -12,7 +12,6 @@ on:
       - 'docs/**'
 jobs:
   test:
-    runs-on: ubuntu-latest
     # Disabled: MTK 10.18+ pins StaticArrays >= 1.9.14 but Downgrade pins
     # StaticArrays to its `Project.toml` floor. The required floor bump is a
     # cosmetic compat tightening unrelated to this package's actual runtime
@@ -23,17 +22,10 @@ jobs:
         downgrade_mode: ['alldeps']
         julia-version: ['1.10']
         group: ['CPU']
-    steps:
-      - uses: actions/checkout@v6
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: ${{ matrix.julia-version }}
-      - uses: julia-actions/julia-downgrade-compat@v2
-        with:
-          skip: Pkg,TOML
-      - uses: julia-actions/julia-buildpkg@v1
-      - uses: julia-actions/julia-runtest@v1
-        with:
-          ALLOW_RERESOLVE: false
-        env:
-          GROUP: ${{ matrix.group }}
+    uses: "SciML/.github/.github/workflows/downgrade.yml@v1"
+    with:
+      julia-version: "${{ matrix.julia-version }}"
+      group: "${{ matrix.group }}"
+      skip: "Pkg,TOML"
+      allow-reresolve: false
+    secrets: "inherit"
