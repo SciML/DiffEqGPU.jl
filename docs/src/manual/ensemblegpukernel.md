@@ -15,7 +15,9 @@ GPUVern9
 GPUEM
 GPUSIEA
 GPURosenbrock23
+GPURodas3
 GPURodas4
+GPURodas42
 GPURodas5P
 GPUKvaerno3
 GPUKvaerno5

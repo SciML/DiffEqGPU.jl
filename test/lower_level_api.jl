@@ -56,7 +56,7 @@ gpu_probs = adapt(backend, probs)
 
 ## Finally use the lower API for faster solves! (Fixed time-stepping)
 
-algs = (GPUTsit5(), GPUVern7(), GPUVern9(), GPURosenbrock23(), GPURodas4())
+algs = (GPUTsit5(), GPUVern7(), GPUVern9(), GPURosenbrock23(), GPURodas3(), GPURodas4(), GPURodas42())
 
 for alg in algs
     @info alg

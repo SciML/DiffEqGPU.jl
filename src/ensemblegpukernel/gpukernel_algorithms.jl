@@ -32,12 +32,28 @@ generation with EnsembleGPUKernel.
 struct GPURosenbrock23{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 """
+GPURodas3()
+
+A specialized implementation of the `Rodas3` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPURodas3{AD} <: GPUODEImplicitAlgorithm{AD} end
+
+"""
 GPURodas4()
 
 A specialized implementation of the `Rodas4` method specifically for kernel
 generation with EnsembleGPUKernel.
 """
 struct GPURodas4{AD} <: GPUODEImplicitAlgorithm{AD} end
+
+"""
+GPURodas42()
+
+A specialized implementation of the `Rodas42` method specifically for kernel
+generation with EnsembleGPUKernel.
+"""
+struct GPURodas42{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 """
 GPURodas5P()
@@ -63,7 +79,7 @@ generation with EnsembleGPUKernel.
 """
 struct GPUKvaerno5{AD} <: GPUODEImplicitAlgorithm{AD} end
 
-for Alg in [:GPURosenbrock23, :GPURodas4, :GPURodas5P, :GPUKvaerno3, :GPUKvaerno5]
+for Alg in [:GPURosenbrock23, :GPURodas3, :GPURodas4, :GPURodas42, :GPURodas5P, :GPUKvaerno3, :GPUKvaerno5]
     @eval begin
         function $Alg(; autodiff = Val{true}())
             return $Alg{SciMLBase._unwrap_val(autodiff)}()

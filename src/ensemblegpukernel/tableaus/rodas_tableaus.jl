@@ -103,6 +103,117 @@ function Rodas4Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
     )
 end
 
+function Rodas42Tableau(T::Type{T1}, T2::Type{T1}) where {T1}
+    γ = convert(T, 0.25)
+
+    a21 = convert(T, 1.4028884)
+    a31 = convert(T, 0.6581212688557198)
+    a32 = -convert(T, 1.320936088384301)
+    a41 = convert(T, 7.131197445744498)
+    a42 = convert(T, 16.02964143958207)
+    a43 = -convert(T, 5.561572550509766)
+    a51 = convert(T, 22.73885722420363)
+    a52 = convert(T, 67.38147284535289)
+    a53 = -convert(T, 31.2187749303856)
+    a54 = convert(T, 0.7285641833203814)
+
+    C21 = -convert(T, 5.1043536)
+    C31 = -convert(T, 2.899967805418783)
+    C32 = convert(T, 4.040399359702244)
+    C41 = -convert(T, 32.64449927841361)
+    C42 = -convert(T, 99.35311008728094)
+    C43 = convert(T, 49.99119122405989)
+    C51 = -convert(T, 76.46023087151691)
+    C52 = -convert(T, 278.5942120829058)
+    C53 = convert(T, 153.9294840910643)
+    C54 = convert(T, 10.97101866258358)
+    C61 = -convert(T, 76.29701586804983)
+    C62 = -convert(T, 294.2795630511232)
+    C63 = convert(T, 162.0029695867566)
+    C64 = convert(T, 23.6516690309527)
+    C65 = -convert(T, 7.652977706771382)
+
+    c2 = convert(T2, 0.3507221)
+    c3 = convert(T2, 0.2557041)
+    c4 = convert(T2, 0.681779)
+
+    d1 = convert(T, 0.25)
+    d2 = -convert(T, 0.0690221)
+    d3 = -convert(T, 0.0009672)
+    d4 = -convert(T, 0.087979)
+
+    h21 = -convert(T, 38.71940424117216)
+    h22 = -convert(T, 135.8025833007622)
+    h23 = convert(T, 64.51068857505875)
+    h24 = -convert(T, 4.192663174613162)
+    h25 = -convert(T, 2.53193205033506)
+    h31 = -convert(T, 14.99268484949843)
+    h32 = -convert(T, 76.30242396627033)
+    h33 = convert(T, 58.65928432851416)
+    h34 = convert(T, 16.61359034616402)
+    h35 = -convert(T, 0.6758691794084156)
+
+    return Rodas4Tableau(
+        a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
+        C21, C31, C32, C41, C42, C43, C51, C52, C53, C54, C61, C62, C63, C64, C65,
+        γ, c2, c3, c4, d1, d2, d3, d4,
+        h21, h22, h23, h24, h25, h31, h32, h33, h34, h35
+    )
+end
+
+struct Rodas3Tableau{T, T2}
+    a21::T
+    a31::T
+    a32::T
+    a41::T
+    a42::T
+    a43::T
+    C21::T
+    C31::T
+    C32::T
+    C41::T
+    C42::T
+    C43::T
+    γ::T2
+    c2::T2
+    c3::T2
+    d1::T
+    d2::T
+    d3::T
+    d4::T
+end
+
+function Rodas3Tableau(T, T2)
+    a21 = zero(T)
+    a31 = convert(T, 2)
+    a32 = zero(T)
+    a41 = convert(T, 2)
+    a42 = zero(T)
+    a43 = one(T)
+
+    C21 = convert(T, 4)
+    C31 = one(T)
+    C32 = -one(T)
+    C41 = one(T)
+    C42 = -one(T)
+    C43 = -convert(T, 8 / 3)
+
+    γ = convert(T2, 1 / 2)
+    c2 = zero(T2)
+    c3 = one(T2)
+
+    d1 = convert(T, 1 / 2)
+    d2 = convert(T, 3 / 2)
+    d3 = zero(T)
+    d4 = zero(T)
+
+    return Rodas3Tableau(
+        a21, a31, a32, a41, a42, a43,
+        C21, C31, C32, C41, C42, C43,
+        γ, c2, c3, d1, d2, d3, d4
+    )
+end
+
 struct Rodas5PTableau{T, T2}
     a21::T
     a31::T
