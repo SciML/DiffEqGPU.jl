@@ -1,0 +1,11 @@
+[CPU]
+versions = ["lts", "1", "pre"]
+
+[JLArrays]
+versions = ["lts", "1", "pre"]
+
+[OpenCL]
+versions = ["lts", "1", "pre"]
+
+[QA]
+versions = ["lts", "1"]
