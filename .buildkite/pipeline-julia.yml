@@ -1,0 +1,33 @@
+steps:
+  - label: ":julia: [Metal] Run tests on Julia v{{matrix.version}}"
+    matrix:
+      setup:
+        version:
+          - "1"
+          - "1.10"
+    env:
+      GROUP: Metal
+    plugins:
+      - JuliaCI/julia#v1:
+          version: "{{matrix.version}}"
+    commands:
+      - |
+        julia --project=test -e '
+          import Pkg
+          Pkg.add(; name = "Metal")'
+        rm test/Manifest.toml
+        julia --project -e '
+          import Pkg
+          println("+++ :julia: Running tests")
+          Pkg.test(; coverage=false)'
+    agents:
+      queue: "juliaecosystem"
+      os: "macos"
+      arch: "aarch64"
+    timeout_in_minutes: 120
+    # Don't run Buildkite if the commit message includes the text [skip tests]
+    if: build.message !~ /\[skip tests\]/
+
+env:
+  JULIA_PKG_SERVER: "" # it often struggles with our large artifacts
+  # SECRET_CODECOV_TOKEN: "..."
