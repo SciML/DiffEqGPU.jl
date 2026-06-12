@@ -1,6 +1,3 @@
 steps:
   - label: ":pipeline: Launch Tests"
     command: buildkite-agent pipeline upload .buildkite/runtests.yml
-    agents:
-      queue: "juliaecosystem"
-      sandbox_capable: true
