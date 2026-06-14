@@ -35,13 +35,13 @@ end
 @time @safetestset "GPU Kernelized DAE Mass Matrix" begin
     include("gpu_kernel_de/stiff_ode/gpu_ode_modelingtoolkit_dae.jl")
 end
-@time @testset "GPU Kernelized Non Stiff ODE Regression" begin
+@time @safetestset "GPU Kernelized Non Stiff ODE Regression" begin
     include("gpu_kernel_de/gpu_ode_regression.jl")
 end
 @time @safetestset "GPU Kernelized Non Stiff ODE DiscreteCallback" begin
     include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl")
 end
-@time @testset "GPU Kernelized Stiff ODE Regression" begin
+@time @safetestset "GPU Kernelized Stiff ODE Regression" begin
     include("gpu_kernel_de/stiff_ode/gpu_ode_regression.jl")
 end
 @time @safetestset "GPU Kernelized Stiff ODE DiscreteCallback" begin
@@ -86,7 +86,7 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
         include("reduction.jl")
     end
 
-    @time @testset "Lower level API" begin
+    @time @safetestset "Lower level API" begin
         include("lower_level_api.jl")
     end
 
@@ -105,17 +105,17 @@ end
 if GROUP == "CUDA"
     @testset "Callbacks" begin
         # Causes dynamic function invocation
-        @time @testset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
+        @time @safetestset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
             include("gpu_kernel_de/gpu_ode_continuous_callbacks.jl")
         end
-        @time @testset "GPU Kernelized Stiff ODE ContinuousCallback" begin
+        @time @safetestset "GPU Kernelized Stiff ODE ContinuousCallback" begin
             include("gpu_kernel_de/stiff_ode/gpu_ode_continuous_callbacks.jl")
         end
         # device Random not implemented yet
-        @time @testset "GPU Kernelized SDE Regression" begin
+        @time @safetestset "GPU Kernelized SDE Regression" begin
             include("gpu_kernel_de/gpu_sde_regression.jl")
         end
-        @time @testset "GPU Kernelized SDE Convergence" begin
+        @time @safetestset "GPU Kernelized SDE Convergence" begin
             include("gpu_kernel_de/gpu_sde_convergence.jl")
         end
     end
