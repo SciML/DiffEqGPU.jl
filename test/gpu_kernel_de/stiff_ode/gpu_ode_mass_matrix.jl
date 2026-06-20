@@ -35,8 +35,11 @@ monteprob = EnsembleProblem(prob, safetycopy = false)
 
 alg = GPURosenbrock23()
 
+# dt must match the Float32 eltype of u0/p. A Float64 dt makes calc_W build a
+# Float64 StaticWOperator that OrdinaryDiffEqRosenbrock's JacReuseState (typed
+# from the Float32 state) cannot store, erroring in the cached_W assignment.
 bench_sol = solve(
-    prob, Rosenbrock23(), dt = 0.1, abstol = 1.0f-5, reltol = 1.0f-5,
+    prob, Rosenbrock23(), dt = 0.1f0, abstol = 1.0f-5, reltol = 1.0f-5,
     initializealg = BrownFullBasicInit()
 )
 
