@@ -24,7 +24,7 @@ using Setfield
 using ForwardDiff
 import StaticArrays: StaticVecOrMat, @_inline_meta
 # import LinearAlgebra: \
-import StaticArrays: LU, StaticLUMatrix, arithmetic_closure
+import StaticArrays: LU, StaticLUMatrix
 import SciMLBase: ImmutableODEProblem
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
