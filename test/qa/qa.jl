@@ -17,20 +17,18 @@ run_qa(
             ),
         ),
         # Non-public names from upstream packages (SciMLBase, DiffEqBase, ForwardDiff,
-        # LinearSolve, SimpleDiffEq, LinearAlgebra, Adapt, Random, Base/Core); these
-        # become public as those base libraries declare `public`.
+        # LinearSolve, SimpleDiffEq, LinearAlgebra, Core); these become public as those
+        # base libraries declare `public`.
         all_qualified_accesses_are_public = (;
             ignore = (
                 # SciMLBase
-                :AbstractContinuousCallback, :AbstractDEAlgorithm,
-                :AbstractDiscreteCallback, :AbstractEnsembleProblem,
-                :AbstractJumpProblem, :AbstractODEProblem, :DEFAULT_REDUCTION,
-                :Default, :EnsembleAlgorithm, :FINALIZE_DEFAULT, :INITIALIZE_DEFAULT,
-                :LeftRootFind, :NoRootFind, :RootfindOpt, :Success, :T, :Terminated,
-                :__solve, :_unwrap_val, :build_linear_solution, :build_solution,
-                :default_rng_func, :generate_sim_seeds, :has_initialization_data,
-                :is_diagonal_noise, :solve_batch, :specialization,
-                :successful_retcode, :tighten_container_eltype,
+                :AbstractContinuousCallback, :AbstractDiscreteCallback,
+                :AbstractEnsembleProblem, :AbstractJumpProblem, :DEFAULT_REDUCTION,
+                :EnsembleAlgorithm, :FINALIZE_DEFAULT, :INITIALIZE_DEFAULT,
+                :LeftRootFind, :NoRootFind, :RootfindOpt, :__solve, :_unwrap_val,
+                :build_linear_solution, :default_rng_func, :generate_sim_seeds,
+                :has_initialization_data, :is_diagonal_noise, :solve_batch,
+                :specialization, :tighten_container_eltype,
                 # SciMLBase + DiffEqBase
                 :AbstractODEAlgorithm, :AbstractODEIntegrator, :AbstractSDEAlgorithm,
                 :has_jac, :has_tgrad,
@@ -47,12 +45,8 @@ run_qa(
                 :_build_atsit5_caches, :_build_tsit5_caches, :bθs,
                 # LinearAlgebra
                 :HermOrSym,
-                # Adapt
-                :adapt_structure,
-                # Random
-                :seed!,
-                # Base / Core
-                :Compiler, :Fix2, :return_type,
+                # Core
+                :Compiler, :return_type,
             ),
         ),
         # Non-public names imported from upstream packages (StaticArrays internals,
