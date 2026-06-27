@@ -53,7 +53,7 @@ end
 
 @inline function build_J_W(alg, f, γ, dt)
     J(u, p, t) =
-    if DiffEqBase.has_jac(f)
+    if SciMLBase.has_jac(f)
         f.jac(u, p, t)
     elseif alg_autodiff(alg)
         ForwardDiff.jacobian(u -> f(u, p, t), u)
@@ -66,7 +66,7 @@ end
 
 @inline function build_tgrad(alg, f)
     function tgrad(u, p, t)
-        return if DiffEqBase.has_tgrad(f)
+        return if SciMLBase.has_tgrad(f)
             f.tgrad(u, p, t)
         elseif alg_autodiff(alg)
             ForwardDiff.derivative(t -> f(u, p, t), t)

@@ -1,7 +1,7 @@
 # Default: Hermite Interpolation
 @inline @muladd function _ode_interpolant(
         Θ, dt, y₀,
-        integ::DiffEqBase.AbstractODEIntegrator{
+        integ::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP, S, T,
         }

@@ -16,25 +16,20 @@ run_qa(
                 :has_jac, :has_tgrad,
             ),
         ),
-        # Non-public names from upstream packages (SciMLBase, DiffEqBase, ForwardDiff,
-        # LinearSolve, SimpleDiffEq, LinearAlgebra, Core); these become public as those
-        # base libraries declare `public`.
+        # Non-public names from upstream packages; these become public as those base
+        # libraries declare `public` (verified flagged against the registered releases
+        # on Julia 1.12, where these checks run).
         all_qualified_accesses_are_public = (;
             ignore = (
-                # SciMLBase
+                # SciMLBase (owned here, but not yet declared public)
                 :AbstractContinuousCallback, :AbstractDiscreteCallback,
-                :AbstractEnsembleProblem, :AbstractJumpProblem, :DEFAULT_REDUCTION,
-                :EnsembleAlgorithm, :FINALIZE_DEFAULT, :INITIALIZE_DEFAULT,
-                :LeftRootFind, :NoRootFind, :RootfindOpt, :__solve, :_unwrap_val,
-                :build_linear_solution, :default_rng_func, :generate_sim_seeds,
-                :has_initialization_data, :is_diagonal_noise, :solve_batch,
-                :specialization, :tighten_container_eltype,
-                # SciMLBase + DiffEqBase
-                :AbstractODEAlgorithm, :AbstractODEIntegrator, :AbstractSDEAlgorithm,
-                :has_jac, :has_tgrad,
-                # DiffEqBase
-                :ODE_DEFAULT_NORM, :RecursiveArrayTools, :find_callback_time,
-                :find_first_continuous_callback, :get_condition,
+                :AbstractODEIntegrator, :DEFAULT_REDUCTION, :EnsembleAlgorithm,
+                :FINALIZE_DEFAULT, :INITIALIZE_DEFAULT, :LeftRootFind, :NoRootFind,
+                :RootfindOpt, :__solve, :_unwrap_val, :build_linear_solution,
+                :default_rng_func, :generate_sim_seeds, :has_initialization_data,
+                :has_tgrad, :solve_batch, :specialization, :tighten_container_eltype,
+                # DiffEqBase (the RecursiveArrayTools re-export module)
+                :RecursiveArrayTools,
                 # ForwardDiff
                 :Chunk, :Dual, :Partials, :construct_seeds, :derivative, :jacobian,
                 :npartials, :partials, :value,
@@ -49,12 +44,10 @@ run_qa(
                 :Compiler, :return_type,
             ),
         ),
-        # Non-public names imported from upstream packages (StaticArrays internals,
-        # SciMLBase.ImmutableODEProblem).
+        # Non-public names imported from upstream packages (StaticArrays internals).
         all_explicit_imports_are_public = (;
             ignore = (
-                :var"@_inline_meta", :ImmutableODEProblem, :LU, :StaticLUMatrix,
-                :StaticVecOrMat,
+                :var"@_inline_meta", :LU, :StaticLUMatrix, :StaticVecOrMat,
             ),
         ),
     ),
