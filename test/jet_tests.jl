@@ -19,7 +19,9 @@ using ForwardDiff
 
         # Implicit algorithms (with default AD)
         @test_opt GPURosenbrock23()
+        @test_opt GPURodas3()
         @test_opt GPURodas4()
+        @test_opt GPURodas42()
         @test_opt GPURodas5P()
         @test_opt GPUKvaerno3()
         @test_opt GPUKvaerno5()
@@ -27,7 +29,9 @@ using ForwardDiff
         # Implicit algorithms with explicit autodiff setting
         @test_opt GPURosenbrock23(; autodiff = Val{true}())
         @test_opt GPURosenbrock23(; autodiff = Val{false}())
+        @test_opt GPURodas3(; autodiff = Val{true}())
         @test_opt GPURodas4(; autodiff = Val{true}())
+        @test_opt GPURodas42(; autodiff = Val{false}())
         @test_opt GPUKvaerno5(; autodiff = Val{false}())
     end
 
@@ -43,7 +47,9 @@ using ForwardDiff
         @test_opt DiffEqGPU.alg_order(GPUSIEA())
         # Implicit algorithm orders
         @test_opt DiffEqGPU.alg_order(GPURosenbrock23())
+        @test_opt DiffEqGPU.alg_order(GPURodas3())
         @test_opt DiffEqGPU.alg_order(GPURodas4())
+        @test_opt DiffEqGPU.alg_order(GPURodas42())
         @test_opt DiffEqGPU.alg_order(GPURodas5P())
         @test_opt DiffEqGPU.alg_order(GPUKvaerno3())
         @test_opt DiffEqGPU.alg_order(GPUKvaerno5())
@@ -51,7 +57,9 @@ using ForwardDiff
 
     @testset "alg_autodiff type stability" begin
         @test_opt DiffEqGPU.alg_autodiff(GPURosenbrock23())
+        @test_opt DiffEqGPU.alg_autodiff(GPURodas3())
         @test_opt DiffEqGPU.alg_autodiff(GPURodas4())
+        @test_opt DiffEqGPU.alg_autodiff(GPURodas42())
         @test_opt DiffEqGPU.alg_autodiff(GPURodas5P())
         @test_opt DiffEqGPU.alg_autodiff(GPUKvaerno3())
         @test_opt DiffEqGPU.alg_autodiff(GPUKvaerno5())
@@ -129,6 +137,14 @@ using ForwardDiff
             callback, save_everystep, saveat
         )
         @test_opt DiffEqGPU.init(
+            GPURodas3(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
+            GPURodas42(), f_test, false, u0, t0, dt, p, tstops,
+            callback, save_everystep, saveat
+        )
+        @test_opt DiffEqGPU.init(
             GPURodas5P(), f_test, false, u0, t0, dt, p, tstops,
             callback, save_everystep, saveat
         )
@@ -169,6 +185,14 @@ using ForwardDiff
             abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
         )
         @test_opt DiffEqGPU.init(
+            GPURodas3(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
+            GPURodas42(), f_test, false, u0, t0, tf, dt, p,
+            abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
+        )
+        @test_opt DiffEqGPU.init(
             GPURodas5P(), f_test, false, u0, t0, tf, dt, p,
             abstol, reltol, internalnorm, tstops, callback, saveat_adaptive
         )
@@ -192,8 +216,12 @@ using ForwardDiff
         @test_opt DiffEqGPU.Vern9Tableau(Float64, Float64)
 
         # Rodas tableaus
+        @test_opt DiffEqGPU.Rodas3Tableau(Float32, Float32)
+        @test_opt DiffEqGPU.Rodas3Tableau(Float64, Float64)
         @test_opt DiffEqGPU.Rodas4Tableau(Float32, Float32)
         @test_opt DiffEqGPU.Rodas4Tableau(Float64, Float64)
+        @test_opt DiffEqGPU.Rodas42Tableau(Float32, Float32)
+        @test_opt DiffEqGPU.Rodas42Tableau(Float64, Float64)
         @test_opt DiffEqGPU.Rodas5PTableau(Float32, Float32)
         @test_opt DiffEqGPU.Rodas5PTableau(Float64, Float64)
 
@@ -210,6 +238,8 @@ using ForwardDiff
         @test_opt DiffEqGPU.build_adaptive_controller_cache(GPUVern7(), Float32)
         @test_opt DiffEqGPU.build_adaptive_controller_cache(GPUVern9(), Float32)
         @test_opt DiffEqGPU.build_adaptive_controller_cache(GPURosenbrock23(), Float32)
+        @test_opt DiffEqGPU.build_adaptive_controller_cache(GPURodas3(), Float32)
         @test_opt DiffEqGPU.build_adaptive_controller_cache(GPURodas4(), Float32)
+        @test_opt DiffEqGPU.build_adaptive_controller_cache(GPURodas42(), Float32)
     end
 end
