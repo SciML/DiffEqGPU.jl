@@ -24,15 +24,15 @@ using Setfield
 using ForwardDiff
 import StaticArrays: StaticVecOrMat, @_inline_meta
 # import LinearAlgebra: \
-import StaticArrays: LU, StaticLUMatrix, arithmetic_closure
+import StaticArrays: LU, StaticLUMatrix
 import SciMLBase: ImmutableODEProblem
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
 
 ##Solvers for EnsembleGPUKernel
-abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
-abstract type GPUSDEAlgorithm <: DiffEqBase.AbstractSDEAlgorithm end
+abstract type GPUODEAlgorithm <: SciMLBase.AbstractODEAlgorithm end
+abstract type GPUSDEAlgorithm <: SciMLBase.AbstractSDEAlgorithm end
 abstract type GPUODEImplicitAlgorithm{AD} <: GPUODEAlgorithm end
 
 include("ensemblegpuarray/callbacks.jl")

@@ -1,7 +1,7 @@
 ## Fixed TimeStep Integrator
 
 mutable struct GPUTsit5Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -52,7 +52,7 @@ DiffEqBase.isinplace(::GPUT5I{IIP}) where {IIP} = IIP
 ## Adaptive TimeStep Integrator
 
 mutable struct GPUATsit5Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -108,7 +108,7 @@ end
 ## Vern7
 
 mutable struct GPUV7Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -152,7 +152,7 @@ const GPUV7I = GPUV7Integrator
 end
 
 mutable struct GPUAV7Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -205,7 +205,7 @@ end
 ## Vern9
 
 mutable struct GPUV9Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -249,7 +249,7 @@ const GPUV9I = GPUV9Integrator
 end
 
 mutable struct GPUAV9Integrator{IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
