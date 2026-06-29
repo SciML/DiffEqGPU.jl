@@ -1,5 +1,5 @@
 mutable struct GPURosenbrock23Integrator{IIP, S, T, ST, P, F, TS, CB, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -77,7 +77,7 @@ mutable struct GPUARosenbrock23Integrator{
         CB,
         AlgType,
     } <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -181,7 +181,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPURodas4Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -268,7 +268,7 @@ mutable struct GPUARodas4Integrator{
         TabType,
         AlgType,
     } <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -370,7 +370,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPURodas5PIntegrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -449,7 +449,7 @@ mutable struct GPUARodas5PIntegrator{
         IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
         AlgType,
     } <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -553,7 +553,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPUKvaerno3Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -632,7 +632,7 @@ mutable struct GPUAKvaerno3Integrator{
         IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
         AlgType,
     } <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -735,7 +735,7 @@ end
 ##########################
 # Fixed Step
 mutable struct GPUKvaerno5Integrator{IIP, S, T, ST, P, F, TS, CB, TabType, AlgType} <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state
@@ -814,7 +814,7 @@ mutable struct GPUAKvaerno5Integrator{
         IIP, S, T, ST, P, F, N, TOL, Q, TS, CB, TabType,
         AlgType,
     } <:
-    DiffEqBase.AbstractODEIntegrator{AlgType, IIP, S, T}
+    SciMLBase.AbstractODEIntegrator{AlgType, IIP, S, T}
     alg::AlgType
     f::F                  # eom
     uprev::S              # previous state

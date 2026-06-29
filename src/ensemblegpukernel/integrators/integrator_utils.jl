@@ -11,7 +11,7 @@ function build_adaptive_controller_cache(alg::A, ::Type{T}) where {A, T}
 end
 
 @inline function savevalues!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
@@ -50,7 +50,7 @@ end
 end
 
 @inline function DiffEqBase.terminate!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP, S,
             T,
@@ -67,7 +67,7 @@ end
 end
 
 @inline function apply_discrete_callback!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S, T,
@@ -91,7 +91,7 @@ end
 end
 
 @inline function apply_discrete_callback!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S, T,
@@ -111,7 +111,7 @@ end
 end
 
 @inline function apply_discrete_callback!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S, T,
@@ -137,7 +137,7 @@ end
 end
 
 @inline function apply_discrete_callback!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S, T,
@@ -156,7 +156,7 @@ end
 end
 
 @inline function interpolate(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
@@ -176,7 +176,7 @@ end
 end
 
 @inline function _change_t_via_interpolation!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
@@ -205,7 +205,7 @@ end
     end
 end
 @inline function DiffEqBase.change_t_via_interpolation!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
@@ -227,7 +227,7 @@ end
 end
 
 @inline function apply_callback!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType, IIP,
             S, T,
         },
@@ -272,7 +272,7 @@ end
 end
 
 @inline function handle_callbacks!(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP, S, T,
         },
@@ -384,7 +384,7 @@ end
 end
 
 @inline function DiffEqBase.find_callback_time(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S,
@@ -442,7 +442,7 @@ end
 end
 
 @inline function SciMLBase.get_tmp_cache(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S, T,
@@ -458,7 +458,7 @@ end
 end
 
 @inline function DiffEqBase.get_condition(
-        integrator::DiffEqBase.AbstractODEIntegrator{
+        integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
             IIP,
             S, T,

@@ -24,9 +24,13 @@ if GROUP == "QA"
     Pkg.activate(joinpath(@__DIR__, "qa"))
     Pkg.develop(Pkg.PackageSpec(path = dirname(@__DIR__)))
     Pkg.instantiate()
+    @time @safetestset "Quality Assurance" begin
+        include("qa/qa.jl")
+    end
     @time @safetestset "JET static analysis" begin
         include("jet_tests.jl")
     end
+    exit()
 end
 
 @time @safetestset "GPU Kernelized Stiff ODE Mass Matrix" begin

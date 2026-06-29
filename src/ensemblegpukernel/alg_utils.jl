@@ -15,7 +15,7 @@ alg_order(alg::GPUEM) = 1
 alg_order(alg::GPUSIEA) = 2
 
 function finite_diff_jac(f, jac_prototype, x)
-    dx = sqrt(eps(DiffEqBase.RecursiveArrayTools.recursive_bottom_eltype(x)))
+    dx = sqrt(eps(RecursiveArrayTools.recursive_bottom_eltype(x)))
     jac = MMatrix{size(x, 1), size(x, 1), eltype(x)}(1I)
     for i in eachindex(x)
         x_dx = convert(MArray, x)
