@@ -3,37 +3,57 @@ $(DocStringExtensions.README)
 """
 module DiffEqGPU
 
-using DocStringExtensions
-using KernelAbstractions
+using DocStringExtensions: DocStringExtensions
+using KernelAbstractions: KernelAbstractions, @Const, @index, @kernel, CPU
 import KernelAbstractions: get_backend, allocate
-using SciMLBase, DiffEqBase, LinearAlgebra, Distributed
-using ForwardDiff
+using SciMLBase: SciMLBase, CallbackSet, CheckInit, ContinuousCallback,
+    DiscreteCallback, EnsembleDistributed, EnsembleProblem,
+    EnsembleSerial, EnsembleSolution, EnsembleThreads, ODEFunction,
+    ODEProblem, ReturnCode, SDEFunction, SDEProblem,
+    VectorContinuousCallback, remake, terminate!
+using DiffEqBase: DiffEqBase, BrownFullBasicInit
+using LinearAlgebra: LinearAlgebra, I, LowerTriangular, NoPivot, RowMaximum,
+    SingularException, UpperTriangular, det
+using Distributed: Distributed, nprocs, pmap
+using ForwardDiff: ForwardDiff
 import ChainRulesCore
 import ChainRulesCore: NoTangent
-using RecursiveArrayTools
+using RecursiveArrayTools: RecursiveArrayTools, VectorOfArray
 import ZygoteRules
 import Base.Threads
-using LinearSolve
-using SimpleNonlinearSolve
+using Base: setindex
+using CommonSolve: solve
+using LinearSolve: LinearSolve
+using SimpleNonlinearSolve: SimpleNonlinearSolve
 import SimpleNonlinearSolve: SimpleTrustRegion
 #For gpu_tsit5
-using Adapt, SimpleDiffEq, StaticArrays
-using Parameters, MuladdMacro
-using Random
-using Setfield
-using ForwardDiff
-import StaticArrays: StaticVecOrMat, @_inline_meta
-# import LinearAlgebra: \
-import StaticArrays: LU, StaticLUMatrix, arithmetic_closure
+using Adapt: Adapt, adapt
+using SimpleDiffEq: SimpleDiffEq, GPUSimpleATsit5, GPUSimpleAVern7, GPUSimpleAVern9,
+    GPUSimpleTsit5, GPUSimpleVern7, GPUSimpleVern9, SimpleEM
+using StaticArrays: StaticArrays
+using StaticArraysCore: MArray, MMatrix, SArray, SMatrix, SVector, Size,
+    StaticMatrix, StaticVector, similar_type
+using Parameters: Parameters
+using MuladdMacro: MuladdMacro, @muladd
+using Random: Random
+using Setfield: Setfield, @set, @set!
+using UnPack: @unpack
+# StaticArraysCore-owned type alias (re-exported by StaticArrays); used in dispatch.
+import StaticArrays: StaticVecOrMat
+# Non-public StaticArrays internals used by the vendored GPU LU/linsolve kernels.
+import StaticArrays: @_inline_meta, LU, StaticLUMatrix
 import SciMLBase: ImmutableODEProblem
 
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
 
 ##Solvers for EnsembleGPUKernel
-abstract type GPUODEAlgorithm <: DiffEqBase.AbstractODEAlgorithm end
-abstract type GPUSDEAlgorithm <: DiffEqBase.AbstractSDEAlgorithm end
+abstract type GPUODEAlgorithm <: SciMLBase.AbstractODEAlgorithm end
+abstract type GPUSDEAlgorithm <: SciMLBase.AbstractSDEAlgorithm end
 abstract type GPUODEImplicitAlgorithm{AD} <: GPUODEAlgorithm end
+
+_unwrap_val(B) = B
+_unwrap_val(::Val{B}) where {B} = B
 
 include("ensemblegpuarray/callbacks.jl")
 include("ensemblegpuarray/kernels.jl")
