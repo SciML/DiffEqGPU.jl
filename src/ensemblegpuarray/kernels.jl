@@ -368,7 +368,19 @@ end
 
 ### GPU Factorization
 """
-A parameter-parallel `SciMLLinearSolveAlgorithm`.
+    LinSolveGPUSplitFactorize()
+    LinSolveGPUSplitFactorize(len, nfacts)
+
+A parameter-parallel `SciMLLinearSolveAlgorithm` for applying pre-factorized
+per-trajectory linear systems on a KernelAbstractions backend.
+
+# Arguments
+
+  - `len`: the size of each factored linear system.
+  - `nfacts`: the number of factorizations stored in the batched factorization array.
+
+Most users do not need to construct this directly; `EnsembleGPUArray` installs it for
+compatible stiff ensemble solves.
 """
 struct LinSolveGPUSplitFactorize <: LinearSolve.SciMLLinearSolveAlgorithm
     len::Int
