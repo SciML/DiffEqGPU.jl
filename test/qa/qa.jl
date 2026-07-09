@@ -49,3 +49,5 @@ run_qa(
         ),
     ),
 )
+
+include("public_api_docs.jl")
