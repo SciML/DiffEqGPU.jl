@@ -32,6 +32,7 @@ pages = [
         "manual/backends.md",
         "manual/optimal_trajectories.md",
         "manual/choosing_ensembler.md",
+        "manual/developer_interfaces.md",
         "manual/api.md",
     ],
 ]

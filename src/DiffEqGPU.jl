@@ -44,12 +44,144 @@ import StaticArrays: StaticVecOrMat
 import StaticArrays: @_inline_meta, LU, StaticLUMatrix
 import SciMLBase: ImmutableODEProblem
 
+"""
+    EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm
+
+Developer interface for ensemble algorithms that fuse a SciML ensemble into array-valued
+state and parameter problems before delegating each trajectory to an ordinary SciML
+differential equation solver.
+
+# Interface Rules
+
+Subtypes are used as the third positional argument to `solve(ensembleprob, alg,
+ensemblealg; trajectories, kwargs...)` for `SciMLBase.AbstractEnsembleProblem`s. A subtype
+must be accepted by DiffEqGPU's `SciMLBase.__solve` method and by the lower-level
+`vectorized_map_solve` path. It must define enough backend/device information for
+`vectorized_map_solve_up` to move the generated `u0` and `p` arrays to the execution
+backend, and it must preserve the SciML ensemble semantics for `prob_func`, `reduction`,
+`batch_size`, `trajectories`, and solver keyword arguments.
+
+# Implementations
+
+  - `EnsembleGPUArray`: runs the fused array problem on a KernelAbstractions backend.
+  - `EnsembleCPUArray`: keeps the same fused-array code path on CPU for debugging.
+
+# Examples
+
+```julia
+solve(ensemble_prob, Tsit5(), EnsembleGPUArray(backend); trajectories = 10_000)
+```
+"""
 abstract type EnsembleArrayAlgorithm <: SciMLBase.EnsembleAlgorithm end
+
+"""
+    EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm
+
+Developer interface for ensemble algorithms that generate one GPU kernel for a complete
+fixed-size ODE or SDE solve.
+
+# Interface Rules
+
+Subtypes are used as the ensemble algorithm in `solve(ensembleprob, gpu_alg, ensemblealg;
+trajectories, kwargs...)`, where `gpu_alg` is a `GPUODEAlgorithm` or `GPUSDEAlgorithm`.
+The corresponding problem must be convertible to the kernel path with
+`make_prob_compatible`; in practice this means out-of-place dynamics over static state
+containers for `EnsembleGPUKernel`. Implementations must support the lower-level
+`vectorized_solve` and, for ODE algorithms, `vectorized_asolve` entry points used by
+`batch_solve_up_kernel`.
+
+# Implementations
+
+  - `EnsembleGPUKernel`: compiles a KernelAbstractions kernel for all trajectories in a
+    batch.
+
+# Examples
+
+```julia
+solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
+    trajectories = 10_000, adaptive = false, dt = 0.1f0)
+```
+"""
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
 
 ##Solvers for EnsembleGPUKernel
+"""
+    GPUODEAlgorithm <: SciMLBase.AbstractODEAlgorithm
+
+Developer interface for ODE algorithms supported by `EnsembleGPUKernel`.
+
+# Interface Rules
+
+Subtypes must be immutable algorithm selectors with all per-solve state allocated by the
+kernel integrator constructors. They are passed as the second positional argument to
+`solve(ensembleprob, alg, EnsembleGPUKernel(backend); kwargs...)` and to the lower-level
+`vectorized_solve`/`vectorized_asolve` functions. A subtype must have kernel integrator
+support in `batch_solve_up_kernel`, an order from `alg_order`, and any required tableau,
+interpolation, callback, nonlinear-solve, or mass-matrix support implemented in GPU-safe
+code.
+
+The ODE function must be GPU compilable. The kernel path is tested through the generic
+lower-level API by constructing compatible `ODEProblem`s and calling `vectorized_solve`
+and `vectorized_asolve` without reaching into solver internals.
+
+# Examples
+
+```julia
+DiffEqGPU.vectorized_solve(gpu_probs, prob, GPUTsit5(); dt = 0.1f0)
+```
+"""
 abstract type GPUODEAlgorithm <: SciMLBase.AbstractODEAlgorithm end
+
+"""
+    GPUSDEAlgorithm <: SciMLBase.AbstractSDEAlgorithm
+
+Developer interface for SDE algorithms supported by `EnsembleGPUKernel`.
+
+# Interface Rules
+
+Subtypes are passed as the SDE algorithm in `solve(ensembleprob, alg,
+EnsembleGPUKernel(backend); kwargs...)` and through the lower-level `vectorized_solve`
+entry point. Implementations must provide GPU-safe stepping code, static state support,
+and noise compatibility checks before launching kernels. Current kernel SDE algorithms are
+fixed-step methods and must reject unsupported noise structures rather than falling back to
+host-side behavior.
+
+# Examples
+
+```julia
+DiffEqGPU.vectorized_solve(gpu_probs, sde_prob, GPUEM();
+    dt = 0.01f0, save_everystep = false)
+```
+"""
 abstract type GPUSDEAlgorithm <: SciMLBase.AbstractSDEAlgorithm end
+
+"""
+    GPUODEImplicitAlgorithm{AD} <: GPUODEAlgorithm
+
+Developer interface for stiff ODE algorithms in the `EnsembleGPUKernel` path.
+
+# Type Parameters
+
+  - `AD`: Boolean-like type parameter indicating whether the algorithm may derive missing
+    Jacobian and time-gradient information with automatic differentiation. Constructors
+    accept `autodiff = Val{true}()` or `Val{false}()`.
+
+# Interface Rules
+
+Subtypes must implement the `GPUODEAlgorithm` rules and additionally provide GPU-safe
+linear/nonlinear solve support. They must either receive analytical Jacobian/time-gradient
+functions through the `ODEFunction` or use the `AD` parameter to select automatic or finite
+difference derivative construction. Their nonlinear solve path is expected to use
+`AbstractNLSolver` state built by `build_nlsolver` and to solve static linear systems with
+DiffEqGPU's GPU-compatible linear algebra utilities.
+
+# Examples
+
+```julia
+solve(ensemble_prob, GPURodas4(autodiff = Val{false}()),
+    EnsembleGPUKernel(backend); trajectories = 10_000)
+```
+"""
 abstract type GPUODEImplicitAlgorithm{AD} <: GPUODEAlgorithm end
 
 _unwrap_val(B) = B
