@@ -381,6 +381,16 @@ per-trajectory linear systems on a KernelAbstractions backend.
 
 Most users do not need to construct this directly; `EnsembleGPUArray` installs it for
 compatible stiff ensemble solves.
+
+# Returns
+
+A `LinSolveGPUSplitFactorize` selector configured for the supplied factorization layout.
+
+# Examples
+
+```julia
+linsolve = LinSolveGPUSplitFactorize(3, 256)
+```
 """
 struct LinSolveGPUSplitFactorize <: LinearSolve.SciMLLinearSolveAlgorithm
     len::Int

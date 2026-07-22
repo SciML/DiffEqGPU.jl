@@ -1,16 +1,21 @@
 using SciMLTesting, DiffEqGPU
 using JET
 
-const REEXPORTED_API = Tuple(
-    name for name in names(DiffEqGPU; all = false) if name !== :DiffEqGPU &&
-        isdefined(DiffEqGPU, name) &&
-        parentmodule(getfield(DiffEqGPU, name)) !== DiffEqGPU
+const REEXPORTED_API = (
+    :BrownFullBasicInit,
+    :CheckInit,
+    :EnsembleDistributed,
+    :EnsembleProblem,
+    :EnsembleSerial,
+    :EnsembleSolution,
+    :EnsembleThreads,
+    :terminate!,
 )
 
 run_qa(
     DiffEqGPU;
-    explicit_imports = true,
-    api_docs_kwargs = (; rendered = true, rendered_ignore = REEXPORTED_API),
+    reexports_allow = REEXPORTED_API,
+    api_docs_kwargs = (; rendered_ignore = REEXPORTED_API),
     ei_kwargs = (;
         # StaticVecOrMat is re-exported by StaticArrays but owned by StaticArraysCore.
         # It is a non-public type alias used only in method-signature dispatch for the
