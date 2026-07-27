@@ -10,8 +10,7 @@ tutorial showcases how to effectively use MTK with DiffEqGPU.jl.
 !!! warn
     
     This tutorial currently only works for ODEs defined by ModelingToolkit. More work
-    will be required to support DAEs in full. This is work that is ongoing and expected
-    to be completed by the summer of 2025.
+    will be required to support DAEs in full. This is work that is ongoing.
 
 The core aspect to doing this right is two things. First of all, MTK respects the types
 chosen by the user, and thus in order for GPU kernel generation to work the user needs
@@ -29,24 +28,38 @@ eqs = [D(D(x)) ~ σ * (y - x),
     D(y) ~ x * (ρ - z) - y,
     D(z) ~ x * y - β * z]
 
-@mtkbuild sys = ODESystem(eqs, t)
-u0 = @SVector [D(x) => 2.0f0,
+@named lorenz = System(eqs, t)
+sys = mtkcompile(lorenz; split = false)
+
+op = @SVector [D(x) => 2.0f0,
     x => 1.0f0,
     y => 0.0f0,
-    z => 0.0f0]
-
-p = @SVector [σ => 28.0f0,
+    z => 0.0f0,
+    σ => 28.0f0,
     ρ => 10.0f0,
     β => 8.0f0 / 3.0f0]
 
 tspan = (0.0f0, 100.0f0)
-prob = ODEProblem{false}(sys, u0, tspan, p)
+prob = ODEProblem{false}(sys, op, tspan)
 sol = solve(prob, Tsit5())
 ```
 
-with the core aspect to notice are the `SA`
-[StaticArrays.jl](https://github.com/JuliaArrays/StaticArrays.jl) annotations on the parts
-for the problem construction, along with the use of `Float32`.
+There are two things to notice here. The first is the `split = false` argument to
+`mtkcompile`. By default MTK builds an `MTKParameters` object, which stores the parameters
+in separate buffers grouped by how they are used. That object holds `Vector`s and is
+therefore not `isbits`, so it cannot be placed into a GPU kernel. `split = false` instead
+puts every parameter into a single flat buffer.
+
+The second is that the operating point `op` is given as a single
+[StaticArrays.jl](https://github.com/JuliaArrays/StaticArrays.jl) vector of pairs, using
+`Float32` values. MTK builds `u0` and `p` in the same container type it was handed, so a
+static vector in gives static vectors out:
+
+```@example mtk
+typeof(prob.u0), typeof(prob.p)
+```
+
+Both are `isbits` and thus usable from a GPU kernel.
 
 Now one of the difficulties for building an ensemble problem is that we must make a kernel
 for how to construct the problems, but the use of symbolics is inherently dynamic. As such,
@@ -72,7 +85,18 @@ u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
 Notice it takes in the vector of values for `[σ, ρ, β]` and spits out the new `u0, p`. So
 we can build and solve an MTK generated ODE on the GPU using the following:
 
-```@example mtk
+!!! warning
+    
+    The two blocks below do not currently run. `EnsembleGPUKernel` moves the vector of
+    problems to the device, which requires the whole `ImmutableODEProblem` to be
+    `isbitstype`. An MTK-generated `ODEFunction` never is: `f.sys`, `f.observed`,
+    `f.initialization_data` and `f.nlstep_data` all hold non-inline data, so the
+    conversion fails with `CuArray only supports element types that are allocated
+    inline`. Making `u0` and `p` static, as above, is necessary but not sufficient.
+    See [DiffEqGPU.jl#375](https://github.com/SciML/DiffEqGPU.jl/issues/375). These
+    blocks are left unevaluated until the device conversion strips those fields.
+
+```julia
 using DiffEqGPU, CUDA
 function prob_func2(prob, ctx)
     u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
@@ -86,6 +110,6 @@ sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
 
 We can then using symbolic indexing on the result to inspect it:
 
-```@example mtk
+```julia
 [sol.u[i][y] for i in 1:length(sol.u)]
 ```

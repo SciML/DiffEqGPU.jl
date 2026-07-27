@@ -4,7 +4,16 @@
 and thus can be thrown into deep learning training loops. The following is an example
 of this use:
 
-```@example ad
+!!! warning
+    
+    Reverse mode over `EnsembleGPUArray` is currently broken and this example does not
+    run. `Zygote.gradient` fails inside the pullback of `batch_solve` with
+    `DimensionMismatch: array with ndims(x) == 1 > 0 cannot have dx::Number`, because the
+    cotangent reaching `solus[i]` is a scalar where a `Vector{Vector}` is required. The
+    forward pass and the forward-mode example below are unaffected. This block is left
+    unevaluated until that is fixed.
+
+```julia
 using OrdinaryDiffEq, SciMLSensitivity, Lux, Optimisers, Zygote, DiffEqGPU, CUDA, Random
 
 CUDA.allowscalar(false)
@@ -59,7 +68,7 @@ Forward-mode automatic differentiation works as well, as demonstrated by its cap
 to recompile for Dual number arithmetic:
 
 ```@example ad
-using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test
+using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test, CUDA
 
 function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
