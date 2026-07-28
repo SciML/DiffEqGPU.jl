@@ -4,7 +4,6 @@ requirejs.config({
     'highlight-julia': 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/julia.min',
     'headroom': 'https://cdnjs.cloudflare.com/ajax/libs/headroom/0.12.0/headroom.min',
     'jqueryui': 'https://cdnjs.cloudflare.com/ajax/libs/jqueryui/1.13.2/jquery-ui.min',
-    'minisearch': 'https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min',
     'katex-auto-render': 'https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/contrib/auto-render.min',
     'jquery': 'https://cdnjs.cloudflare.com/ajax/libs/jquery/3.7.0/jquery.min',
     'headroom-jquery': 'https://cdnjs.cloudflare.com/ajax/libs/headroom/0.12.0/jQuery.headroom.min',
@@ -13,7 +12,18 @@ requirejs.config({
     'highlight-julia-repl': 'https://cdnjs.cloudflare.com/ajax/libs/highlight.js/11.8.0/languages/julia-repl.min',
   },
   shim: {
+  "headroom-jquery": {
+    "deps": [
+      "jquery",
+      "headroom"
+    ]
+  },
   "highlight-julia": {
+    "deps": [
+      "highlight"
+    ]
+  },
+  "highlight-julia-repl": {
     "deps": [
       "highlight"
     ]
@@ -22,20 +32,8 @@ requirejs.config({
     "deps": [
       "katex"
     ]
-  },
-  "headroom-jquery": {
-    "deps": [
-      "jquery",
-      "headroom"
-    ]
-  },
-  "highlight-julia-repl": {
-    "deps": [
-      "highlight"
-    ]
   }
-}
-});
+}});
 ////////////////////////////////////////////////////////////////////////////////
 require(['jquery', 'katex', 'katex-auto-render'], function($, katex, renderMathInElement) {
 $(document).ready(function() {
@@ -44,23 +42,22 @@ $(document).ready(function() {
     {
   "delimiters": [
     {
+      "display": false,
       "left": "$",
-      "right": "$",
-      "display": false
+      "right": "$"
     },
     {
+      "display": true,
       "left": "$$",
-      "right": "$$",
-      "display": true
+      "right": "$$"
     },
     {
+      "display": true,
       "left": "\\[",
-      "right": "\\]",
-      "display": true
+      "right": "\\]"
     }
   ]
 }
-
   );
 })
 
@@ -75,75 +72,64 @@ $(document).ready(function() {
 ////////////////////////////////////////////////////////////////////////////////
 require(['jquery'], function($) {
 
-let timer = 0;
-var isExpanded = true;
+///////////////////////////////////
 
-$(document).on("click", ".docstring header", function () {
-  let articleToggleTitle = "Expand docstring";
-
-  debounce(() => {
-    if ($(this).siblings("section").is(":visible")) {
-      $(this)
-        .find(".docstring-article-toggle-button")
-        .removeClass("fa-chevron-down")
-        .addClass("fa-chevron-right");
-    } else {
-      $(this)
-        .find(".docstring-article-toggle-button")
-        .removeClass("fa-chevron-right")
-        .addClass("fa-chevron-down");
-
-      articleToggleTitle = "Collapse docstring";
+// to open and scroll to
+function openTarget() {
+  const hash = decodeURIComponent(location.hash.substring(1));
+  if (hash) {
+    const target = document.getElementById(hash);
+    if (target) {
+      const details = target.closest("details");
+      if (details) details.open = true;
     }
+  }
+}
+openTarget(); // onload
+window.addEventListener("hashchange", openTarget);
+window.addEventListener("load", openTarget);
 
-    $(this)
-      .find(".docstring-article-toggle-button")
-      .prop("title", articleToggleTitle);
-    $(this).siblings("section").slideToggle();
-  });
-});
+//////////////////////////////////////
+// for the global expand/collapse butter
+
+function accordion() {
+  document.body
+    .querySelectorAll("details.docstring")
+    .forEach((e) => e.setAttribute("open", "true"));
+}
+
+function noccordion() {
+  document.body
+    .querySelectorAll("details.docstring")
+    .forEach((e) => e.removeAttribute("open"));
+}
+
+function expandAll() {
+  let me = document.getElementById("documenter-article-toggle-button");
+  me.setAttribute("open", "true");
+  $(me).removeClass("fa-chevron-down").addClass("fa-chevron-up");
+  $(me).prop("title", "Collapse all docstrings");
+  accordion();
+}
+
+function collapseAll() {
+  let me = document.getElementById("documenter-article-toggle-button");
+  me.removeAttribute("open");
+  $(me).removeClass("fa-chevron-up").addClass("fa-chevron-down");
+  $(me).prop("title", "Expand all docstrings");
+  noccordion();
+}
 
 $(document).on("click", ".docs-article-toggle-button", function () {
-  let articleToggleTitle = "Expand docstring";
-  let navArticleToggleTitle = "Expand all docstrings";
-
-  debounce(() => {
-    if (isExpanded) {
-      $(this).removeClass("fa-chevron-up").addClass("fa-chevron-down");
-      $(".docstring-article-toggle-button")
-        .removeClass("fa-chevron-down")
-        .addClass("fa-chevron-right");
-
-      isExpanded = false;
-
-      $(".docstring section").slideUp();
-    } else {
-      $(this).removeClass("fa-chevron-down").addClass("fa-chevron-up");
-      $(".docstring-article-toggle-button")
-        .removeClass("fa-chevron-right")
-        .addClass("fa-chevron-down");
-
-      isExpanded = true;
-      articleToggleTitle = "Collapse docstring";
-      navArticleToggleTitle = "Collapse all docstrings";
-
-      $(".docstring section").slideDown();
-    }
-
-    $(this).prop("title", navArticleToggleTitle);
-    $(".docstring-article-toggle-button").prop("title", articleToggleTitle);
-  });
-});
-
-function debounce(callback, timeout = 300) {
-  if (Date.now() - timer > timeout) {
-    callback();
+  var isExpanded = this.hasAttribute("open");
+  if (isExpanded) {
+    collapseAll();
+    isExpanded = false;
+  } else {
+    expandAll();
+    isExpanded = true;
   }
-
-  clearTimeout(timer);
-
-  timer = Date.now();
-}
+});
 
 })
 ////////////////////////////////////////////////////////////////////////////////
@@ -211,6 +197,57 @@ if (document.readyState === "loading") {
 
 })
 ////////////////////////////////////////////////////////////////////////////////
+require(['jquery'], function($) {
+$(document).ready(function () {
+  $(".footnote-ref").hover(
+    function () {
+      var id = $(this).attr("href");
+      var footnoteContent = $(id).clone().find("a").remove().end().html();
+
+      var $preview = $(this).next(".footnote-preview");
+
+      $preview.html(footnoteContent).css({
+        display: "block",
+        left: "50%",
+        transform: "translateX(-50%)",
+      });
+
+      repositionPreview($preview, $(this));
+    },
+    function () {
+      var $preview = $(this).next(".footnote-preview");
+      $preview.css({
+        display: "none",
+        left: "",
+        transform: "",
+        "--arrow-left": "",
+      });
+    },
+  );
+
+  function repositionPreview($preview, $ref) {
+    var previewRect = $preview[0].getBoundingClientRect();
+    var refRect = $ref[0].getBoundingClientRect();
+    var viewportWidth = $(window).width();
+
+    if (previewRect.right > viewportWidth) {
+      var excessRight = previewRect.right - viewportWidth;
+      $preview.css("left", `calc(50% - ${excessRight + 10}px)`);
+    } else if (previewRect.left < 0) {
+      var excessLeft = 0 - previewRect.left;
+      $preview.css("left", `calc(50% + ${excessLeft + 10}px)`);
+    }
+
+    var newPreviewRect = $preview[0].getBoundingClientRect();
+
+    var arrowLeft = refRect.left + refRect.width / 2 - newPreviewRect.left;
+
+    $preview.css("--arrow-left", arrowLeft + "px");
+  }
+});
+
+})
+////////////////////////////////////////////////////////////////////////////////
 require(['jquery', 'headroom', 'headroom-jquery'], function($, Headroom) {
 
 // Manages the top navigation bar (hides it when the user starts scrolling down on the
@@ -224,392 +261,725 @@ $(document).ready(function () {
 
 })
 ////////////////////////////////////////////////////////////////////////////////
-require(['jquery', 'minisearch'], function($, minisearch) {
+require(['jquery'], function($) {
 
-// In general, most search related things will have "search" as a prefix.
-// To get an in-depth about the thought process you can refer: https://hetarth02.hashnode.dev/series/gsoc
-
-let results = [];
-let timer = undefined;
-
-let data = documenterSearchIndex["docs"].map((x, key) => {
-  x["id"] = key; // minisearch requires a unique for each object
-  return x;
+$(document).ready(function () {
+  let meta = $("div[data-docstringscollapsed]").data();
+  if (!meta?.docstringscollapsed) {
+    $("#documenter-article-toggle-button").trigger({
+      type: "click",
+    });
+  }
 });
 
-// list below is the lunr 2.1.3 list minus the intersect with names(Base)
-// (all, any, get, in, is, only, which) and (do, else, for, let, where, while, with)
-// ideally we'd just filter the original list but it's not available as a variable
-const stopWords = new Set([
-  "a",
-  "able",
-  "about",
-  "across",
-  "after",
-  "almost",
-  "also",
-  "am",
-  "among",
-  "an",
-  "and",
-  "are",
-  "as",
-  "at",
-  "be",
-  "because",
-  "been",
-  "but",
-  "by",
-  "can",
-  "cannot",
-  "could",
-  "dear",
-  "did",
-  "does",
-  "either",
-  "ever",
-  "every",
-  "from",
-  "got",
-  "had",
-  "has",
-  "have",
-  "he",
-  "her",
-  "hers",
-  "him",
-  "his",
-  "how",
-  "however",
-  "i",
-  "if",
-  "into",
-  "it",
-  "its",
-  "just",
-  "least",
-  "like",
-  "likely",
-  "may",
-  "me",
-  "might",
-  "most",
-  "must",
-  "my",
-  "neither",
-  "no",
-  "nor",
-  "not",
-  "of",
-  "off",
-  "often",
-  "on",
-  "or",
-  "other",
-  "our",
-  "own",
-  "rather",
-  "said",
-  "say",
-  "says",
-  "she",
-  "should",
-  "since",
-  "so",
-  "some",
-  "than",
-  "that",
-  "the",
-  "their",
-  "them",
-  "then",
-  "there",
-  "these",
-  "they",
-  "this",
-  "tis",
-  "to",
-  "too",
-  "twas",
-  "us",
-  "wants",
-  "was",
-  "we",
-  "were",
-  "what",
-  "when",
-  "who",
-  "whom",
-  "why",
-  "will",
-  "would",
-  "yet",
-  "you",
-  "your",
-]);
+})
+////////////////////////////////////////////////////////////////////////////////
+require(['jquery'], function($) {
 
-let index = new minisearch({
-  fields: ["title", "text"], // fields to index for full-text search
-  storeFields: ["location", "title", "text", "category", "page"], // fields to return with search results
-  processTerm: (term) => {
-    let word = stopWords.has(term) ? null : term;
-    if (word) {
-      // custom trimmer that doesn't strip @ and !, which are used in julia macro and function names
-      word = word
-        .replace(/^[^a-zA-Z0-9@!]+/, "")
-        .replace(/[^a-zA-Z0-9@!]+$/, "");
-    }
+/*
+To get an in-depth about the thought process you can refer: https://hetarth02.hashnode.dev/series/gsoc
 
-    return word ?? null;
-  },
-  // add . as a separator, because otherwise "title": "Documenter.Anchors.add!", would not find anything if searching for "add!", only for the entire qualification
-  tokenize: (string) => string.split(/[\s\-\.]+/),
-  // options which will be applied during the search
-  searchOptions: {
-    boost: { title: 100 },
-    fuzzy: 2,
+PSEUDOCODE:
+
+Searching happens automatically as the user types or adjusts the selected filters.
+To preserve responsiveness, as much as possible of the slow parts of the search are done
+in a web worker. Searching and result generation are done in the worker, and filtering and
+DOM updates are done in the main thread. The filters are in the main thread as they should
+be very quick to apply. This lets filters be changed without re-searching with minisearch
+(which is possible even if filtering is on the worker thread) and also lets filters be
+changed _while_ the worker is searching and without message passing (neither of which are
+possible if filtering is on the worker thread)
+
+SEARCH WORKER:
+
+Import minisearch
+
+Build index
+
+On message from main thread
+  run search
+  find the first 200 unique results from each category, and compute their divs for display
+    note that this is necessary and sufficient information for the main thread to find the
+    first 200 unique results from any given filter set
+  post results to main thread
+
+MAIN:
+
+Launch worker
+
+Declare nonconstant globals (worker_is_running,  last_search_text, unfiltered_results)
+
+On text update
+  if worker is not running, launch_search()
+
+launch_search
+  set worker_is_running to true, set last_search_text to the search text
+  post the search query to worker
+
+on message from worker
+  if last_search_text is not the same as the text in the search field,
+    the latest search result is not reflective of the latest search query, so update again
+    launch_search()
+  otherwise
+    set worker_is_running to false
+
+  regardless, display the new search results to the user
+  save the unfiltered_results as a global
+  update_search()
+
+on filter click
+  adjust the filter selection
+  update_search()
+
+update_search
+  apply search filters by looping through the unfiltered_results and finding the first 200
+    unique results that match the filters
+
+  Update the DOM
+*/
+
+/////// SEARCH WORKER ///////
+
+function worker_function(documenterSearchIndex, documenterBaseURL, filters) {
+  importScripts(
+    "https://cdn.jsdelivr.net/npm/minisearch@6.1.0/dist/umd/index.min.js",
+  );
+
+  let data = documenterSearchIndex.map((x, key) => {
+    x["id"] = key; // minisearch requires a unique for each object
+    return x;
+  });
+
+  // list below is the lunr 2.1.3 list minus the intersect with names(Base)
+  // (all, any, get, in, is, only, which) and (do, else, for, let, where, while, with)
+  // ideally we'd just filter the original list but it's not available as a variable
+  const stopWords = new Set([
+    "a",
+    "able",
+    "about",
+    "across",
+    "after",
+    "almost",
+    "also",
+    "am",
+    "among",
+    "an",
+    "and",
+    "are",
+    "as",
+    "at",
+    "be",
+    "because",
+    "been",
+    "but",
+    "by",
+    "can",
+    "cannot",
+    "could",
+    "dear",
+    "did",
+    "does",
+    "either",
+    "ever",
+    "every",
+    "from",
+    "got",
+    "had",
+    "has",
+    "have",
+    "he",
+    "her",
+    "hers",
+    "him",
+    "his",
+    "how",
+    "however",
+    "i",
+    "if",
+    "into",
+    "it",
+    "its",
+    "just",
+    "least",
+    "like",
+    "likely",
+    "may",
+    "me",
+    "might",
+    "most",
+    "must",
+    "my",
+    "neither",
+    "no",
+    "nor",
+    "not",
+    "of",
+    "off",
+    "often",
+    "on",
+    "or",
+    "other",
+    "our",
+    "own",
+    "rather",
+    "said",
+    "say",
+    "says",
+    "she",
+    "should",
+    "since",
+    "so",
+    "some",
+    "than",
+    "that",
+    "the",
+    "their",
+    "them",
+    "then",
+    "there",
+    "these",
+    "they",
+    "this",
+    "tis",
+    "to",
+    "too",
+    "twas",
+    "us",
+    "wants",
+    "was",
+    "we",
+    "were",
+    "what",
+    "when",
+    "who",
+    "whom",
+    "why",
+    "will",
+    "would",
+    "yet",
+    "you",
+    "your",
+  ]);
+
+  let index = new MiniSearch({
+    fields: ["title", "text"], // fields to index for full-text search
+    storeFields: ["location", "title", "text", "category", "page"], // fields to return with results
     processTerm: (term) => {
       let word = stopWords.has(term) ? null : term;
       if (word) {
+        // custom trimmer that doesn't strip special characters `@!+-*/^&|%<>=:.` which are used in julia macro and function names.
         word = word
-          .replace(/^[^a-zA-Z0-9@!]+/, "")
-          .replace(/[^a-zA-Z0-9@!]+$/, "");
+          .replace(/^[^a-zA-Z0-9@!+\-/*^&%|<>._=:]+/, "")
+          .replace(/[^a-zA-Z0-9@!+\-/*^&%|<>._=:]+$/, "");
+
+        word = word.toLowerCase();
       }
 
       return word ?? null;
     },
-    tokenize: (string) => string.split(/[\s\-\.]+/),
-  },
-});
+    // add . as a separator, because otherwise "title": "Documenter.Anchors.add!", would not
+    // find anything if searching for "add!", only for the entire qualification
+    tokenize: (string) => {
+      const tokens = [];
+      const tokenSet = new Set();
+      let remaining = string;
 
-index.addAll(data);
+      // julia specific patterns
+      const patterns = [
+        // Module qualified names (e.g., Base.sort, Module.Submodule. function)
+        /\b[A-Za-z0-9_1*(?:\.[A-Z][A-Za-z0-9_1*)*\.[a-z_][A-Za-z0-9_!]*\b/g,
+        // Macro calls (e.g., @time, @async)
+        /@[A-Za-z0-9_]*/g,
+        // Type parameters (e.g., Array{T,N}, Vector{Int})
+        /\b[A-Za-z0-9_]*\{[^}]+\}/g,
+        // Function names with module qualification (e.g., Base.+, Base.:^)
+        /\b[A-Za-z0-9_]*\.:[A-Za-z0-9_!+\-*/^&|%<>=.]+/g,
+        // Operators as complete tokens (e.g., !=, aã, ||, ^, .=, →)
+        /[!<>=+\-*/^&|%:.]+/g,
+        // Function signatures with type annotations (e.g., f(x::Int))
+        /\b[A-Za-z0-9_!]*\([^)]*::[^)]*\)/g,
+        // Numbers (integers, floats, scientific notation)
+        /\b\d+(?:\.\d+)? (?:[eE][+-]?\d+)?\b/g,
+      ];
 
-let filters = [...new Set(data.map((x) => x.category))];
-var modal_filters = make_modal_body_filters(filters);
-var filter_results = [];
+      // apply patterns in order of specificity
+      for (const pattern of patterns) {
+        pattern.lastIndex = 0; //reset regex state
+        let match;
+        while ((match = pattern.exec(remaining)) != null) {
+          const token = match[0].trim();
+          if (token && !tokenSet.has(token)) {
+            tokens.push(token);
+            tokenSet.add(token);
+          }
+        }
+      }
 
-$(document).on("keyup", ".documenter-search-input", function (event) {
-  // Adding a debounce to prevent disruptions from super-speed typing!
-  debounce(() => update_search(filter_results), 300);
-});
+      // splitting the content if something remains
+      const basicTokens = remaining
+        .split(/[\s\-,;()[\]{}]+/)
+        .filter((t) => t.trim());
+      for (const token of basicTokens) {
+        if (token && !tokenSet.has(token)) {
+          tokens.push(token);
+          tokenSet.add(token);
+        }
+      }
 
-$(document).on("click", ".search-filter", function () {
-  if ($(this).hasClass("search-filter-selected")) {
-    $(this).removeClass("search-filter-selected");
-  } else {
-    $(this).addClass("search-filter-selected");
+      return tokens.filter((token) => token.length > 0);
+    },
+    // options which will be applied during the search
+    searchOptions: {
+      prefix: true,
+      boost: { title: 100 },
+      fuzzy: 2,
+    },
+  });
+
+  index.addAll(data);
+
+  /**
+   *  Used to map characters to HTML entities.
+   * Refer: https://github.com/lodash/lodash/blob/main/src/escape.ts
+   */
+  const htmlEscapes = {
+    "&": "&amp;",
+    "<": "&lt;",
+    ">": "&gt;",
+    '"': "&quot;",
+    "'": "&#39;",
+  };
+
+  /**
+   * Used to match HTML entities and HTML characters.
+   * Refer: https://github.com/lodash/lodash/blob/main/src/escape.ts
+   */
+  const reUnescapedHtml = /[&<>"']/g;
+  const reHasUnescapedHtml = RegExp(reUnescapedHtml.source);
+
+  /**
+   * Escape function from lodash
+   * Refer: https://github.com/lodash/lodash/blob/main/src/escape.ts
+   */
+  function escape(string) {
+    return string && reHasUnescapedHtml.test(string)
+      ? string.replace(reUnescapedHtml, (chr) => htmlEscapes[chr])
+      : string || "";
   }
 
-  // Adding a debounce to prevent disruptions from crazy clicking!
-  debounce(() => get_filters(), 300);
-});
+  /**
+   * RegX escape function from MDN
+   * Refer: https://developer.mozilla.org/en-US/docs/Web/JavaScript/Guide/Regular_Expressions#escaping
+   */
+  function escapeRegExp(string) {
+    return string.replace(/[.*+?^${}()|[\]\\]/g, "\\$&"); // $& means the whole matched string
+  }
 
-/**
- * A debounce function, takes a function and an optional timeout in milliseconds
- *
- * @function callback
- * @param {number} timeout
- */
-function debounce(callback, timeout = 300) {
-  clearTimeout(timer);
-  timer = setTimeout(callback, timeout);
-}
+  /**
+   * Make the result component given a minisearch result data object and the value
+   * of the search input as queryString. To view the result object structure, refer:
+   * https://lucaong.github.io/minisearch/modules/_minisearch_.html#searchresult
+   *
+   * @param {object} result
+   * @param {string} querystring
+   * @returns string
+   */
+  function make_search_result(result, querystring) {
+    let search_divider = `<div class="search-divider w-100"></div>`;
+    let display_link =
+      result.location.slice(Math.max(0), Math.min(50, result.location.length)) +
+      (result.location.length > 30 ? "..." : ""); // To cut-off the link because it messes with the overflow of the whole div
 
-/**
- * Make/Update the search component
- *
- * @param {string[]} selected_filters
- */
-function update_search(selected_filters = []) {
-  let initial_search_body = `
-      <div class="has-text-centered my-5 py-5">Type something to get started!</div>
-    `;
+    if (result.page !== "") {
+      display_link += ` (${result.page})`;
+    }
+    searchstring = escapeRegExp(querystring);
+    let textindex = new RegExp(`${searchstring}`, "i").exec(result.text);
+    let text =
+      textindex !== null
+        ? result.text.slice(
+            Math.max(textindex.index - 100, 0),
+            Math.min(
+              textindex.index + querystring.length + 100,
+              result.text.length,
+            ),
+          )
+        : ""; // cut-off text before and after from the match
 
-  let querystring = $(".documenter-search-input").val();
+    text = text.length ? escape(text) : "";
 
-  if (querystring.trim()) {
-    results = index.search(querystring, {
+    let display_result = text.length
+      ? "..." +
+        text.replace(
+          new RegExp(`${escape(searchstring)}`, "i"), // For first occurrence
+          '<span class="search-result-highlight py-1">$&</span>',
+        ) +
+        "..."
+      : ""; // highlights the match
+
+    let in_code = false;
+    if (!["page", "section"].includes(result.category.toLowerCase())) {
+      in_code = true;
+    }
+
+    // We encode the full url to escape some special characters which can lead to broken links
+    let result_div = `
+        <a href="${encodeURI(
+          documenterBaseURL + "/" + result.location,
+        )}" class="search-result-link w-100 is-flex is-flex-direction-column gap-2 px-4 py-2">
+          <div class="w-100 is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-flex-start">
+            <div class="search-result-title has-text-weight-bold ${
+              in_code ? "search-result-code-title" : ""
+            }">${escape(result.title)}</div>
+            <div class="property-search-result-badge">${result.category}</div>
+          </div>
+          <p>
+            ${display_result}
+          </p>
+          <div
+            class="has-text-left"
+            style="font-size: smaller;"
+            title="${result.location}"
+          >
+            <i class="fas fa-link"></i> ${display_link}
+          </div>
+        </a>
+        ${search_divider}
+      `;
+
+    return result_div;
+  }
+
+  function calculateCustomScore(result, query) {
+    const titleLower = result.title.toLowerCase();
+    const queryLower = query.toLowerCase();
+
+    // Tier 1 : Exact title match
+    if (titleLower == queryLower) {
+      return 10000 + result.score;
+    }
+
+    // Tier 2 : Title contains exact query
+    if (titleLower.includes(queryLower)) {
+      const position = titleLower.indexOf(queryLower);
+      // prefer matches at the beginning
+      return 5000 + result.score - position * 10;
+    }
+
+    // Tier 3 : All query words in title
+    const queryWords = queryLower.trim().split(/\s+/);
+    const titleWords = titleLower.trim().split(/\s+/);
+    const allWordsInTitle = queryWords.every((qw) =>
+      titleWords.some((tw) => tw.includes(qw)),
+    );
+    if (allWordsInTitle) {
+      return 2000 + result.score;
+    }
+
+    return result.score;
+  }
+
+  self.onmessage = function (e) {
+    let query = e.data;
+    let results = index.search(query, {
       filter: (result) => {
-        // Filtering results
-        if (selected_filters.length === 0) {
-          return result.score >= 1;
-        } else {
-          return (
-            result.score >= 1 && selected_filters.includes(result.category)
-          );
-        }
+        // Only return relevant results
+        return result.score >= 1;
       },
+      combineWith: "AND",
     });
 
-    let search_result_container = ``;
-    let search_divider = `<div class="search-divider w-100"></div>`;
+    // calculate custom scores for all results
+    results = results.map((result) => ({
+      ...result,
+      customScore: calculateCustomScore(result, query),
+    }));
 
-    if (results.length) {
-      let links = [];
-      let count = 0;
-      let search_results = "";
+    // sort by custom score in descending order
+    results.sort((a, b) => b.customScore - a.customScore);
 
-      results.forEach(function (result) {
-        if (result.location) {
-          // Checking for duplication of results for the same page
-          if (!links.includes(result.location)) {
-            search_results += make_search_result(result, querystring);
-            count++;
-          }
+    // Pre-filter to deduplicate and limit to 200 per category to the extent
+    // possible without knowing what the filters are.
+    let filtered_results = [];
+    let counts = {};
+    for (let filter of filters) {
+      counts[filter] = 0;
+    }
+    let present = {};
 
-          links.push(result.location);
+    for (let result of results) {
+      cat = result.category;
+      cnt = counts[cat];
+      if (cnt < 200) {
+        id = cat + "---" + result.location;
+        if (present[id]) {
+          continue;
         }
-      });
-
-      let result_count = `<div class="is-size-6">${count} result(s)</div>`;
-
-      search_result_container = `
-            <div class="is-flex is-flex-direction-column gap-2 is-align-items-flex-start">
-                ${modal_filters}
-                ${search_divider}
-                ${result_count}
-                <div class="is-clipped w-100 is-flex is-flex-direction-column gap-2 is-align-items-flex-start has-text-justified mt-1">
-                  ${search_results}
-                </div>
-            </div>
-        `;
-    } else {
-      search_result_container = `
-           <div class="is-flex is-flex-direction-column gap-2 is-align-items-flex-start">
-               ${modal_filters}
-               ${search_divider}
-               <div class="is-size-6">0 result(s)</div>
-            </div>
-            <div class="has-text-centered my-5 py-5">No result found!</div>
-       `;
+        present[id] = true;
+        filtered_results.push({
+          location: result.location,
+          category: cat,
+          div: make_search_result(result, query),
+        });
+      }
     }
 
-    if ($(".search-modal-card-body").hasClass("is-justify-content-center")) {
-      $(".search-modal-card-body").removeClass("is-justify-content-center");
-    }
-
-    $(".search-modal-card-body").html(search_result_container);
-  } else {
-    filter_results = [];
-    modal_filters = make_modal_body_filters(filters, filter_results);
-
-    if (!$(".search-modal-card-body").hasClass("is-justify-content-center")) {
-      $(".search-modal-card-body").addClass("is-justify-content-center");
-    }
-
-    $(".search-modal-card-body").html(initial_search_body);
-  }
+    postMessage(filtered_results);
+  };
 }
 
-/**
- * Make the modal filter html
- *
- * @param {string[]} filters
- * @param {string[]} selected_filters
- * @returns string
- */
-function make_modal_body_filters(filters, selected_filters = []) {
-  let str = ``;
+/////// SEARCH MAIN ///////
 
-  filters.forEach((val) => {
-    if (selected_filters.includes(val)) {
-      str += `<a href="javascript:;" class="search-filter search-filter-selected"><span>${val}</span></a>`;
+function runSearchMainCode() {
+  // `worker = Threads.@spawn worker_function(documenterSearchIndex)`, but in JavaScript!
+  const filters = [
+    ...new Set(documenterSearchIndex["docs"].map((x) => x.category)),
+  ];
+  const worker_str =
+    "(" +
+    worker_function.toString() +
+    ")(" +
+    JSON.stringify(documenterSearchIndex["docs"]) +
+    "," +
+    JSON.stringify(documenterBaseURL) +
+    "," +
+    JSON.stringify(filters) +
+    ")";
+  const worker_blob = new Blob([worker_str], { type: "text/javascript" });
+  const worker = new Worker(URL.createObjectURL(worker_blob));
+
+  // Whether the worker is currently handling a search. This is a boolean
+  // as the worker only ever handles 1 or 0 searches at a time.
+  var worker_is_running = false;
+
+  // The last search text that was sent to the worker. This is used to determine
+  // if the worker should be launched again when it reports back results.
+  var last_search_text = "";
+
+  // The results of the last search. This, in combination with the state of the filters
+  // in the DOM, is used compute the results to display on calls to update_search.
+  var unfiltered_results = [];
+
+  // Which filter is currently selected
+  var selected_filter = "";
+
+  document.addEventListener("reset-filter", function () {
+    selected_filter = "";
+    update_search();
+  });
+
+  //update the url with search query
+  function updateSearchURL(query) {
+    const url = new URL(window.location);
+
+    if (query && query.trim() !== "") {
+      url.searchParams.set("q", query);
     } else {
-      str += `<a href="javascript:;" class="search-filter"><span>${val}</span></a>`;
+      // remove the 'q' param if it exists
+      if (url.searchParams.has("q")) {
+        url.searchParams.delete("q");
+      }
+    }
+
+    // Add or remove the filter parameter based on selected_filter
+    if (selected_filter && selected_filter.trim() !== "") {
+      url.searchParams.set("filter", selected_filter);
+    } else {
+      // remove the 'filter' param if it exists
+      if (url.searchParams.has("filter")) {
+        url.searchParams.delete("filter");
+      }
+    }
+
+    // Only update history if there are parameters, otherwise use the base URL
+    if (url.search) {
+      window.history.replaceState({}, "", url);
+    } else {
+      window.history.replaceState({}, "", url.pathname + url.hash);
+    }
+  }
+
+  $(document).on("input", ".documenter-search-input", function (event) {
+    if (!worker_is_running) {
+      launch_search();
     }
   });
 
-  let filter_html = `
-        <div class="is-flex gap-2 is-flex-wrap-wrap is-justify-content-flex-start is-align-items-center search-filters">
-            <span class="is-size-6">Filters:</span>
-            ${str}
-        </div>
-    `;
-
-  return filter_html;
-}
-
-/**
- * Make the result component given a minisearch result data object and the value of the search input as queryString.
- * To view the result object structure, refer: https://lucaong.github.io/minisearch/modules/_minisearch_.html#searchresult
- *
- * @param {object} result
- * @param {string} querystring
- * @returns string
- */
-function make_search_result(result, querystring) {
-  let search_divider = `<div class="search-divider w-100"></div>`;
-  let display_link =
-    result.location.slice(Math.max(0), Math.min(50, result.location.length)) +
-    (result.location.length > 30 ? "..." : ""); // To cut-off the link because it messes with the overflow of the whole div
-
-  if (result.page !== "") {
-    display_link += ` (${result.page})`;
+  function launch_search() {
+    worker_is_running = true;
+    last_search_text = $(".documenter-search-input").val();
+    updateSearchURL(last_search_text);
+    worker.postMessage(last_search_text);
   }
 
-  let textindex = new RegExp(`\\b${querystring}\\b`, "i").exec(result.text);
-  let text =
-    textindex !== null
-      ? result.text.slice(
-          Math.max(textindex.index - 100, 0),
-          Math.min(
-            textindex.index + querystring.length + 100,
-            result.text.length
-          )
-        )
-      : ""; // cut-off text before and after from the match
+  worker.onmessage = function (e) {
+    if (last_search_text !== $(".documenter-search-input").val()) {
+      launch_search();
+    } else {
+      worker_is_running = false;
+    }
 
-  let display_result = text.length
-    ? "..." +
-      text.replace(
-        new RegExp(`\\b${querystring}\\b`, "i"), // For first occurrence
-        '<span class="search-result-highlight p-1">$&</span>'
-      ) +
-      "..."
-    : ""; // highlights the match
+    unfiltered_results = e.data;
+    update_search();
+  };
 
-  let in_code = false;
-  if (!["page", "section"].includes(result.category.toLowerCase())) {
-    in_code = true;
+  $(document).on("click", ".search-filter", function () {
+    let search_input = $(".documenter-search-input");
+    let cursor_position = search_input[0].selectionStart;
+
+    if ($(this).hasClass("search-filter-selected")) {
+      selected_filter = "";
+    } else {
+      selected_filter = $(this).text().toLowerCase();
+    }
+
+    // This updates search results and toggles classes for UI:
+    update_search();
+
+    search_input.focus();
+    search_input.setSelectionRange(cursor_position, cursor_position);
+  });
+
+  /**
+   * Make/Update the search component
+   */
+  function update_search() {
+    let querystring = $(".documenter-search-input").val();
+    updateSearchURL(querystring);
+
+    if (querystring.trim()) {
+      if (selected_filter == "") {
+        results = unfiltered_results;
+      } else {
+        results = unfiltered_results.filter((result) => {
+          return selected_filter == result.category.toLowerCase();
+        });
+      }
+
+      let search_result_container = ``;
+      let modal_filters = make_modal_body_filters();
+      let search_divider = `<div class="search-divider w-100"></div>`;
+
+      if (results.length) {
+        let links = [];
+        let count = 0;
+        let search_results = "";
+
+        for (var i = 0, n = results.length; i < n && count < 200; ++i) {
+          let result = results[i];
+          if (result.location && !links.includes(result.location)) {
+            search_results += result.div;
+            count++;
+            links.push(result.location);
+          }
+        }
+
+        if (count == 1) {
+          count_str = "1 result";
+        } else if (count == 200) {
+          count_str = "200+ results";
+        } else {
+          count_str = count + " results";
+        }
+        let result_count = `<div class="is-size-6">${count_str}</div>`;
+
+        search_result_container = `
+              <div class="is-flex is-flex-direction-column gap-2 is-align-items-flex-start">
+                  ${modal_filters}
+                  ${search_divider}
+                  ${result_count}
+                  <div class="is-clipped w-100 is-flex is-flex-direction-column gap-2 is-align-items-flex-start has-text-justified mt-1">
+                    ${search_results}
+                  </div>
+              </div>
+          `;
+      } else {
+        search_result_container = `
+            <div class="is-flex is-flex-direction-column gap-2 is-align-items-flex-start">
+                ${modal_filters}
+                ${search_divider}
+                <div class="is-size-6">0 result(s)</div>
+              </div>
+              <div class="has-text-centered my-5 py-5">No result found!</div>
+        `;
+      }
+
+      if ($(".search-modal-card-body").hasClass("is-justify-content-center")) {
+        $(".search-modal-card-body").removeClass("is-justify-content-center");
+      }
+
+      $(".search-modal-card-body").html(search_result_container);
+    } else {
+      if (!$(".search-modal-card-body").hasClass("is-justify-content-center")) {
+        $(".search-modal-card-body").addClass("is-justify-content-center");
+      }
+
+      $(".search-modal-card-body").html(`
+        <div class="has-text-centered my-5 py-5">Type something to get started!</div>
+      `);
+    }
   }
 
-  // We encode the full url to escape some special characters which can lead to broken links
-  let result_div = `
-      <a href="${encodeURI(
-        documenterBaseURL + "/" + result.location
-      )}" class="search-result-link w-100 is-flex is-flex-direction-column gap-2 px-4 py-2">
-        <div class="w-100 is-flex is-flex-wrap-wrap is-justify-content-space-between is-align-items-flex-start">
-          <div class="search-result-title has-text-weight-bold ${
-            in_code ? "search-result-code-title" : ""
-          }">${result.title}</div>
-          <div class="property-search-result-badge">${result.category}</div>
-        </div>
-        <p>
-          ${display_result}
-        </p>
-        <div
-          class="has-text-left"
-          style="font-size: smaller;"
-          title="${result.location}"
-        >
-          <i class="fas fa-link"></i> ${display_link}
-        </div>
-      </a>
-      ${search_divider}
-    `;
+  //url param checking
+  function checkURLForSearch() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get("q");
+    const filterParam = urlParams.get("filter");
 
-  return result_div;
+    // Set the selected filter if present in URL
+    if (filterParam) {
+      selected_filter = filterParam.toLowerCase();
+    }
+
+    // Trigger input event if there's a search query to perform the search
+    if (searchQuery) {
+      $(".documenter-search-input").val(searchQuery).trigger("input");
+    }
+  }
+  setTimeout(checkURLForSearch, 100);
+
+  /**
+   * Make the modal filter html
+   *
+   * @returns string
+   */
+  function make_modal_body_filters() {
+    let str = filters
+      .map((val) => {
+        if (selected_filter == val.toLowerCase()) {
+          return `<a href="javascript:;" class="search-filter search-filter-selected"><span>${val}</span></a>`;
+        } else {
+          return `<a href="javascript:;" class="search-filter"><span>${val}</span></a>`;
+        }
+      })
+      .join("");
+
+    return `
+          <div class="is-flex gap-2 is-flex-wrap-wrap is-justify-content-flex-start is-align-items-center search-filters">
+              <span class="is-size-6">Filters:</span>
+              ${str}
+          </div>`;
+  }
 }
 
-/**
- * Get selected filters, remake the filter html and lastly update the search modal
- */
-function get_filters() {
-  let ele = $(".search-filters .search-filter-selected").get();
-  filter_results = ele.map((x) => $(x).text().toLowerCase());
-  modal_filters = make_modal_body_filters(filters, filter_results);
-  update_search(filter_results);
+function waitUntilSearchIndexAvailable() {
+  // It is possible that the documenter.js script runs before the page
+  // has finished loading and documenterSearchIndex gets defined.
+  // So we need to wait until the search index actually loads before setting
+  // up all the search-related stuff.
+  if (
+    typeof documenterSearchIndex !== "undefined" &&
+    typeof $ !== "undefined"
+  ) {
+    runSearchMainCode();
+  } else {
+    console.warn("Search Index or jQuery not available, waiting");
+    setTimeout(waitUntilSearchIndexAvailable, 100);
+  }
 }
+
+// The actual entry point to the search code
+waitUntilSearchIndexAvailable();
 
 })
 ////////////////////////////////////////////////////////////////////////////////
@@ -635,103 +1005,175 @@ $(document).ready(function () {
 ////////////////////////////////////////////////////////////////////////////////
 require(['jquery'], function($) {
 
-let search_modal_header = `
-  <header class="modal-card-head gap-2 is-align-items-center is-justify-content-space-between w-100 px-3">
-    <div class="field mb-0 w-100">
-      <p class="control has-icons-right">
-        <input class="input documenter-search-input" type="text" placeholder="Search" />
-        <span class="icon is-small is-right has-text-primary-dark">
-          <i class="fas fa-magnifying-glass"></i>
-        </span>
-      </p>
-    </div>
-    <div class="icon is-size-4 is-clickable close-search-modal">
-      <i class="fas fa-times"></i>
-    </div>
-  </header>
-`;
-
-let initial_search_body = `
-  <div class="has-text-centered my-5 py-5">Type something to get started!</div>
-`;
-
-let search_modal_footer = `
-  <footer class="modal-card-foot">
-    <span>
-      <kbd class="search-modal-key-hints">Ctrl</kbd> +
-      <kbd class="search-modal-key-hints">/</kbd> to search
-    </span>
-    <span class="ml-3"> <kbd class="search-modal-key-hints">esc</kbd> to close </span>
-  </footer>
-`;
-
-$(document.body).append(
-  `
-    <div class="modal" id="search-modal">
-      <div class="modal-background"></div>
-      <div class="modal-card search-min-width-50 search-min-height-100 is-justify-content-center">
-        ${search_modal_header}
-        <section class="modal-card-body is-flex is-flex-direction-column is-justify-content-center gap-4 search-modal-card-body">
-          ${initial_search_body}
-        </section>
-        ${search_modal_footer}
+$(document).ready(function () {
+  let search_modal_header = `
+    <header class="modal-card-head gap-2 is-align-items-center is-justify-content-space-between w-100 px-3">
+      <div class="field mb-0 w-100">
+        <p class="control has-icons-right">
+          <input class="input documenter-search-input" type="text" placeholder="Search" />
+          <span class="icon is-small is-right has-text-primary-dark gap-2">
+            <i class="fas fa-link link-icon is-clickable"></i>
+            <i class="fas fa-magnifying-glass mr-4"></i>
+          </span>
+        </p>
       </div>
-    </div>
-  `
-);
+      <div class="icon is-size-4 is-clickable close-search-modal">
+        <i class="fas fa-times"></i>
+      </div>
+    </header>
+  `;
 
-document.querySelector(".docs-search-query").addEventListener("click", () => {
-  openModal();
-});
-
-document.querySelector(".close-search-modal").addEventListener("click", () => {
-  closeModal();
-});
-
-$(document).on("click", ".search-result-link", function () {
-  closeModal();
-});
-
-document.addEventListener("keydown", (event) => {
-  if ((event.ctrlKey || event.metaKey) && event.key === "/") {
-    openModal();
-  } else if (event.key === "Escape") {
-    closeModal();
-  }
-
-  return false;
-});
-
-// Functions to open and close a modal
-function openModal() {
-  let searchModal = document.querySelector("#search-modal");
-
-  searchModal.classList.add("is-active");
-  document.querySelector(".documenter-search-input").focus();
-}
-
-function closeModal() {
-  let searchModal = document.querySelector("#search-modal");
   let initial_search_body = `
     <div class="has-text-centered my-5 py-5">Type something to get started!</div>
   `;
 
-  searchModal.classList.remove("is-active");
-  document.querySelector(".documenter-search-input").blur();
+  let search_modal_footer = `
+    <footer class="modal-card-foot is-flex is-justify-content-space-between is-align-items-center">
+      <div class="is-flex gap-3 is-flex-wrap-wrap">
+        <span>
+          <kbd class="search-modal-key-hints">Ctrl</kbd> +
+          <kbd class="search-modal-key-hints">/</kbd> to search
+        </span>
+        <span> <kbd class="search-modal-key-hints">esc</kbd> to close </span>
+      </div>
+      <div class="is-flex gap-3 is-flex-wrap-wrap">
+        <span>
+          <kbd class="search-modal-key-hints">↑</kbd>
+          <kbd class="search-modal-key-hints">↓</kbd> to navigate
+        </span>
+        <span> <kbd class="search-modal-key-hints">Enter</kbd> to select </span>
+      </div>
+    </footer>
+  `;
 
-  if (!$(".search-modal-card-body").hasClass("is-justify-content-center")) {
-    $(".search-modal-card-body").addClass("is-justify-content-center");
+  $(document.body).append(
+    `
+      <div class="modal" id="search-modal">
+        <div class="modal-background"></div>
+        <div class="modal-card search-min-width-50 search-min-height-100 is-justify-content-center">
+          ${search_modal_header}
+          <section class="modal-card-body is-flex is-flex-direction-column is-justify-content-center gap-4 search-modal-card-body">
+            ${initial_search_body}
+          </section>
+          ${search_modal_footer}
+        </div>
+      </div>
+    `,
+  );
+
+  function checkURLForSearch() {
+    const urlParams = new URLSearchParams(window.location.search);
+    const searchQuery = urlParams.get("q");
+
+    if (searchQuery) {
+      //only if there is a search query, open the modal
+      openModal();
+    }
   }
 
-  $(".documenter-search-input").val("");
-  $(".search-modal-card-body").html(initial_search_body);
-}
+  //this function will be called whenever the page will load
+  checkURLForSearch();
 
-document
-  .querySelector("#search-modal .modal-background")
-  .addEventListener("click", () => {
+  document.querySelector(".docs-search-query").addEventListener("click", () => {
+    openModal();
+  });
+
+  document
+    .querySelector(".close-search-modal")
+    .addEventListener("click", () => {
+      closeModal();
+    });
+
+  $(document).on("click", ".search-result-link", function () {
     closeModal();
   });
+
+  document.addEventListener("keydown", (event) => {
+    if ((event.ctrlKey || event.metaKey) && event.key === "/") {
+      openModal();
+    } else if (event.key === "Escape") {
+      closeModal();
+    } else if (
+      document.querySelector("#search-modal")?.classList.contains("is-active")
+    ) {
+      const searchResults = document.querySelectorAll(".search-result-link");
+
+      if (event.key === "ArrowDown") {
+        event.preventDefault();
+        if (searchResults.length > 0) {
+          const currentFocused = document.activeElement;
+          const currentIndex =
+            Array.from(searchResults).indexOf(currentFocused);
+          const nextIndex =
+            currentIndex < searchResults.length - 1 ? currentIndex + 1 : 0;
+          searchResults[nextIndex].focus();
+        }
+      } else if (event.key === "ArrowUp") {
+        event.preventDefault();
+        if (searchResults.length > 0) {
+          const currentFocused = document.activeElement;
+          const currentIndex =
+            Array.from(searchResults).indexOf(currentFocused);
+          const prevIndex =
+            currentIndex > 0 ? currentIndex - 1 : searchResults.length - 1;
+          searchResults[prevIndex].focus();
+        }
+      }
+    }
+  });
+
+  //event listener for the link icon to copy the URL
+  $(document).on("click", ".link-icon", function () {
+    const currentUrl = window.location.href;
+
+    navigator.clipboard
+      .writeText(currentUrl)
+      .then(() => {
+        const $linkIcon = $(this);
+        $linkIcon.removeClass("fa-link").addClass("fa-check");
+
+        setTimeout(() => {
+          $linkIcon.removeClass("fa-check").addClass("fa-link");
+        }, 1000);
+      })
+      .catch((err) => {
+        console.error("Failed to copy URL: ", err);
+      });
+  });
+
+  // Functions to open and close a modal
+  function openModal() {
+    let searchModal = document.querySelector("#search-modal");
+
+    searchModal.classList.add("is-active");
+    document.querySelector(".documenter-search-input").focus();
+  }
+
+  function closeModal() {
+    let searchModal = document.querySelector("#search-modal");
+    let initial_search_body = `
+      <div class="has-text-centered my-5 py-5">Type something to get started!</div>
+    `;
+
+    $(".documenter-search-input").val("");
+    $(".search-modal-card-body").html(initial_search_body);
+
+    document.dispatchEvent(new CustomEvent("reset-filter"));
+
+    searchModal.classList.remove("is-active");
+    document.querySelector(".documenter-search-input").blur();
+
+    if (!$(".search-modal-card-body").hasClass("is-justify-content-center")) {
+      $(".search-modal-card-body").addClass("is-justify-content-center");
+    }
+  }
+
+  document
+    .querySelector("#search-modal .modal-background")
+    .addEventListener("click", () => {
+      closeModal();
+    });
+});
 
 })
 ////////////////////////////////////////////////////////////////////////////////
@@ -841,7 +1283,58 @@ $(document).ready(function () {
     target_href = version_selector_select
       .children("option:selected")
       .get(0).value;
-    window.location.href = target_href;
+
+    // if the target is just "#", don't navigate (it's the current version)
+    if (target_href === "#") {
+      return;
+    }
+
+    // try to stay on the same page when switching versions
+    // get the current page path relative to the version root
+    var current_page = window.location.pathname;
+
+    // resolve the documenterBaseURL to an absolute path
+    // documenterBaseURL is a relative path (usually "."), so we need to resolve it
+    var base_url_absolute = new URL(documenterBaseURL, window.location.href)
+      .pathname;
+    if (!base_url_absolute.endsWith("/")) {
+      base_url_absolute = base_url_absolute + "/";
+    }
+
+    // extract the page path after the version directory
+    // e.g., if we're on /stable/man/guide.html, we want "man/guide.html"
+    var page_path = "";
+    if (current_page.startsWith(base_url_absolute)) {
+      page_path = current_page.substring(base_url_absolute.length);
+    }
+
+    // construct the target URL with the same page path
+    var target_url = target_href;
+    if (page_path && page_path !== "" && page_path !== "index.html") {
+      // ensure target_href ends with a slash before appending page path
+      if (!target_url.endsWith("/")) {
+        target_url = target_url + "/";
+      }
+      target_url = target_url + page_path;
+    }
+
+    // preserve the anchor (hash) from the current page
+    var current_hash = window.location.hash;
+
+    // check if the target page exists, fallback to homepage if it doesn't
+    fetch(target_url, { method: "HEAD" })
+      .then(function (response) {
+        if (response.ok) {
+          window.location.href = target_url + current_hash;
+        } else {
+          // page doesn't exist in the target version, go to homepage
+          window.location.href = target_href;
+        }
+      })
+      .catch(function (error) {
+        // network error or other failure - use homepage
+        window.location.href = target_href;
+      });
   });
 
   // add the current version to the selector based on siteinfo.js, but only if the selector is empty
@@ -852,7 +1345,7 @@ $(document).ready(function () {
     var option = $(
       "<option value='#' selected='selected'>" +
         DOCUMENTER_CURRENT_VERSION +
-        "</option>"
+        "</option>",
     );
     version_selector_select.append(option);
   }
@@ -869,7 +1362,7 @@ $(document).ready(function () {
       // otherwise update the old option with the URL and enable it
       if (existing_id == -1) {
         var option = $(
-          "<option value='" + version_url + "'>" + each + "</option>"
+          "<option value='" + version_url + "'>" + each + "</option>",
         );
         version_selector_select.append(option);
       } else {
