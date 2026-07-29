@@ -15,7 +15,6 @@ const REEXPORTED_API = (
 run_qa(
     DiffEqGPU;
     reexports_allow = REEXPORTED_API,
-    api_docs_kwargs = (; rendered_ignore = REEXPORTED_API),
     ei_kwargs = (;
         # StaticVecOrMat is re-exported by StaticArrays but owned by StaticArraysCore.
         # It is a non-public type alias used only in method-signature dispatch for the
