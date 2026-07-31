@@ -4,6 +4,7 @@ $(DocStringExtensions.README)
 module DiffEqGPU
 
 using DocStringExtensions: DocStringExtensions
+using SciMLPublic: @public
 using KernelAbstractions: KernelAbstractions, @Const, @index, @kernel, CPU
 import KernelAbstractions: get_backend, allocate
 using SciMLBase: SciMLBase, CallbackSet, CheckInit, ContinuousCallback,
@@ -238,5 +239,10 @@ export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
 
 export terminate!
+
+# The documented lower-level entry points. They are not exported because they are
+# meant to be reached through the `DiffEqGPU.` qualifier by packages that drive the
+# kernel solvers directly rather than through `EnsembleGPUKernel`.
+@public vectorized_solve, vectorized_asolve
 
 end # module

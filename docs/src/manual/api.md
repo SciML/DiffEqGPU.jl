@@ -18,3 +18,14 @@ DiffEqBase.BrownFullBasicInit
 ```@docs
 LinSolveGPUSplitFactorize
 ```
+
+## Lower-Level Solve Interface
+
+These are the entry points used to drive the kernel solvers directly, without going
+through `EnsembleGPUKernel`. See [Using the Lower Level API](@ref lowerlevel) for a
+worked example.
+
+```@docs
+DiffEqGPU.vectorized_solve
+DiffEqGPU.vectorized_asolve
+```
