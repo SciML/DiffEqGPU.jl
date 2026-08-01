@@ -1,5 +1,22 @@
 using SciMLTesting, DiffEqGPU
 using JET
+using Test
+
+# ExplicitImports only sees an extension once its trigger package is loaded, so every
+# backend is loaded here to bring the six `ext/` modules into the checked module set.
+# None of them needs a device to load: they only add `maxthreads`/`maybe_prefer_blocks`
+# (and `lufact!`/`EnsembleGPUArray`) methods, so precompiling and importing them works on
+# a plain CPU runner. Metal logs "only supported on Apple Silicon" at init off macOS but
+# still loads, so it is not a device check.
+using AMDGPU, CUDA, JLArrays, Metal, OpenCL, oneAPI
+
+# ExplicitImports silently skips an extension that fails to load, so assert the
+# extension modules actually exist rather than trusting a green run_qa.
+@testset "Extensions loaded" begin
+    for ext in (:AMDGPUExt, :CUDAExt, :JLArraysExt, :MetalExt, :OpenCLExt, :oneAPIExt)
+        @test Base.get_extension(DiffEqGPU, ext) !== nothing
+    end
+end
 
 const REEXPORTED_API = (
     :BrownFullBasicInit,
@@ -47,6 +64,13 @@ run_qa(
                 # public cross-version replacement (Base.infer_return_type is 1.11+,
                 # and the LTS floor is Julia 1.10).
                 :Compiler, :return_type,
+                # DiffEqGPU's own backend hooks. Every `ext/` module exists to add
+                # methods to these, which is only expressible as a qualified access
+                # into the parent package; they are internal hooks, not user API.
+                :lufact!, :maxthreads, :maybe_prefer_blocks,
+                # CUDA batched LU used by DiffEqGPU.lufact!. CUDA's cuBLAS wrappers
+                # are not `public`, and there is no public batched-getrf spelling.
+                :getrf_strided_batched!,
             ),
         ),
         # Non-public names imported explicitly from upstream packages. The

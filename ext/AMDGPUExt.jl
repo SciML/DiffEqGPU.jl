@@ -1,9 +1,6 @@
 module AMDGPUExt
-using AMDGPU
+using AMDGPU: ROCBackend
 import DiffEqGPU
-
-using .AMDGPU
-import .AMDGPU: ROCBackend
 
 function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
     return DiffEqGPU.EnsembleGPUArray(ROCBackend(), cpu_offload)
