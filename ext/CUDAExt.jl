@@ -1,9 +1,6 @@
 module CUDAExt
-using CUDA
+using CUDA: CUDA, CUDABackend
 import DiffEqGPU
-
-using .CUDA
-import .CUDA: CUDABackend
 
 function DiffEqGPU.EnsembleGPUArray(cpu_offload::Float64)
     return DiffEqGPU.EnsembleGPUArray(CUDABackend(), cpu_offload)

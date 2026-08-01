@@ -1,9 +1,6 @@
 module OpenCLExt
-using OpenCL
+using OpenCL: OpenCLBackend
 import DiffEqGPU
-
-using .OpenCL
-import .OpenCL: OpenCLBackend
 
 DiffEqGPU.maxthreads(::OpenCLBackend) = 256
 DiffEqGPU.maybe_prefer_blocks(::OpenCLBackend) = OpenCLBackend()
