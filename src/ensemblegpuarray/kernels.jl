@@ -1,7 +1,3 @@
-"""
-Wrapper for modifying parameters to contain additional data. Useful for simulating
-trajectories with different time span values.
-"""
 struct ParamWrapper{P, T}
     params::P
     data::T

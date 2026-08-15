@@ -106,6 +106,12 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     =#
 end
 
+if GROUP == "CPU"
+    @time @safetestset "Public generic interfaces" begin
+        include("public_interface.jl")
+    end
+end
+
 if GROUP == "CUDA"
     @testset "Callbacks" begin
         # Causes dynamic function invocation

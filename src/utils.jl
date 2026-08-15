@@ -11,10 +11,6 @@ function make_prob_compatible(prob::T) where {T <: ODEProblem}
     return convert(ImmutableODEProblem, _maybe_convert_mass_matrix(prob))
 end
 
-"""
-Convert non-SArray mass matrices (e.g. Diagonal from MTK) to SMatrix for GPU kernel
-compatibility. Only needed when u0 is converted to SVector by adapt_structure.
-"""
 function _maybe_convert_mass_matrix(prob)
     mm = prob.f.mass_matrix
     # Already an SArray, UniformScaling, or I — nothing to do
