@@ -201,7 +201,8 @@ end
 """
     vectorized_asolve(probs, prob::ODEProblem, alg; dt = 0.1f0,
         saveat = nothing, save_everystep = false, abstol = 1.0f-6,
-        reltol = 1.0f-3, callback = CallbackSet(nothing), tstops = nothing)
+        reltol = 1.0f-3, debug = false, callback = CallbackSet(nothing),
+        tstops = nothing)
 
 Run an adaptive `EnsembleGPUKernel` ODE solve on a batch of compatible problems. This is a
 developer-facing entry point for packages that need the batched time and state arrays
@@ -225,6 +226,7 @@ instead of a collection of `EnsembleSolution`s.
   - `save_everystep`: whether to retain the adaptive internal steps. Defaults to `false`.
   - `abstol`: absolute error tolerance. Defaults to `1.0f-6`.
   - `reltol`: relative error tolerance. Defaults to `1.0f-3`.
+  - `debug`: accepted for compatibility with the vectorized solver interface.
   - `callback`: a GPU-compatible callback set. The default is `CallbackSet(nothing)`.
   - `tstops`: optional additional stopping times.
 

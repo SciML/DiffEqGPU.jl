@@ -370,10 +370,15 @@ end
 A parameter-parallel `SciMLLinearSolveAlgorithm` for applying pre-factorized
 per-trajectory linear systems on a KernelAbstractions backend.
 
+# Fields
+
+  - `len::Int`: the size of each factored linear system.
+  - `nfacts::Int`: the number of factorizations stored in the batched factorization array.
+
 # Arguments
 
-  - `len`: the size of each factored linear system.
-  - `nfacts`: the number of factorizations stored in the batched factorization array.
+  - `len::Int`: the size of each factored linear system.
+  - `nfacts::Int`: the number of factorizations stored in the batched factorization array.
 
 Most users do not need to construct this directly; `EnsembleGPUArray` installs it for
 compatible stiff ensemble solves.

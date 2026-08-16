@@ -1,4 +1,4 @@
-using Documenter, DiffEqBase, DiffEqGPU, SciMLBase
+using Documenter, DiffEqGPU
 
 include("pages.jl")
 
