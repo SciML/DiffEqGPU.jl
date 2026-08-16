@@ -5,6 +5,34 @@ function diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual}, t)
 end
 diffeqgpunorm(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
 
+"""
+    make_prob_compatible(prob)
+
+Prepare a problem for the lower-level `EnsembleGPUKernel` interface.
+
+For an `ODEProblem`, this converts the problem to an immutable representation and adapts
+mass-matrix data when needed. Other problem-like values are returned unchanged. The
+resulting problem must still satisfy the selected backend's GPU-compatibility requirements.
+
+# Arguments
+
+  - `prob`: an `ODEProblem` or another problem value accepted by the lower-level ensemble
+    interface.
+
+# Returns
+
+An immutable, backend-compatible representation for ODE problems, or `prob` unchanged for
+other values.
+
+# Examples
+
+```julia
+using DiffEqGPU, SciMLBase, StaticArrays
+f(u, p, t) = u
+prob = ODEProblem{false}(f, SVector(1.0f0), (0.0f0, 1.0f0), SVector(1.0f0))
+gpu_prob = DiffEqGPU.make_prob_compatible(prob)
+```
+"""
 make_prob_compatible(prob) = prob
 
 function make_prob_compatible(prob::T) where {T <: ODEProblem}

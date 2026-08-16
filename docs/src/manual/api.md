@@ -24,6 +24,7 @@ definitions and canonical docstrings are maintained by the owning packages:
 
 ```@docs
 LinSolveGPUSplitFactorize
+DiffEqGPU.make_prob_compatible
 ```
 
 ## Lower-Level Solve Interface

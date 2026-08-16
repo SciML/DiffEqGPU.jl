@@ -13,8 +13,15 @@ end
 ode_prob = ODEProblem{false}(
     rhs, @SVector([1.0f0]), (0.0f0, 0.2f0), @SVector([1.0f0])
 )
-ode_probs = [convert(ImmutableODEProblem, ode_prob) for _ in 1:2]
+compatible_prob = DiffEqGPU.make_prob_compatible(ode_prob)
+@test compatible_prob isa ImmutableODEProblem
+ode_probs = [compatible_prob for _ in 1:2]
 cpu_probs = adapt(CPU(), ode_probs)
+
+@test DiffEqGPU.EnsembleCPUArray() isa DiffEqGPU.EnsembleArrayAlgorithm
+@test DiffEqGPU.EnsembleGPUKernel(CPU()) isa DiffEqGPU.EnsembleKernelAlgorithm
+@test DiffEqGPU.GPUTsit5() isa DiffEqGPU.GPUODEAlgorithm
+@test DiffEqGPU.GPUEM() isa DiffEqGPU.GPUSDEAlgorithm
 
 @testset "generic lower-level ODE interface" begin
     ts, us = DiffEqGPU.vectorized_solve(

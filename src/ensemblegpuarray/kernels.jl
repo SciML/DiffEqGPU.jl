@@ -160,7 +160,53 @@ end
     end
 end
 
+"""
+    maxthreads(backend)
+
+Return the maximum work-group size used by DiffEqGPU kernels on `backend`.
+
+This is a developer interface for backend extensions. A backend method must return a
+positive integer that is valid for the backend's kernel launch configuration.
+
+# Arguments
+
+  - `backend`: a KernelAbstractions backend supported by DiffEqGPU.
+
+# Returns
+
+The backend-specific maximum number of threads in a work group.
+
+# Examples
+
+```julia
+maxthreads(CPU())
+```
+"""
 maxthreads(::CPU) = 1024
+
+"""
+    maybe_prefer_blocks(backend)
+
+Return the backend configuration used for DiffEqGPU kernel launches.
+
+This is a developer interface for backend extensions. A backend method may return a
+configuration with block-oriented execution enabled when that is required for efficient
+or correct kernel execution.
+
+# Arguments
+
+  - `backend`: a KernelAbstractions backend supported by DiffEqGPU.
+
+# Returns
+
+The backend instance to pass to subsequent kernel allocation and launch operations.
+
+# Examples
+
+```julia
+maybe_prefer_blocks(CPU()) isa CPU
+```
+"""
 maybe_prefer_blocks(::CPU) = CPU()
 
 function workgroupsize(backend, n)
@@ -347,6 +393,33 @@ end
     end
 end
 
+"""
+    lufact!(backend, W)
+
+Factorize each square matrix in a batched matrix array in place.
+
+This is a developer interface implemented by backend extensions. The factorization is
+consumed by `LinSolveGPUSplitFactorize`; each slice `W[:, :, i]` must be a square matrix,
+and the backend implementation must provide the factorization operation callable from the
+selected execution environment.
+
+# Arguments
+
+  - `backend`: the execution backend.
+  - `W`: a three-dimensional array whose first two dimensions contain one matrix per batch
+    index.
+
+# Returns
+
+`nothing`; `W` is mutated in place.
+
+# Examples
+
+```julia
+W = reshape([2.0f0, 0.0f0, 0.0f0, 3.0f0], 2, 2, 1)
+lufact!(CPU(), W)
+```
+"""
 function lufact!(::CPU, W)
     len = size(W, 1)
     for i in 1:size(W, 3)

@@ -242,6 +242,9 @@ export terminate!
 
 # The documented lower-level entry points are qualified APIs rather than exports. They
 # are used by packages that drive the ensemble solvers directly.
-@public vectorized_solve, vectorized_asolve, vectorized_map_solve
+@public EnsembleArrayAlgorithm, EnsembleKernelAlgorithm, GPUODEAlgorithm, GPUSDEAlgorithm,
+    GPUODEImplicitAlgorithm, AbstractNLSolver, AbstractNLSolverCache, NLSolver,
+    make_prob_compatible, maxthreads, maybe_prefer_blocks, lufact!, vectorized_solve,
+    vectorized_asolve, vectorized_map_solve
 
 end # module

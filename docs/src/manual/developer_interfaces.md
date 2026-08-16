@@ -9,7 +9,16 @@ users should prefer the documented algorithm constructors and `solve` interface.
 ```@docs
 DiffEqGPU.EnsembleArrayAlgorithm
 DiffEqGPU.EnsembleKernelAlgorithm
+DiffEqGPU.maxthreads
+DiffEqGPU.maybe_prefer_blocks
+DiffEqGPU.lufact!
 ```
+
+## Problem Conversion
+
+`make_prob_compatible` is the generic conversion hook used before passing a batch of
+problems to the lower-level kernel interface. Backend extensions may add methods to the
+developer interfaces above, but should preserve the documented return and mutation rules.
 
 ## Kernel ODE and SDE Algorithms
 
