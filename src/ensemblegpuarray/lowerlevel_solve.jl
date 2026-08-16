@@ -16,7 +16,7 @@ solution collection without the `EnsembleSolution` construction performed by `so
   - `I`: an iterator of trajectory indices, such as `1:10_000`.
   - `adaptive`: whether to use adaptive time stepping.
 
-# Keywords
+# Keyword Arguments
 
 Additional solver keywords are forwarded to the underlying differential-equation solve.
 Only keywords supported by the selected algorithm and ensemble implementation are valid.

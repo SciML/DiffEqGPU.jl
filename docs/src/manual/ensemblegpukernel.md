@@ -1,4 +1,4 @@
-# EnsembleGPUKernel
+# [EnsembleGPUKernel](@id ensemblegpukernel)
 
 ## [API](@id egk_doc)
 

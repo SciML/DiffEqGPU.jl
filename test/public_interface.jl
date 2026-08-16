@@ -2,7 +2,7 @@ using Adapt
 using DiffEqGPU
 using KernelAbstractions: CPU
 using OrdinaryDiffEq: Tsit5
-using SciMLBase: EnsembleProblem, ImmutableODEProblem, ODEProblem, solve
+using SciMLBase: EnsembleProblem, ImmutableODEProblem, ODEProblem, SDEProblem, solve
 using StaticArrays: SVector, @SVector
 using Test
 
@@ -39,6 +39,23 @@ cpu_probs = adapt(CPU(), ode_probs)
     @test size(ats, 2) == 2
     @test size(aus, 2) == 2
     @test first(aus[:, 1]) == @SVector([1.0f0])
+end
+
+@testset "generic lower-level SDE interface" begin
+    sde_drift(u, p, t) = u
+    sde_noise(u, p, t) = u
+    sde_prob = SDEProblem{false}(
+        sde_drift, sde_noise, @SVector([1.0f0]), (0.0f0, 0.2f0), @SVector([1.0f0])
+    )
+    sde_probs = adapt(CPU(), [sde_prob for _ in 1:2])
+
+    sts, sus = DiffEqGPU.vectorized_solve(
+        sde_probs, sde_prob, DiffEqGPU.GPUEM();
+        dt = 0.1f0, save_everystep = false
+    )
+    @test size(sts) == (2, 2)
+    @test size(sus) == (2, 2)
+    @test all(x -> isfinite(x[1]), sus)
 end
 
 @testset "generic array ensemble interface" begin

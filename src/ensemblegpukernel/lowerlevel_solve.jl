@@ -18,7 +18,7 @@ instead of a collection of `EnsembleSolution`s.
   - `alg`: a supported `GPUODEAlgorithm` or `GPUSDEAlgorithm`, such as `GPUTsit5()` or
     `GPUEM()`.
 
-# Keywords
+# Keyword Arguments
 
   - `dt`: required fixed time step.
   - `saveat`: optional scalar, vector, or range of output times. `nothing` uses the regular
@@ -218,7 +218,7 @@ instead of a collection of `EnsembleSolution`s.
     `probs[1]`.
   - `alg`: a supported `GPUODEAlgorithm`, such as `GPUTsit5()` or `GPURodas4()`.
 
-# Keywords
+# Keyword Arguments
 
   - `dt`: initial time step; defaults to `0.1f0`.
   - `saveat`: optional scalar, vector, or range of output times. `nothing` uses adaptive
