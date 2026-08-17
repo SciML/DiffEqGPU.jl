@@ -1082,9 +1082,6 @@ function Vern9InterpolationCoefficients(::Type{T}) where {T}
     )
 end
 
-"""
-From Verner's Website
-"""
 struct Vern9Tableau{T, T2}
     c1::T2
     c2::T2

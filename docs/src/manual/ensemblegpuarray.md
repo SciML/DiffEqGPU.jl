@@ -1,4 +1,4 @@
-# EnsembleGPUArray
+# [EnsembleGPUArray](@id ensemblegpuarray)
 
 ## API
 

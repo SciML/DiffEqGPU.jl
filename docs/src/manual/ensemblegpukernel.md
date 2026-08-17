@@ -1,4 +1,4 @@
-# EnsembleGPUKernel
+# [EnsembleGPUKernel](@id ensemblegpukernel)
 
 ## [API](@id egk_doc)
 
@@ -19,12 +19,4 @@ GPURodas4
 GPURodas5P
 GPUKvaerno3
 GPUKvaerno5
-```
-
-## Lower Level API
-
-```@docs
-DiffEqGPU.vectorized_solve
-DiffEqGPU.vectorized_asolve
-DiffEqGPU.vectorized_map_solve
 ```

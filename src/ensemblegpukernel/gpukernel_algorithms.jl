@@ -17,6 +17,15 @@ solve(
 `GPUTsit5` supports the `EnsembleGPUKernel` restrictions, including out-of-place ODE
 functions over GPU-compatible static state containers. For a similar CPU implementation,
 see `SimpleATsit5` from SimpleDiffEq.jl.
+
+# Returns
+
+A `GPUTsit5` algorithm selector.
+
+# Throws
+
+The constructor has no runtime checks. `solve` throws when the problem is not compatible
+with the `EnsembleGPUKernel` restrictions.
 """
 struct GPUTsit5 <: GPUODEAlgorithm end
 
@@ -35,6 +44,15 @@ solve(
     trajectories = 10_000, adaptive = false, dt = 0.1f0
 )
 ```
+
+# Returns
+
+A `GPUVern7` algorithm selector.
+
+# Throws
+
+`solve` throws when the problem is not compatible with the `EnsembleGPUKernel`
+restrictions.
 """
 struct GPUVern7 <: GPUODEAlgorithm end
 
@@ -52,6 +70,15 @@ solve(
     trajectories = 10_000, adaptive = false, dt = 0.1f0
 )
 ```
+
+# Returns
+
+A `GPUVern9` algorithm selector.
+
+# Throws
+
+`solve` throws when the problem is not compatible with the `EnsembleGPUKernel`
+restrictions.
 """
 struct GPUVern9 <: GPUODEAlgorithm end
 
@@ -64,7 +91,8 @@ solves.
 # Keyword Arguments
 
   - `autodiff`: whether automatic differentiation is used for derivative generation.
-    Pass `Val{false}()` when providing the required derivatives manually.
+    This accepts either a `Bool` or `Val{Bool}`; pass `false` or `Val{false}()` when
+    providing the required derivatives manually.
 
 ```julia
 solve(
@@ -72,6 +100,14 @@ solve(
     trajectories = 10_000
 )
 ```
+
+# Returns
+
+A `GPURosenbrock23` algorithm selector.
+
+# Throws
+
+`solve` throws when the problem does not provide GPU-compatible derivative information.
 """
 struct GPURosenbrock23{AD} <: GPUODEImplicitAlgorithm{AD} end
 
@@ -83,11 +119,20 @@ Fourth-order Rosenbrock method specialized for stiff `EnsembleGPUKernel` ODE sol
 # Keyword Arguments
 
   - `autodiff`: whether automatic differentiation is used for derivative generation.
-    Pass `Val{false}()` when providing the required derivatives manually.
+    This accepts either a `Bool` or `Val{Bool}`; pass `false` or `Val{false}()` when
+    providing the required derivatives manually.
 
 ```julia
 solve(ensemble_prob, GPURodas4(), EnsembleGPUKernel(backend); trajectories = 10_000)
 ```
+
+# Returns
+
+A `GPURodas4` algorithm selector.
+
+# Throws
+
+`solve` throws when the problem does not provide GPU-compatible derivative information.
 """
 struct GPURodas4{AD} <: GPUODEImplicitAlgorithm{AD} end
 
@@ -99,11 +144,20 @@ Fifth-order Rosenbrock method specialized for stiff `EnsembleGPUKernel` ODE solv
 # Keyword Arguments
 
   - `autodiff`: whether automatic differentiation is used for derivative generation.
-    Pass `Val{false}()` when providing the required derivatives manually.
+    This accepts either a `Bool` or `Val{Bool}`; pass `false` or `Val{false}()` when
+    providing the required derivatives manually.
 
 ```julia
 solve(ensemble_prob, GPURodas5P(), EnsembleGPUKernel(backend); trajectories = 10_000)
 ```
+
+# Returns
+
+A `GPURodas5P` algorithm selector.
+
+# Throws
+
+`solve` throws when the problem does not provide GPU-compatible derivative information.
 """
 struct GPURodas5P{AD} <: GPUODEImplicitAlgorithm{AD} end
 
@@ -115,11 +169,20 @@ Third-order ESDIRK method specialized for stiff `EnsembleGPUKernel` ODE solves.
 # Keyword Arguments
 
   - `autodiff`: whether automatic differentiation is used for derivative generation.
-    Pass `Val{false}()` when providing the required derivatives manually.
+    This accepts either a `Bool` or `Val{Bool}`; pass `false` or `Val{false}()` when
+    providing the required derivatives manually.
 
 ```julia
 solve(ensemble_prob, GPUKvaerno3(), EnsembleGPUKernel(backend); trajectories = 10_000)
 ```
+
+# Returns
+
+A `GPUKvaerno3` algorithm selector.
+
+# Throws
+
+`solve` throws when the problem does not provide GPU-compatible derivative information.
 """
 struct GPUKvaerno3{AD} <: GPUODEImplicitAlgorithm{AD} end
 
@@ -131,11 +194,20 @@ Fifth-order ESDIRK method specialized for stiff `EnsembleGPUKernel` ODE solves.
 # Keyword Arguments
 
   - `autodiff`: whether automatic differentiation is used for derivative generation.
-    Pass `Val{false}()` when providing the required derivatives manually.
+    This accepts either a `Bool` or `Val{Bool}`; pass `false` or `Val{false}()` when
+    providing the required derivatives manually.
 
 ```julia
 solve(ensemble_prob, GPUKvaerno5(), EnsembleGPUKernel(backend); trajectories = 10_000)
 ```
+
+# Returns
+
+A `GPUKvaerno5` algorithm selector.
+
+# Throws
+
+`solve` throws when the problem does not provide GPU-compatible derivative information.
 """
 struct GPUKvaerno5{AD} <: GPUODEImplicitAlgorithm{AD} end
 
@@ -159,6 +231,14 @@ solve(
     trajectories = 10_000, adaptive = false, dt = 0.1f0
 )
 ```
+
+# Returns
+
+A `GPUEM` algorithm selector.
+
+# Throws
+
+`solve` throws when the SDE noise structure is not supported by the kernel implementation.
 """
 struct GPUEM <: GPUSDEAlgorithm end
 
@@ -174,5 +254,13 @@ solve(
     trajectories = 10_000, adaptive = false, dt = 0.1f0
 )
 ```
+
+# Returns
+
+A `GPUSIEA` algorithm selector.
+
+# Throws
+
+`solve` throws when the SDE noise structure is not diagonal or otherwise unsupported.
 """
 struct GPUSIEA <: GPUSDEAlgorithm end

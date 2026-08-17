@@ -240,9 +240,11 @@ export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
 
 export terminate!
 
-# The documented lower-level entry points. They are not exported because they are
-# meant to be reached through the `DiffEqGPU.` qualifier by packages that drive the
-# kernel solvers directly rather than through `EnsembleGPUKernel`.
-@public vectorized_solve, vectorized_asolve
+# The documented lower-level entry points are qualified APIs rather than exports. They
+# are used by packages that drive the ensemble solvers directly.
+@public EnsembleArrayAlgorithm, EnsembleKernelAlgorithm, GPUODEAlgorithm, GPUSDEAlgorithm,
+    GPUODEImplicitAlgorithm, AbstractNLSolver, AbstractNLSolverCache, NLSolver,
+    make_prob_compatible, maxthreads, maybe_prefer_blocks, lufact!, vectorized_solve,
+    vectorized_asolve, vectorized_map_solve
 
 end # module
