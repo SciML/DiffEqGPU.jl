@@ -12,7 +12,6 @@ on:
       - 'docs/**'
 jobs:
   test:
-    # Runs strict (no allow-reresolve); expected RED until the GPU stack / ForwardDiff-LogExpFunctions floors resolve.
     strategy:
       matrix:
         downgrade_mode: ['alldeps']
