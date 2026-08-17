@@ -21,5 +21,4 @@ jobs:
     with:
       julia-version: "${{ matrix.julia-version }}"
       group: "${{ matrix.group }}"
-      projects: ".,test"
     secrets: "inherit"
