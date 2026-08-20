@@ -35,6 +35,7 @@ using StaticArrays: StaticArrays
 using StaticArraysCore: MArray, MMatrix, SArray, SMatrix, SVector, Size,
     StaticMatrix, StaticVector, similar_type
 using Parameters: Parameters
+using PrecompileTools: @compile_workload, @setup_workload
 using MuladdMacro: MuladdMacro, @muladd
 using Random: Random
 using Setfield: Setfield, @set, @set!
@@ -246,5 +247,17 @@ export terminate!
     GPUODEImplicitAlgorithm, AbstractNLSolver, AbstractNLSolverCache, NLSolver,
     make_prob_compatible, maxthreads, maybe_prefer_blocks, lufact!, vectorized_solve,
     vectorized_asolve, vectorized_map_solve
+
+@setup_workload begin
+    @compile_workload begin
+        precompile_rhs(u, p, t) = p * u
+        prob = ODEProblem{false}(precompile_rhs, SVector(1.0f0), (0.0f0, 0.1f0), 1.0f0)
+        ensemble_prob = EnsembleProblem(prob)
+        solve(
+            ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CPU());
+            trajectories = 2, adaptive = false, dt = 0.05f0
+        )
+    end
+end
 
 end # module
