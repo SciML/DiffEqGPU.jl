@@ -152,10 +152,10 @@ end
         affect!, affect_neg!, simultaneous_events, u, t, p
     )
     i = @index(Global, Linear)
-    @inbounds s = simultaneous_events[i]
-    if s == Int8(-1)
+    @inbounds event_direction = simultaneous_events[i]
+    if event_direction == Int8(1)
         @views @inbounds affect!(FakeIntegrator(u[:, i], t, p[:, i]))
-    elseif s == Int8(1)
+    elseif event_direction == Int8(-1)
         @views @inbounds affect_neg!(FakeIntegrator(u[:, i], t, p[:, i]))
     end
 end

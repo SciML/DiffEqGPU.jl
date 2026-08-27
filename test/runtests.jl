@@ -112,6 +112,12 @@ if GROUP == "CPU"
     end
 end
 
+if GROUP == "JLArrays"
+    @time @safetestset "GPU callback event detection" begin
+        include("callback_event_detection.jl")
+    end
+end
+
 if GROUP == "CUDA"
     @testset "Callbacks" begin
         # Causes dynamic function invocation
