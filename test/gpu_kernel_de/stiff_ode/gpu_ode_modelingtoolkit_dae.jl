@@ -133,7 +133,28 @@ end
 end
 
 # ============================================================================
-# Test 3: ModelingToolkit cartesian pendulum DAE with initialization
+# Test 3: Non-square initialization errors
+# ============================================================================
+
+@testset "Overdetermined initialization error" begin
+    overdetermined_f = SciMLBase.NonlinearFunction{false}(
+        (u, p) -> SA[u[1], u[2], u[1] + u[2]];
+        resid_prototype = SA[0.0, 0.0, 0.0]
+    )
+    overdetermined_prob = SciMLBase.NonlinearLeastSquaresProblem{false}(
+        overdetermined_f, SA[1.0, 1.0], nothing
+    )
+    overdetermined_error = try
+        DiffEqGPU.make_nonlinear_problem_compatible(overdetermined_prob)
+    catch err
+        err
+    end
+    @test overdetermined_error isa ArgumentError
+    @test occursin("overdetermined", sprint(showerror, overdetermined_error))
+end
+
+# ============================================================================
+# Test 4: ModelingToolkit cartesian pendulum DAE with initialization
 # ============================================================================
 
 @testset "MTK Pendulum DAE with initialization" begin
@@ -148,9 +169,22 @@ end
 
     @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
 
-    mtk_prob = ODEProblem(
+    underdetermined_prob = ODEProblem(
         pendulum, [py => 0.99], (0.0, 1.0),
         guesses = [pλ => 0.0, px => 0.1, D(px) => 0.0, D(py) => 0.0]
+    )
+    underdetermined_error = try
+        DiffEqGPU.make_prob_compatible(underdetermined_prob)
+    catch err
+        err
+    end
+    @test underdetermined_error isa ArgumentError
+    @test occursin("underdetermined", sprint(showerror, underdetermined_error))
+
+    mtk_prob = ODEProblem(
+        pendulum, [py => 0.99, D(px) => 0.0], (0.0, 1.0),
+        guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0],
+        use_scc = false
     )
 
     @test SciMLBase.has_initialization_data(mtk_prob.f)

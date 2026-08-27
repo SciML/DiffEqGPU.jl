@@ -101,66 +101,29 @@ function make_nonlinear_function_compatible(oldf)
     )
 end
 
-struct GPUInitializationFunction{F, U, R, P}
-    f::F
-    reference_u0::U
-    residual_indices::R
-    pinned_indices::P
-end
-
-function (f::GPUInitializationFunction)(u, p)
-    residual = f.f(u, p)
-    selected = map(i -> residual[i], f.residual_indices)
-    pinned = map(i -> u[i] - f.reference_u0[i], f.pinned_indices)
-    return StaticArrays.SVector((selected..., pinned...))
-end
-
-@inline function gpu_initialization_success(initprob, sol, abstol)
-    SciMLBase.successful_retcode(sol) || return false
-    initprob.f.f isa GPUInitializationFunction || return true
-    residual = initprob.f.f.f(sol.u, initprob.p)
-    return LinearAlgebra.norm(residual) <= abstol
-end
-
-function independent_initialization_indices(f, u0, p)
-    # StaticArrays' rectangular least-squares factorization allocates. Select a square
-    # independent constraint set and pin only the free directions to their supplied
-    # guesses; `gpu_initialization_success` still checks every original residual.
-    jac = Matrix(ForwardDiff.jacobian(Base.Fix2(f, p), u0))
-    jac_rank = LinearAlgebra.rank(jac)
-    jac_rank == 0 && return (), Tuple(eachindex(u0))
-
-    row_factorization = LinearAlgebra.qr(
-        transpose(jac), LinearAlgebra.ColumnNorm()
-    )
-    residual_indices = Tuple(row_factorization.p[1:jac_rank])
-    independent_rows = @view jac[collect(residual_indices), :]
-    column_factorization = LinearAlgebra.qr(
-        independent_rows, LinearAlgebra.ColumnNorm()
-    )
-    independent_columns = column_factorization.p[1:jac_rank]
-    pinned_indices = Tuple(setdiff(eachindex(u0), independent_columns))
-    return residual_indices, pinned_indices
-end
-
 function make_nonlinear_problem_compatible(prob::SciMLBase.NonlinearLeastSquaresProblem)
     (prob.lb === nothing && prob.ub === nothing) || error(
         "Bounded nonlinear initialization problems are not supported by EnsembleGPUKernel."
     )
+    nunknowns = length(prob.u0)
+    nresiduals = if prob.f.resid_prototype === nothing
+        nunknowns
+    else
+        length(prob.f.resid_prototype)
+    end
+    if nresiduals != nunknowns
+        status = nresiduals < nunknowns ? "underdetermined" : "overdetermined"
+        throw(ArgumentError(
+            "$status nonlinear initialization problems are not supported by EnsembleGPUKernel: $nresiduals residuals for $nunknowns unknowns."
+        ))
+    end
+
     static_u0 = make_static_storage(prob.u0)
     static_p = make_parameter_compatible(prob.p)
-    compatible_f = make_nonlinear_function_compatible(prob.f)
-    residual_indices, pinned_indices = independent_initialization_indices(
-        compatible_f, static_u0, static_p
-    )
-    square_f = GPUInitializationFunction(
-        compatible_f, static_u0, residual_indices, pinned_indices
-    )
-    nonlinear_f = SciMLBase.NonlinearFunction{false, SciMLBase.FullSpecialize}(
-        square_f; resid_prototype = zero(static_u0)
-    )
-    return SciMLBase.ImmutableNonlinearProblem{false}(
-        nonlinear_f, static_u0, static_p;
+    return SciMLBase.NonlinearLeastSquaresProblem{false}(
+        make_nonlinear_function_compatible(prob.f), static_u0, static_p;
+        lb = prob.lb,
+        ub = prob.ub,
         prob.kwargs...
     )
 end

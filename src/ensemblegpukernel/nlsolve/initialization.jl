@@ -32,7 +32,7 @@
     sol = SciMLBase.solve(initprob, alg; abstol, reltol)
 
     # Extract results — initialization must succeed
-    if !gpu_initialization_success(initprob, sol, abstol)
+    if !SciMLBase.successful_retcode(sol)
         return u0, p, false
     end
 
