@@ -41,7 +41,7 @@
             end
         else
             @inbounds ts[integ.step_idx] = prob.tspan[1]
-            @inbounds us[integ.step_idx] = prob.u0
+            @inbounds us[integ.step_idx] = u0
         end
 
         integ.step_idx += 1
