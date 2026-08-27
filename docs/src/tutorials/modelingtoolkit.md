@@ -7,10 +7,12 @@ the simplest set of equations to solve and exploiting things that normally canno
 by hand. Those exact features are also potentially useful for GPU computing, and thus this
 tutorial showcases how to effectively use MTK with DiffEqGPU.jl.
 
-!!! warn
-    
-    This tutorial currently only works for ODEs defined by ModelingToolkit. More work
-    will be required to support DAEs in full. This is work that is ongoing.
+!!! note
+
+    `EnsembleGPUKernel` supports mass-matrix DAEs whose ModelingToolkit initialization
+    problem is square and unbounded. See [DAE initialization](@ref dae_initialization) for
+    an example and the current restrictions. Other DAE formulations may still require
+    `EnsembleGPUArray`.
 
 The core aspect to doing this right is two things. First of all, MTK respects the types
 chosen by the user, and thus in order for GPU kernel generation to work the user needs
@@ -86,15 +88,14 @@ Notice it takes in the vector of values for `[σ, ρ, β]` and spits out the new
 we can build and solve an MTK generated ODE on the GPU using the following:
 
 !!! warning
-    
-    The two blocks below do not currently run. `EnsembleGPUKernel` moves the vector of
-    problems to the device, which requires the whole `ImmutableODEProblem` to be
-    `isbitstype`. An MTK-generated `ODEFunction` never is: `f.sys`, `f.observed`,
-    `f.initialization_data` and `f.nlstep_data` all hold non-inline data, so the
-    conversion fails with `CuArray only supports element types that are allocated
-    inline`. Making `u0` and `p` static, as above, is necessary but not sufficient.
-    See [DiffEqGPU.jl#375](https://github.com/SciML/DiffEqGPU.jl/issues/375). These
-    blocks are left unevaluated until the device conversion strips those fields.
+
+    The generic SymbolicIndexingInterface ensemble transformation below does not
+    currently run inside `EnsembleGPUKernel`: a host-side symbolic setter is not
+    automatically lowered to a device-compatible function. Making `u0` and `p` static
+    is necessary but not sufficient for this workflow. See
+    [DiffEqGPU.jl#375](https://github.com/SciML/DiffEqGPU.jl/issues/375). The DAE path
+    described below is separate: it recognizes ModelingToolkit initialization maps and
+    replaces them with static gather recipes before launching the kernel.
 
 ```julia
 using DiffEqGPU, CUDA
@@ -113,3 +114,60 @@ We can then using symbolic indexing on the result to inspect it:
 ```julia
 [sol.u[i][y] for i in 1:length(sol.u)]
 ```
+
+## [DAE initialization](@id dae_initialization)
+
+ModelingToolkit can generate a nonlinear initialization problem for a mass-matrix DAE.
+`EnsembleGPUKernel` converts that problem to static storage on the host, then solves one
+copy per trajectory inside the GPU kernel with `SimpleTrustRegion` from
+SimpleNonlinearSolve.jl. The resulting consistent state and parameters are used to start
+the ODE solve.
+
+For example, the Cartesian pendulum can be initialized and solved as follows:
+
+```julia
+using CUDA, DiffEqGPU, ModelingToolkit, OrdinaryDiffEq
+using ModelingToolkit: t_nounits as t, D_nounits as D
+
+@parameters g = 9.81 L = 1.0
+@variables px(t) py(t) [state_priority = 10] pλ(t)
+
+eqs = [
+    D(D(px)) ~ pλ * px / L
+    D(D(py)) ~ pλ * py / L - g
+    px^2 + py^2 ~ L^2
+]
+
+@mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
+
+prob = ODEProblem(
+    pendulum,
+    [py => 0.99, D(px) => 0.0],
+    (0.0, 1.0);
+    guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0],
+    use_scc = false,
+)
+
+ensemble_prob = EnsembleProblem(prob; safetycopy = false)
+sol = solve(
+    ensemble_prob,
+    GPURodas5P(),
+    EnsembleGPUKernel(CUDA.CUDABackend());
+    trajectories = 10_000,
+    dt = 0.01,
+    adaptive = false,
+)
+```
+
+The current initialization path has the following restrictions:
+
+  - The nonlinear initialization problem must be square. Both underdetermined and
+    overdetermined problems throw an error before the GPU kernel is launched. Supply
+    enough initial conditions and guesses for ModelingToolkit to produce a square system.
+  - Bounds on the nonlinear initialization problem are not supported.
+  - ModelingToolkit's state and parameter initialization maps must copy or restructure
+    numeric values from the ODE and initialization problems. DiffEqGPU traces those maps
+    on the host and stores only static gather recipes in the kernel.
+
+Structured `MTKParameters` storage is converted recursively to static storage, so this
+path does not require `split = false`.

@@ -110,7 +110,7 @@ function (map::InitializationParameterMap)(prob, sol)
 end
 
 function next_tag!(tags)
-    tag = -1.234567890123456e200 * (length(tags) + 1)
+    tag = Symbol("##DiffEqGPUInitializationTag#", length(tags) + 1)
     push!(tags, tag)
     return tag
 end
@@ -169,7 +169,7 @@ function tag_ode_problem(prob, tags)
     )
 end
 
-function source_recipe(x::Number, tags)
+function source_recipe(x::Union{Number, Symbol}, tags)
     index = findfirst(Base.Fix2(isequal, x), tags)
     index === nothing && error(
         "ModelingToolkit initialization maps must copy numeric values from the ODE or initialization problem."
@@ -189,9 +189,9 @@ end
 
 function make_state_map(initprob, map)
     map === nothing && return nothing
-    # Evaluate the host-only MTK map on unique numeric tags, then retain only the
+    # Evaluate the host-only MTK map on unique symbolic tags, then retain only the
     # resulting device-compatible gather indices.
-    tags = Float64[]
+    tags = Symbol[]
     tagged_initprob = tag_initialization_problem(initprob, tags)
     return InitializationStateMap(source_recipe(map(tagged_initprob), tags))
 end
@@ -199,7 +199,7 @@ end
 function make_parameter_map(prob, initprob, map)
     map === nothing && return nothing
     # Parameter maps may select from both the ODE problem and nonlinear solution.
-    tags = Float64[]
+    tags = Symbol[]
     tagged_prob = tag_ode_problem(prob, tags)
     tagged_initprob = tag_initialization_problem(initprob, tags)
     p = map(tagged_prob, tagged_initprob)
