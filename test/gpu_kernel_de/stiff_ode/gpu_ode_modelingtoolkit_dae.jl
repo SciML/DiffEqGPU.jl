@@ -158,7 +158,11 @@ end
 
     compatible_prob = DiffEqGPU.make_prob_compatible(mtk_prob)
     @test isbitstype(typeof(compatible_prob))
-    @test !SciMLBase.has_initialization_data(compatible_prob.f)
+    @test SciMLBase.has_initialization_data(compatible_prob.f)
+    @test isbitstype(typeof(compatible_prob.f.initialization_data.initializeprob))
+    @test compatible_prob.f.initialization_data.initializeprob isa
+        SciMLBase.ImmutableNonlinearProblem
+    @test compatible_prob.u0 == SVector{length(mtk_prob.u0)}(mtk_prob.u0)
 
     ref_sol = solve(mtk_prob, Rodas5P())
     @test SciMLBase.successful_retcode(ref_sol)
@@ -172,5 +176,6 @@ end
     )
     @test length(sol_mtk.u) == 2
     @test !any(isnan, sol_mtk.u[1].u[end])
+    @test norm(sol_mtk.u[1].u[1] - ref_sol.u[1]) < 1.0e-6
     @test norm(sol_mtk.u[1].u[end] - ref_sol.u[end]) < 1.0
 end
