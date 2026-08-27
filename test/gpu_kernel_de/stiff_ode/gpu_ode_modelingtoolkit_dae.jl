@@ -11,6 +11,9 @@ if GROUP == "CUDA"
 elseif GROUP == "AMDGPU"
     using AMDGPU
     const backend = ROCBackend()
+elseif GROUP == "JLArrays"
+    using JLArrays
+    const backend = JLBackend()
 else
     const backend = CPU()
 end
@@ -106,24 +109,68 @@ end
 end
 
 # ============================================================================
-# Test 2: ModelingToolkit cartesian pendulum DAE with initialization
+# Test 2: Structured ModelingToolkit parameter storage
 # ============================================================================
 
-# NOTE: This testset is currently broken across all backends.
-#
-# 1. GPU side: ModelingToolkit problems with initialization data contain
-#    MTKParameters whose `Vector` fields can't be stored inline in CuArrays
-#    (https://github.com/SciML/DiffEqGPU.jl/issues/375).
-#
-# 2. CPU side: under the SciMLBase v3 / MTK 11.22+ / ChainRulesCore stack,
-#    constructing `ODEProblem(pendulum, …)` for a DAE with initialization
-#    errors with `type Nothing has no field oop_reconstruct_u0_p` from
-#    `MTKChainRulesCoreExt`. This is upstream MTK behaviour, not a
-#    DiffEqGPU regression.
-#
-# Until both are resolved we mark the whole testset as broken instead of
-# running it. Re-enable the original body once issue #375 is fixed and the
-# MTK CRCExt path is stable.
+@testset "Structured MTKParameters storage" begin
+    p = MTKParameters(
+        [1.0, 2.0],
+        ([3.0], (offset = [4.0],)),
+        (mode = ([5.0],),),
+        (6.0, MVector(7.0)),
+        (),
+        ([8.0],)
+    )
+    compatible_p = DiffEqGPU.make_parameter_compatible(p)
+
+    @test compatible_p.tunable isa SVector
+    @test compatible_p.initials[1] isa SVector
+    @test compatible_p.initials[2].offset isa SVector
+    @test compatible_p.discrete.mode[1] isa SVector
+    @test compatible_p.constant[2] isa SVector
+    @test compatible_p.caches[1] isa SVector
+    @test isbitstype(typeof(compatible_p))
+end
+
+# ============================================================================
+# Test 3: ModelingToolkit cartesian pendulum DAE with initialization
+# ============================================================================
+
 @testset "MTK Pendulum DAE with initialization" begin
-    @test_broken false
+    @parameters g = 9.81 L = 1.0
+    @variables px(t) py(t) [state_priority = 10] pλ(t)
+
+    eqs = [
+        D(D(px)) ~ pλ * px / L
+        D(D(py)) ~ pλ * py / L - g
+        px^2 + py^2 ~ L^2
+    ]
+
+    @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
+
+    mtk_prob = ODEProblem(
+        pendulum, [py => 0.99], (0.0, 1.0),
+        guesses = [pλ => 0.0, px => 0.1, D(px) => 0.0, D(py) => 0.0]
+    )
+
+    @test SciMLBase.has_initialization_data(mtk_prob.f)
+    @test mtk_prob.f.mass_matrix !== LinearAlgebra.I
+
+    compatible_prob = DiffEqGPU.make_prob_compatible(mtk_prob)
+    @test isbitstype(typeof(compatible_prob))
+    @test !SciMLBase.has_initialization_data(compatible_prob.f)
+
+    ref_sol = solve(mtk_prob, Rodas5P())
+    @test SciMLBase.successful_retcode(ref_sol)
+
+    monteprob_mtk = EnsembleProblem(mtk_prob, safetycopy = false)
+    sol_mtk = solve(
+        monteprob_mtk, GPURodas5P(), EnsembleGPUKernel(backend),
+        trajectories = 2,
+        dt = 0.01,
+        adaptive = false
+    )
+    @test length(sol_mtk.u) == 2
+    @test !any(isnan, sol_mtk.u[1].u[end])
+    @test norm(sol_mtk.u[1].u[end] - ref_sol.u[end]) < 1.0
 end
