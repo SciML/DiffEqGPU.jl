@@ -202,7 +202,43 @@ end
 end
 
 # ============================================================================
-# Test 4: ModelingToolkit cartesian pendulum DAE with initialization
+# Test 4: Host symbolic setters and trivial initialization
+# ============================================================================
+
+@testset "Host symbolic setter with trivial initialization" begin
+    @parameters decay_rate = 1.0
+    @variables population(t) = 1.0
+    @mtkcompile decay_system = ODESystem(
+        [D(population) ~ -decay_rate * population], t
+    )
+
+    decay_prob = ODEProblem(decay_system, [], (0.0, 0.1))
+    @test SciMLBase.has_initialization_data(decay_prob.f)
+    @test SciMLBase.is_trivial_initialization(decay_prob)
+
+    symbolic_setter = ModelingToolkit.SymbolicIndexingInterface.setsym_oop(
+        decay_system, [decay_rate]
+    )
+    decay_prob_func = function (prob, ctx)
+        u0, p = symbolic_setter(prob, SA[Float64(ctx.sim_id)])
+        return remake(prob; u0, p)
+    end
+
+    ensemble_prob = EnsembleProblem(
+        decay_prob; prob_func = decay_prob_func, safetycopy = false
+    )
+    sol = solve(
+        ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
+        trajectories = 2, dt = 0.001, adaptive = false, save_everystep = false
+    )
+
+    @test length(sol.u) == 2
+    @test only(sol.u[1].u[end]) ≈ exp(-0.1) atol = 1.0e-5
+    @test only(sol.u[2].u[end]) ≈ exp(-0.2) atol = 1.0e-5
+end
+
+# ============================================================================
+# Test 5: ModelingToolkit cartesian pendulum DAE with initialization
 # ============================================================================
 
 @testset "MTK Pendulum DAE with initialization" begin

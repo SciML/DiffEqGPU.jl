@@ -63,10 +63,9 @@ typeof(prob.u0), typeof(prob.p)
 
 Both are `isbits` and thus usable from a GPU kernel.
 
-Now one of the difficulties for building an ensemble problem is that we must make a kernel
-for how to construct the problems, but the use of symbolics is inherently dynamic. As such,
-we need to make sure that any changes to `u0` and `p` are done on the CPU and that we
-compile an optimized function to run on the GPU. This can be done using the
+Symbolic problem transformations are inherently dynamic, so changes to `u0` and `p`
+should be made on the CPU before the per-trajectory problems are sent to the GPU. This can
+be done using the
 [SymbolicIndexingInterface.jl](https://docs.sciml.ai/SymbolicIndexingInterface/stable/).
 For example, let's define a problem which randomizes the choice of `(σ, ρ, β)`. We do this
 by first constructing the function that will change a `prob.p` object into the updated
@@ -87,15 +86,12 @@ u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
 Notice it takes in the vector of values for `[σ, ρ, β]` and spits out the new `u0, p`. So
 we can build and solve an MTK generated ODE on the GPU using the following:
 
-!!! warning
+!!! note
 
-    The generic SymbolicIndexingInterface ensemble transformation below does not
-    currently run inside `EnsembleGPUKernel`: a host-side symbolic setter is not
-    automatically lowered to a device-compatible function. Making `u0` and `p` static
-    is necessary but not sufficient for this workflow. See
-    [DiffEqGPU.jl#375](https://github.com/SciML/DiffEqGPU.jl/issues/375). The DAE path
-    described below is separate: it recognizes ModelingToolkit initialization maps and
-    replaces them with static gather recipes before launching the kernel.
+    `EnsembleProblem.prob_func` is evaluated on the host for every trajectory before
+    `EnsembleGPUKernel` launches. The symbolic setter therefore does not need to compile
+    for the device. The problem returned by `prob_func` is then converted to static,
+    device-compatible storage by `make_prob_compatible`.
 
 ```julia
 using DiffEqGPU, CUDA
@@ -163,14 +159,18 @@ sol = solve(
 The current initialization path has the following restrictions:
 
   - Square, underdetermined, and overdetermined nonlinear least-squares initialization
-    problems are supported. Rectangular systems use the static-array `SimpleGaussNewton`
-    solve, so their Jacobian must have the rank required by the least-squares step.
+    problems are supported. Square systems use `SimpleTrustRegion`; rectangular systems
+    use the equivalent static normal-equation Gauss-Newton step because rectangular
+    `StaticArray` factorizations are not device-compatible. Their Jacobian must have the
+    rank required by that step.
   - Lower and upper bounds are supported through a smooth transformation to unconstrained
     variables. A solution exactly on a finite bound is represented by a limiting
     unconstrained value and can therefore converge less robustly than an interior solution.
-  - ModelingToolkit's state and parameter initialization maps must copy or restructure
-    numeric values from the ODE and initialization problems. DiffEqGPU traces those maps
-    on the host and stores only static gather recipes in the kernel.
+  - ModelingToolkit's state and parameter initialization maps may directly select,
+    reorder, and repack numeric values from the ODE and initialization problems. DiffEqGPU
+    traces those operations on the host and stores only static gather recipes in the
+    kernel. Fallback getters that evaluate derived symbolic expressions are not yet
+    lowered.
 
 Structured `MTKParameters` storage is converted recursively to static storage, so this
 path does not require `split = false`.

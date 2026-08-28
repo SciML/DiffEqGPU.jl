@@ -28,9 +28,14 @@ function DiffEqGPU.make_parameter_compatible(p::MTKParameters)
     )
 end
 
-struct InitializationSourceIndex
-    index::Int
+struct InitializationSourceIndex{I} end
+
+struct InitializationArrayRecipe{A, R}
+    values::R
 end
+
+InitializationArrayRecipe{A}(values::R) where {A, R} =
+    InitializationArrayRecipe{A, R}(values)
 
 struct InitializationStructureRecipe{T, R}
     values::R
@@ -68,7 +73,7 @@ end
 function initialization_sources(valp)
     u = SciMLBase.state_values(valp)
     p = SciMLBase.parameter_values(valp)
-    T = eltype(u)
+    T = u === nothing ? eltype(p.tunable) : eltype(u)
     return vcat(
         numeric_values(u, T), numeric_values(p.tunable, T),
         numeric_values(p.initials, T), numeric_values(p.discrete, T),
@@ -76,8 +81,13 @@ function initialization_sources(valp)
     )
 end
 
-gather_initialization_value(index::InitializationSourceIndex, sources) =
-    sources[index.index]
+gather_initialization_value(::InitializationSourceIndex{I}, sources) where {I} = sources[I]
+function gather_initialization_value(
+        recipe::InitializationArrayRecipe{A}, sources
+    ) where {A}
+    values = map(Base.Fix2(gather_initialization_value, sources), recipe.values)
+    return A(values)
+end
 gather_initialization_value(recipe::StaticArray, sources) =
     map(Base.Fix2(gather_initialization_value, sources), recipe)
 gather_initialization_value(recipe::Tuple, sources) =
@@ -180,11 +190,12 @@ function source_recipe(index::Number, source_count)
             "ModelingToolkit initialization maps must copy numeric values from the ODE or initialization problem."
         )
     end
-    return InitializationSourceIndex(source_index)
+    return InitializationSourceIndex{source_index}()
 end
 function source_recipe(x::AbstractArray, source_count)
-    values = map(Base.Fix2(source_recipe, source_count), x)
-    return SArray{Tuple{size(x)...}}(values)
+    values = ntuple(i -> source_recipe(x[i], source_count), length(x))
+    storage_type = typeof(SArray{Tuple{size(x)...}}(x))
+    return InitializationArrayRecipe{storage_type}(values)
 end
 source_recipe(x::Tuple, source_count) = map(Base.Fix2(source_recipe, source_count), x)
 source_recipe(x::NamedTuple, source_count) = map(Base.Fix2(source_recipe, source_count), x)
@@ -193,6 +204,24 @@ function source_recipe(x, source_count)
         i -> source_recipe(getfield(x, i), source_count), fieldcount(typeof(x))
     )
     return InitializationStructureRecipe{typeof(x)}(values)
+end
+
+source_recipe(x, source_count, prototype) = source_recipe(x, source_count)
+function source_recipe(x::AbstractArray, source_count, prototype::AbstractArray)
+    values = ntuple(i -> source_recipe(x[i], source_count, prototype[i]), length(x))
+    storage_type = typeof(static_parameter_storage(prototype))
+    return InitializationArrayRecipe{storage_type}(values)
+end
+function source_recipe(x::Tuple, source_count, prototype::Tuple)
+    return map(
+        (value, target) -> source_recipe(value, source_count, target), x, prototype
+    )
+end
+function source_recipe(x::NamedTuple, source_count, prototype::NamedTuple)
+    values = map(
+        (value, target) -> source_recipe(value, source_count, target), x, prototype
+    )
+    return NamedTuple{keys(x)}(values)
 end
 
 function make_state_map(initprob, map)
@@ -214,11 +243,12 @@ function make_parameter_map(prob, initprob, map)
     p isa MTKParameters || error(
         "ModelingToolkit initialization parameter maps must return `MTKParameters`."
     )
+    prototype = SciMLBase.parameter_values(prob)
     recipe = InitializationParameterRecipe(
-        source_recipe(p.tunable, counter[]),
-        source_recipe(p.initials, counter[]),
-        source_recipe(p.discrete, counter[]),
-        source_recipe(p.constant, counter[])
+        source_recipe(p.tunable, counter[], prototype.tunable),
+        source_recipe(p.initials, counter[], prototype.initials),
+        source_recipe(p.discrete, counter[], prototype.discrete),
+        source_recipe(p.constant, counter[], prototype.constant)
     )
     return InitializationParameterMap(recipe)
 end
