@@ -113,9 +113,11 @@ function make_nonlinear_problem_compatible(prob::SciMLBase.NonlinearLeastSquares
     end
     if nresiduals != nunknowns
         status = nresiduals < nunknowns ? "underdetermined" : "overdetermined"
-        throw(ArgumentError(
-            "$status nonlinear initialization problems are not supported by EnsembleGPUKernel: $nresiduals residuals for $nunknowns unknowns."
-        ))
+        throw(
+            ArgumentError(
+                "$status nonlinear initialization problems are not supported by EnsembleGPUKernel: $nresiduals residuals for $nunknowns unknowns."
+            )
+        )
     end
 
     static_u0 = make_static_storage(prob.u0)
