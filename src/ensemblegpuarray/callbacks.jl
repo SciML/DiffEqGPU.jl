@@ -20,13 +20,12 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     affect! = function (integrator, simultaneous_events::AbstractVector)
         version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
-        se_device = similar(
-            integrator.u, eltype(simultaneous_events),
-            length(simultaneous_events)
+        simultaneous_events_device = similar(
+            integrator.u, eltype(simultaneous_events), length(simultaneous_events)
         )
-        copyto!(se_device, simultaneous_events)
+        copyto!(simultaneous_events_device, simultaneous_events)
         return continuous_affect!_kernel(version)(
-            _affect!, _affect_neg!, se_device, integrator.u,
+            _affect!, _affect_neg!, simultaneous_events_device, integrator.u,
             integrator.t, integrator.p;
             ndrange = size(integrator.u, 2),
             workgroupsize = wgs
