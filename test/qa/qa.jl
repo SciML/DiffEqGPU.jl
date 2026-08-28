@@ -49,7 +49,7 @@ run_qa(
                 :DEFAULT_REDUCTION, :FINALIZE_DEFAULT, :INITIALIZE_DEFAULT,
                 :LeftRootFind, :NoRootFind, :RootfindOpt, :build_linear_solution,
                 :default_rng_func, :generate_sim_seeds, :solve_batch,
-                :specialization, :tighten_container_eltype,
+                :is_trivial_initialization, :specialization, :tighten_container_eltype,
                 # ForwardDiff differentiation API (documented but not `public`)
                 :Chunk, :Dual, :Partials, :construct_seeds, :derivative, :jacobian,
                 :npartials, :partials, :value,

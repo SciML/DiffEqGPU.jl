@@ -58,12 +58,21 @@ function _initialized_problem_compatible(prob)
             initprob
         end
     end
+    initprob = lower_initialization_problem(initprob)
     initprobmap, initprobpmap = make_initialization_maps_compatible(
         prob, initprob, initdata.initializeprobmap, initdata.initializeprobpmap, prob.p
     )
+    compatible_initprob = make_nonlinear_problem_compatible(initprob)
+    compatible_initprob, metadata = if compatible_initprob isa ImmutableSCCNonlinearProblem
+        compatible_initprob.problem, ImmutableSCCInitialization(compatible_initprob.blocks)
+    elseif initdata.metadata isa ImmutableSCCInitialization
+        compatible_initprob, initdata.metadata
+    else
+        compatible_initprob, nothing
+    end
     compatible_initdata = SciMLBase.OverrideInitData(
-        make_nonlinear_problem_compatible(initprob), nothing, initprobmap, initprobpmap,
-        nothing, Val(false)
+        compatible_initprob, nothing, initprobmap, initprobpmap,
+        metadata, Val(false)
     )
 
     mass_matrix = _compatible_mass_matrix(oldf.mass_matrix, length(prob.u0))
@@ -83,6 +92,7 @@ function _initialized_problem_compatible(prob)
 end
 
 make_initialization_maps_compatible(prob, initprob, umap, pmap, p) = (umap, pmap)
+lower_initialization_problem(prob) = prob
 
 make_static_storage(x::StaticArrays.StaticArray) =
     StaticArrays.SArray{Tuple{size(x)...}}(map(make_static_storage, x))
@@ -165,6 +175,12 @@ function make_nonlinear_problem_compatible(prob::SciMLBase.NonlinearLeastSquares
         lb = nothing,
         ub = nothing,
         prob.kwargs...
+    )
+end
+
+function make_nonlinear_problem_compatible(prob::ImmutableSCCNonlinearProblem)
+    return ImmutableSCCNonlinearProblem(
+        make_nonlinear_problem_compatible(prob.problem), prob.blocks
     )
 end
 

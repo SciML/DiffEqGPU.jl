@@ -4,6 +4,25 @@ struct BoundedInitializationFunction{F, L, U}
     ub::U
 end
 
+"""
+Device-compatible representation of an SCC-split initialization problem.
+
+`problem` is the out-of-place residual for the complete initialization system. `blocks`
+stores the statically known row/state range of each SCC and whether the block is linear.
+Keeping only immutable, fully specialized data avoids the mutable cache writers used by
+the host `SCCNonlinearProblem` representation.
+"""
+struct ImmutableSCCNonlinearProblem{P, B}
+    problem::P
+    blocks::B
+end
+
+struct ImmutableSCCBlock{I, N, L} end
+
+struct ImmutableSCCInitialization{B}
+    blocks::B
+end
+
 @inline function _from_unbounded_initialization(u, lb, ub)
     if isfinite(lb) && isfinite(ub)
         return lb + (ub - lb) / (one(u) + exp(-u))
@@ -48,6 +67,86 @@ end
 end
 
 @inline initialization_residual_norm(residual) = sqrt(sum(abs2, residual))
+
+struct SCCBlockResidual{F, P, U, I, N}
+    f::F
+    p::P
+    full_u::U
+end
+
+@inline function replace_scc_block(
+        full_u::StaticVector{M}, block_u, ::Val{I}, ::Val{N}
+    ) where {M, I, N}
+    values = ntuple(Val(M)) do j
+        I <= j < I + N ? block_u[j - I + 1] : full_u[j]
+    end
+    return SVector(values)
+end
+
+@inline function (f::SCCBlockResidual{F, P, U, I, N})(block_u) where {F, P, U, I, N}
+    full_u = replace_scc_block(f.full_u, block_u, Val(I), Val(N))
+    residual = f.f(full_u, f.p)
+    return SVector{N}(ntuple(i -> residual[I + i - 1], Val(N)))
+end
+@inline (f::SCCBlockResidual)(block_u, p) = f(block_u)
+
+@inline function scc_block_state(full_u, ::ImmutableSCCBlock{I, N}) where {I, N}
+    return SVector{N}(ntuple(i -> full_u[I + i - 1], Val(N)))
+end
+
+@inline function solve_scc_block(
+        prob, full_u, ::ImmutableSCCBlock{I, N, true}, alg, abstol, reltol
+    ) where {I, N}
+    residual = SCCBlockResidual{typeof(prob.f), typeof(prob.p), typeof(full_u), I, N}(
+        prob.f, prob.p, full_u
+    )
+    u0 = scc_block_state(full_u, ImmutableSCCBlock{I, N, true}())
+    r0 = residual(u0)
+    J = ForwardDiff.jacobian(residual, u0)
+    rhs = J * u0 - r0
+    u = linear_solve(J, rhs)
+    tolerance = abstol + reltol * initialization_residual_norm(r0)
+    success = initialization_residual_norm(residual(u)) <= tolerance
+    return u, success
+end
+
+@inline function solve_scc_block(
+        prob, full_u, ::ImmutableSCCBlock{I, N, false}, alg, abstol, reltol
+    ) where {I, N}
+    residual = SCCBlockResidual{typeof(prob.f), typeof(prob.p), typeof(full_u), I, N}(
+        prob.f, prob.p, full_u
+    )
+    u0 = scc_block_state(full_u, ImmutableSCCBlock{I, N, false}())
+    block_prob = SciMLBase.ImmutableNonlinearProblem{false}(residual, u0)
+    sol = SciMLBase.solve(block_prob, alg; abstol, reltol)
+    return sol.u, SciMLBase.successful_retcode(sol)
+end
+
+@inline solve_scc_blocks(prob, full_u, ::Tuple{}, alg, abstol, reltol) = (full_u, true)
+@inline function solve_scc_blocks(prob, full_u, blocks::Tuple, alg, abstol, reltol)
+    block = first(blocks)
+    block_u, success = solve_scc_block(prob, full_u, block, alg, abstol, reltol)
+    success || return full_u, false
+    I, N = scc_block_range(block)
+    updated_u = replace_scc_block(full_u, block_u, I, N)
+    return solve_scc_blocks(prob, updated_u, Base.tail(blocks), alg, abstol, reltol)
+end
+
+@inline scc_block_range(::ImmutableSCCBlock{I, N}) where {I, N} = (Val(I), Val(N))
+
+@inline function solve_initialization_problem(
+        nonlinear_prob, metadata::ImmutableSCCInitialization, alg, abstol, reltol
+    )
+    u, success = solve_scc_blocks(
+        nonlinear_prob, nonlinear_prob.u0, metadata.blocks, alg, abstol, reltol
+    )
+    residual = nonlinear_prob.f(u, nonlinear_prob.p)
+    retcode = success ? ReturnCode.Success : ReturnCode.Failure
+    return SciMLBase.build_solution(nonlinear_prob, alg, u, residual; retcode)
+end
+
+@inline solve_initialization_problem(prob, metadata, alg, abstol, reltol) =
+    solve_initialization_problem(prob, alg, abstol, reltol)
 
 @inline function gpu_rectangular_gauss_newton_solve(prob, abstol; maxiters = 1000)
     u = prob.u0
@@ -123,7 +222,9 @@ end
         initprob
     else
         alg = initialization_algorithm(initprob, nlsolve_alg)
-        nlsol = solve_initialization_problem(initprob, alg, abstol, reltol)
+        nlsol = solve_initialization_problem(
+            initprob, initdata.metadata, alg, abstol, reltol
+        )
         SciMLBase.successful_retcode(nlsol) || return u0, p, false
         restore_bounded_initialization(nlsol, initprob)
     end

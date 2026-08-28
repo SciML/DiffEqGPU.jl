@@ -1,6 +1,6 @@
 module ModelingToolkitBaseExt
 
-using ModelingToolkitBase: MTKParameters
+using ModelingToolkitBase: MTKParameters, System
 using StaticArraysCore: SArray, StaticArray, SVector
 import DiffEqGPU
 import SciMLBase
@@ -26,6 +26,46 @@ function DiffEqGPU.make_parameter_compatible(p::MTKParameters)
         static_parameter_storage(p.nonnumeric),
         static_parameter_storage(p.caches)
     )
+end
+
+function DiffEqGPU.lower_initialization_problem(prob::SciMLBase.SCCNonlinearProblem)
+    sys = prob.f.sys
+    sys isa System || throw(
+        ArgumentError(
+            "Only ModelingToolkit-generated SCC nonlinear initialization problems can be lowered for EnsembleGPUKernel."
+        )
+    )
+    any(p -> nameof(typeof(p)) === :HomotopyProblem, prob.probs) && throw(
+        ArgumentError(
+            "SCC nonlinear initialization problems containing homotopy blocks are not supported by EnsembleGPUKernel."
+        )
+    )
+
+    u0 = SciMLBase.state_values(prob)
+    f = SciMLBase.NonlinearFunction{false, SciMLBase.FullSpecialize}(
+        sys; u0, p = prob.p, check_compatibility = false
+    )
+    nonlinear_prob = SciMLBase.NonlinearProblem{false}(f, u0, prob.p)
+
+    offset = 0
+    blocks = map(prob.probs) do block_prob
+        block_u0 = SciMLBase.state_values(block_prob)
+        block_u0 === nothing && throw(
+            ArgumentError(
+                "Every SCC initialization block must have an initial state for EnsembleGPUKernel."
+            )
+        )
+        n = length(block_u0)
+        block = DiffEqGPU.ImmutableSCCBlock{
+            offset + 1, n, block_prob isa SciMLBase.LinearProblem,
+        }()
+        offset += n
+        block
+    end
+    offset == length(u0) || throw(
+        ArgumentError("SCC initialization block sizes do not match the full state size.")
+    )
+    return DiffEqGPU.ImmutableSCCNonlinearProblem(nonlinear_prob, Tuple(blocks))
 end
 
 struct InitializationSourceIndex{I} end
@@ -153,6 +193,12 @@ function index_initialization_problem(prob::SciMLBase.NonlinearLeastSquaresProbl
         ub = prob.ub,
         prob.kwargs...
     )
+end
+
+function index_initialization_problem(
+        prob::DiffEqGPU.ImmutableSCCNonlinearProblem, counter
+    )
+    return index_initialization_problem(prob.problem, counter)
 end
 
 function index_initialization_problem(

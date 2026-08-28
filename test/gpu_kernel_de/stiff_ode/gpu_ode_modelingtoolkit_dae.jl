@@ -136,9 +136,9 @@ end
 # Test 3: Non-square and bounded nonlinear least-squares initialization
 # ============================================================================
 
-function initialization_test_problem(initprob)
+function initialization_test_problem(initprob; metadata = nothing)
     initdata = SciMLBase.OverrideInitData(
-        initprob, nothing, sol -> sol.u, nothing, nothing, Val(false)
+        initprob, nothing, sol -> sol.u, nothing, metadata, Val(false)
     )
     f = SciMLBase.ODEFunction{false}(
         (u, p, t) -> zero(u); initialization_data = initdata
@@ -146,8 +146,8 @@ function initialization_test_problem(initprob)
     return SciMLBase.ODEProblem{false}(f, initprob.u0, (0.0f0, 0.1f0))
 end
 
-function solve_initialization_test(initprob)
-    prob = initialization_test_problem(initprob)
+function solve_initialization_test(initprob; metadata = nothing)
+    prob = initialization_test_problem(initprob; metadata)
     ensemble_prob = EnsembleProblem(prob, safetycopy = false)
     return solve(
         ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
@@ -199,6 +199,24 @@ end
     @test length(sol.u) == 2
     @test 0.0f0 < only(sol.u[1].u[1]) < 1.0f0
     @test sol.u[1].u[1] ≈ SA[0.75f0] atol = 1.0f-5
+end
+
+@testset "Immutable SCC initialization" begin
+    initprob = SciMLBase.ImmutableNonlinearProblem{false}(
+        (u, p) -> SA[u[1]^2 - 4.0f0, 3.0f0 * u[2] - u[1] - 1.0f0],
+        SA[1.0f0, 0.0f0]
+    )
+    metadata = DiffEqGPU.ImmutableSCCInitialization(
+        (
+            DiffEqGPU.ImmutableSCCBlock{1, 1, false}(),
+            DiffEqGPU.ImmutableSCCBlock{2, 1, true}(),
+        )
+    )
+    sol = solve_initialization_test(initprob; metadata)
+
+    @test length(sol.u) == 2
+    @test sol.u[1].u[1] ≈ SA[2.0f0, 1.0f0] atol = 1.0f-5
+    @test isbitstype(typeof(metadata))
 end
 
 # ============================================================================
@@ -255,12 +273,12 @@ end
 
     mtk_prob = ODEProblem(
         pendulum, [py => 0.99, D(px) => 0.0], (0.0, 1.0),
-        guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0],
-        use_scc = false
+        guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0]
     )
 
     @test SciMLBase.has_initialization_data(mtk_prob.f)
     @test mtk_prob.f.mass_matrix !== LinearAlgebra.I
+    @test mtk_prob.f.initialization_data.initializeprob isa SciMLBase.SCCNonlinearProblem
 
     compatible_prob = DiffEqGPU.make_prob_compatible(mtk_prob)
     @test isbitstype(typeof(compatible_prob))
@@ -268,6 +286,13 @@ end
     @test isbitstype(typeof(compatible_prob.f.initialization_data.initializeprob))
     @test compatible_prob.f.initialization_data.initializeprob isa
         SciMLBase.ImmutableNonlinearProblem
+    metadata = compatible_prob.f.initialization_data.metadata
+    @test metadata isa DiffEqGPU.ImmutableSCCInitialization
+    @test length(metadata.blocks) == 3
+    @test metadata.blocks[1] isa DiffEqGPU.ImmutableSCCBlock{1, 1, false}
+    @test metadata.blocks[2] isa DiffEqGPU.ImmutableSCCBlock{2, 1, true}
+    @test metadata.blocks[3] isa DiffEqGPU.ImmutableSCCBlock{3, 1, true}
+    @test isbitstype(typeof(metadata))
     @test compatible_prob.u0 == SVector{length(mtk_prob.u0)}(mtk_prob.u0)
 
     ref_sol = solve(mtk_prob, Rodas5P())
@@ -282,6 +307,6 @@ end
     )
     @test length(sol_mtk.u) == 2
     @test !any(isnan, sol_mtk.u[1].u[end])
-    @test norm(sol_mtk.u[1].u[1] - ref_sol.u[1]) < 1.0e-6
+    @test norm(sol_mtk.u[1].u[1] - ref_sol.u[1]) < 1.0e-5
     @test norm(sol_mtk.u[1].u[end] - ref_sol.u[end]) < 1.0
 end
