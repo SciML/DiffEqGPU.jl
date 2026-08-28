@@ -8,7 +8,7 @@ accelerated simply by placing the initial condition array on the GPU. As a quick
 ```@example within_gpu
 using OrdinaryDiffEq, CUDA, LinearAlgebra
 function f(du, u, p, t)
-    mul!(du, A, u)
+    return mul!(du, A, u)
 end
 
 A = cu(-rand(3, 3))

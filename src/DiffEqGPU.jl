@@ -100,8 +100,10 @@ containers for `EnsembleGPUKernel`. Implementations must support the lower-level
 # Examples
 
 ```julia
-solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
-    trajectories = 10_000, adaptive = false, dt = 0.1f0)
+solve(
+    ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
+    trajectories = 10_000, adaptive = false, dt = 0.1f0
+)
 ```
 """
 abstract type EnsembleKernelAlgorithm <: SciMLBase.EnsembleAlgorithm end
@@ -151,8 +153,10 @@ host-side behavior.
 # Examples
 
 ```julia
-DiffEqGPU.vectorized_solve(gpu_probs, sde_prob, GPUEM();
-    dt = 0.01f0, save_everystep = false)
+DiffEqGPU.vectorized_solve(
+    gpu_probs, sde_prob, GPUEM();
+    dt = 0.01f0, save_everystep = false
+)
 ```
 """
 abstract type GPUSDEAlgorithm <: SciMLBase.AbstractSDEAlgorithm end
@@ -166,7 +170,7 @@ Developer interface for stiff ODE algorithms in the `EnsembleGPUKernel` path.
 
   - `AD`: Boolean-like type parameter indicating whether the algorithm may derive missing
     Jacobian and time-gradient information with automatic differentiation. Constructors
-    accept `autodiff = Val{true}()` or `Val{false}()`.
+    accept `autodiff = Val(true)` or `Val(false)`.
 
 # Interface Rules
 
@@ -180,8 +184,10 @@ DiffEqGPU's GPU-compatible linear algebra utilities.
 # Examples
 
 ```julia
-solve(ensemble_prob, GPURodas4(autodiff = Val{false}()),
-    EnsembleGPUKernel(backend); trajectories = 10_000)
+solve(
+    ensemble_prob, GPURodas4(autodiff = Val(false)),
+    EnsembleGPUKernel(backend); trajectories = 10_000
+)
 ```
 """
 abstract type GPUODEImplicitAlgorithm{AD} <: GPUODEAlgorithm end

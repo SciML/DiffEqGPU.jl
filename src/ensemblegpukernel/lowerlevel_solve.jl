@@ -1,7 +1,9 @@
 """
-    vectorized_solve(probs, prob::Union{ODEProblem, SDEProblem}, alg; dt,
+    vectorized_solve(
+        probs, prob::Union{ODEProblem, SDEProblem}, alg; dt,
         saveat = nothing, save_everystep = true, debug = false,
-        callback = CallbackSet(nothing), tstops = nothing)
+        callback = CallbackSet(nothing), tstops = nothing
+    )
 
 Run a fixed-step `EnsembleGPUKernel` solve on a batch of compatible problems. This is a
 developer-facing entry point for packages that need the batched time and state arrays
@@ -199,10 +201,12 @@ function vectorized_solve(
 end
 
 """
-    vectorized_asolve(probs, prob::ODEProblem, alg; dt = 0.1f0,
+    vectorized_asolve(
+        probs, prob::ODEProblem, alg; dt = 0.1f0,
         saveat = nothing, save_everystep = false, abstol = 1.0f-6,
         reltol = 1.0f-3, debug = false, callback = CallbackSet(nothing),
-        tstops = nothing)
+        tstops = nothing
+    )
 
 Run an adaptive `EnsembleGPUKernel` ODE solve on a batch of compatible problems. This is a
 developer-facing entry point for packages that need the batched time and state arrays

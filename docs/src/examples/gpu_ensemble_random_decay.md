@@ -67,10 +67,12 @@ if CUDA.has_cuda() && CUDA.functional()
     # Use EnsembleGPUKernel with the CUDABackend.
     # GPUTsit5 is suitable for non-stiff ODEs on the GPU.
     # save_everystep=false reduces memory overhead and transfer time if only final states are needed.
-    gpu_sol = solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
+    gpu_sol = solve(
+        ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
         trajectories = num_trajectories,
         save_everystep = false, # Crucial for performance measurement
-        dt = 0.01f0, adaptive = false)
+        dt = 0.01f0, adaptive = false
+    )
 else
     @warn "CUDA not available. Skipping GPU simulation."
     gpu_sol = nothing
@@ -81,10 +83,12 @@ end
 # Use EnsembleThreads for multi-threaded CPU execution.
 # Tsit5 is the CPU counterpart to GPUTsit5.
 # Match GPU saving options for fair comparison.
-cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+cpu_sol = solve(
+    ensemble_prob, Tsit5(), EnsembleThreads();
     trajectories = num_trajectories,
     save_everystep = false, # Match GPU setting
-    dt = 0.01f0, adaptive = false)
+    dt = 0.01f0, adaptive = false
+)
 ```
 
 # Performance Comparison
@@ -95,18 +99,22 @@ We re-run the simulations using @time to get a cleaner measurement of the execut
 # --- GPU Timing (Second Run) ---
 if gpu_sol_perf !== nothing
     @info "Timing GPU simulation (second run, no data saving)..."
-    @time solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
+    @time solve(
+        ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
         trajectories = num_trajectories, save_everystep = false,
-        dt = 0.01f0, adaptive = false)
+        dt = 0.01f0, adaptive = false
+    )
 else
     @info "Skipping GPU timing (CUDA not available)."
 end
 
 # --- CPU Timing (Second Run) ---
 @info "Timing CPU simulation (second run, no data saving)..."
-@time cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+@time cpu_sol = solve(
+    ensemble_prob, Tsit5(), EnsembleThreads();
     trajectories = num_trajectories, save_everystep = false,
-    dt = 0.01f0, adaptive = false)
+    dt = 0.01f0, adaptive = false
+)
 
 # Note: The first @time includes compilation and setup, the second is more representative
 # of the pure computation time for subsequent runs. Expect GPU to be significantly
@@ -120,11 +128,13 @@ To visualize the evolution of the ensemble statistics (mean and standard deviati
 ```@example decay
 # Re-solve on CPU, saving all steps for plotting
 @info "Re-solving CPU simulation to collect data for plotting..."
-cpu_sol_plot = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+cpu_sol_plot = solve(
+    ensemble_prob, Tsit5(), EnsembleThreads();
     trajectories = num_trajectories,
     save_everystep = true, # Save data at each dt step
     dt = 0.01f0,
-    adaptive = false)
+    adaptive = false
+)
 
 solutions_vector_cpu = cpu_sol_plot.u
 
@@ -151,7 +161,8 @@ end
 
 # Filter out failed trajectories (columns with NaN)
 successful_traj_indices_cpu = findall(
-    j -> !all(isnan, view(ensemble_vals_cpu, :, j)), 1:num_trajectories)
+    j -> !all(isnan, view(ensemble_vals_cpu, :, j)), 1:num_trajectories
+)
 num_successful_cpu = length(successful_traj_indices_cpu)
 
 if num_successful_cpu == 0
@@ -170,16 +181,20 @@ else
     p1_cpu = plot(
         t_vals_cpu, mean_u_cpu, ribbon = std_u_cpu, xlabel = "Time (t)", ylabel = "u(t)",
         title = "CPU Ensemble Mean ±1σ ($num_successful_cpu Trajectories)",
-        label = "Mean u(t)", fillalpha = 0.3, lw = 2)
+        label = "Mean u(t)", fillalpha = 0.3, lw = 2
+    )
 
     final_vals_cpu = ensemble_vals_cpu[end, :]
-    p2_cpu = histogram(final_vals_cpu, bins = 30, normalize = :probability,
+    p2_cpu = histogram(
+        final_vals_cpu, bins = 30, normalize = :probability,
         xlabel = "Final u(T)", ylabel = "Probability Density",
         title = "CPU Distribution of Final Values (t=$(tspan[2]))",
-        label = "", legend = false)
+        label = "", legend = false
+    )
 
     plot_cpu = plot(
-        p1_cpu, p2_cpu, layout = (1, 2), size = (1000, 450), legend = :outertopright)
+        p1_cpu, p2_cpu, layout = (1, 2), size = (1000, 450), legend = :outertopright
+    )
     @info "Displaying CPU analysis plot..."
     display(plot_cpu)
 end
@@ -200,7 +215,8 @@ if gpu_sol_perf !== nothing && CUDA.has_cuda() && CUDA.functional()
         trajectories = num_trajectories,
         save_everystep = true, # <<-- Save data at each dt step on GPU
         dt = 0.01f0,
-        adaptive = false)
+        adaptive = false
+    )
 
     # --- Data Transfer and Analysis ---
     # The result gpu_sol_plot should be an EnsembleSolution containing a Vector{ODESolution}
@@ -225,7 +241,8 @@ if gpu_sol_perf !== nothing && CUDA.has_cuda() && CUDA.functional()
     if solutions_vector !== nothing
         # Extract time points from the first successful trajectory's solution
         first_successful_gpu_idx = findfirst(
-            sol -> sol.retcode == ReturnCode.Success, solutions_vector)
+            sol -> sol.retcode == ReturnCode.Success, solutions_vector
+        )
 
         if first_successful_gpu_idx === nothing
             @error "No successful GPU trajectories found in the returned solutions vector!"
@@ -259,7 +276,8 @@ if gpu_sol_perf !== nothing && CUDA.has_cuda() && CUDA.functional()
 
             # Filter out failed trajectories (columns with NaN)
             successful_traj_indices_gpu = findall(
-                j -> !all(isnan, view(ensemble_vals_gpu, :, j)), 1:num_trajectories)
+                j -> !all(isnan, view(ensemble_vals_gpu, :, j)), 1:num_trajectories
+            )
             num_successful_gpu = length(successful_traj_indices_gpu)
 
             if num_successful_gpu == 0
@@ -277,19 +295,25 @@ if gpu_sol_perf !== nothing && CUDA.has_cuda() && CUDA.functional()
                 std_u_gpu = mapslices(std, ensemble_vals_gpu, dims = 2)[:]
 
                 # --- Plotting GPU Results ---
-                p1_gpu = plot(t_vals_gpu, mean_u_gpu, ribbon = std_u_gpu,
+                p1_gpu = plot(
+                    t_vals_gpu, mean_u_gpu, ribbon = std_u_gpu,
                     xlabel = "Time (t)", ylabel = "u(t)",
                     title = "GPU Ensemble Mean ±1σ ($num_successful_gpu Trajectories)",
-                    label = "Mean u(t)", fillalpha = 0.3, lw = 2)
+                    label = "Mean u(t)", fillalpha = 0.3, lw = 2
+                )
 
                 final_vals_gpu = ensemble_vals_gpu[end, :]
-                p2_gpu = histogram(final_vals_gpu, bins = 30, normalize = :probability,
+                p2_gpu = histogram(
+                    final_vals_gpu, bins = 30, normalize = :probability,
                     xlabel = "Final u(T)", ylabel = "Probability Density",
                     title = "GPU Distribution of Final Values (t=$(tspan[2]))",
-                    label = "", legend = false)
+                    label = "", legend = false
+                )
 
-                gpu_analysis_plot = plot(p1_gpu, p2_gpu, layout = (1, 2),
-                    size = (1000, 450), legend = :outertopright)
+                gpu_analysis_plot = plot(
+                    p1_gpu, p2_gpu, layout = (1, 2),
+                    size = (1000, 450), legend = :outertopright
+                )
                 @info "Displaying GPU analysis plot..."
                 display(gpu_analysis_plot)
 

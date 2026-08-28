@@ -95,6 +95,7 @@ function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
     du[2] = u[1] * (p[2] - u[3]) - u[2]
     du[3] = u[1] * u[2] - p[3] * u[3]
+    return
 end
 
 u0 = Float32[1.0; 0.0; 0.0]
@@ -102,9 +103,11 @@ tspan = (0.0f0, 100.0f0)
 p = [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem(lorenz, u0, tspan, p)
 prob_func = (prob, ctx) -> remake(prob, p = rand(Float32, 3) .* p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()),
-    trajectories = 10_000, saveat = 1.0f0)
+monteprob = EnsembleProblem(prob; prob_func, safetycopy = false)
+@time sol = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(CUDADevice()),
+    trajectories = 10_000, saveat = 1.0f0
+)
 ```
 """
 struct EnsembleGPUArray{Backend} <: EnsembleArrayAlgorithm
@@ -147,18 +150,18 @@ right-hand sides, callbacks, or solver combinations throw when the ensemble is s
     capable of being compiled into a GPU kernel are allowed. This notably means that
     certain features of Julia can cause issues inside a kernel, like:
 
-      + Allocating memory (building arrays)
-      + Linear algebra (anything that calls BLAS)
-      + Broadcast
+    + Allocating memory (building arrays)
+    + Linear algebra (anything that calls BLAS)
+    + Broadcast
 
   - Only out-of-place `f` definitions are allowed. Coupled with the requirement of not
     allowing for memory allocations, this means that the ODE must be defined with
     `StaticArray` initial conditions.
   - Only specific ODE solvers are allowed. This includes:
 
-      + GPUTsit5
-      + GPUVern7
-      + GPUVern9
+    + GPUTsit5
+    + GPUVern7
+    + GPUVern9
   - To use multiple GPUs over clusters, one must manually set up one process per GPU. See
     the multi-GPU tutorial for more details.
 
@@ -186,7 +189,8 @@ monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
 
 @time sol = solve(
     monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()), trajectories = 10_000,
-    adaptive = false, dt = 0.1f0)
+    adaptive = false, dt = 0.1f0
+)
 ```
 """
 struct EnsembleGPUKernel{Dev} <: EnsembleKernelAlgorithm

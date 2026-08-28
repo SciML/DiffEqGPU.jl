@@ -60,9 +60,11 @@ Let's solve 40,000 trajectories, batching 10,000 trajectories at a time:
 prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
-@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+@time sol2 = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
     trajectories = 40_000,
-    batch_size = 10_000, saveat = 1.0f0)
+    batch_size = 10_000, saveat = 1.0f0
+)
 ```
 
 This will `pmap` over the batches, and thus if you have 4 processes each with
@@ -114,7 +116,9 @@ CUDA.allowscalar(false)
 prob = ODEProblem(lorenz_distributed, u0, tspan, p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
 
-@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+@time sol = solve(
+    monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
     trajectories = 100_000,
-    batch_size = 50_000, saveat = 1.0f0)
+    batch_size = 50_000, saveat = 1.0f0
+)
 ```

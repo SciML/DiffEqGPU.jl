@@ -52,7 +52,7 @@ function init_brusselator_2d(xyd)
         u[i, j, 1] = 22 * (y * (1 - y))^(3 / 2)
         u[i, j, 2] = 27 * (x * (1 - x))^(3 / 2)
     end
-    u
+    return u
 end
 
 u0_cpu = init_brusselator_2d(xyd_brusselator)

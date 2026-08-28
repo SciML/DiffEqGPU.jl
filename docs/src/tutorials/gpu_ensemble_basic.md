@@ -10,6 +10,7 @@ function lorenz(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
     du[2] = u[1] * (p[2] - u[3]) - u[2]
     du[3] = u[1] * u[2] - p[3] * u[3]
+    return
 end
 
 u0 = Float32[1.0; 0.0; 0.0]
@@ -27,7 +28,8 @@ Changing this to being GPU-parallelized is as simple as changing the ensemble me
 ```@example lorenz
 sol = solve(
     monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,
-    saveat = 1.0f0);
+    saveat = 1.0f0
+);
 ```
 
 and voilà, the method is re-compiled to parallelize the solves over a GPU!
@@ -56,9 +58,11 @@ p = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 prob = ODEProblem{false}(lorenz2, u0, tspan, p)
 prob_func = (prob, ctx) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
 monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
+sol = solve(
+    monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
     trajectories = 10_000,
-    saveat = 1.0f0)
+    saveat = 1.0f0
+)
 ```
 
 Note that this form is also compatible with `EnsembleThreads()`, and `EnsembleGPUArray()`,
@@ -76,12 +80,8 @@ stiff ODE solver. Note that, as explained in the docstring, analytical derivativ
 
 ```@example lorenz
 function lorenz_jac(J, u, p, t)
-    σ = p[1]
-    ρ = p[2]
-    β = p[3]
-    x = u[1]
-    y = u[2]
-    z = u[3]
+    σ, ρ, β = p
+    x, y, z = u
     J[1, 1] = -σ
     J[2, 1] = ρ - z
     J[3, 1] = y
@@ -91,10 +91,11 @@ function lorenz_jac(J, u, p, t)
     J[1, 3] = 0
     J[2, 3] = -x
     J[3, 3] = -β
+    return
 end
 
 function lorenz_tgrad(J, u, p, t)
-    nothing
+    return nothing
 end
 
 u0 = Float32[1.0; 0.0; 0.0]
@@ -102,8 +103,10 @@ tspan = (0.0f0, 100.0f0)
 p = [10.0f0, 28.0f0, 8 / 3.0f0]
 func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
 prob_jac = ODEProblem(func, u0, tspan, p)
-monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
+monteprob_jac = EnsembleProblem(prob_jac; prob_func)
 
-solve(monteprob_jac, Rodas5P(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 10_000,
-    saveat = 1.0f0)
+solve(
+    monteprob_jac, Rodas5P(), EnsembleGPUArray(CUDA.CUDABackend()),
+    trajectories = 10_000, saveat = 1.0f0
+)
 ```
