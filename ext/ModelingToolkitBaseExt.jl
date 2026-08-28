@@ -109,108 +109,116 @@ function (map::InitializationParameterMap)(prob, sol)
     )
 end
 
-function next_tag!(tags)
-    tag = Symbol("##DiffEqGPUInitializationTag#", length(tags) + 1)
-    push!(tags, tag)
-    return tag
+function next_source_index!(counter)
+    counter[] += 1
+    return counter[]
 end
 
-tag_numeric(x::Number, tags) = next_tag!(tags)
-tag_numeric(x::AbstractArray, tags) = map(Base.Fix2(tag_numeric, tags), x)
-tag_numeric(x::Tuple, tags) = map(Base.Fix2(tag_numeric, tags), x)
-tag_numeric(x::NamedTuple, tags) = map(Base.Fix2(tag_numeric, tags), x)
-function tag_numeric(x, tags)
-    values = ntuple(i -> tag_numeric(getfield(x, i), tags), fieldcount(typeof(x)))
+index_numeric(::Number, counter) = next_source_index!(counter)
+index_numeric(x::AbstractArray, counter) = map(Base.Fix2(index_numeric, counter), x)
+index_numeric(x::Tuple, counter) = map(Base.Fix2(index_numeric, counter), x)
+index_numeric(x::NamedTuple, counter) = map(Base.Fix2(index_numeric, counter), x)
+function index_numeric(x, counter)
+    values = ntuple(i -> index_numeric(getfield(x, i), counter), fieldcount(typeof(x)))
     return typeof(x)(values...)
 end
 
-function tag_parameters(p::MTKParameters, tags)
+function index_parameters(p::MTKParameters, counter)
     return MTKParameters(
-        tag_numeric(p.tunable, tags),
-        tag_numeric(p.initials, tags),
-        tag_numeric(p.discrete, tags),
-        tag_numeric(p.constant, tags),
+        index_numeric(p.tunable, counter),
+        index_numeric(p.initials, counter),
+        index_numeric(p.discrete, counter),
+        index_numeric(p.constant, counter),
         p.nonnumeric,
         p.caches
     )
 end
 
-function tag_initialization_problem(prob::SciMLBase.NonlinearLeastSquaresProblem, tags)
+function index_initialization_problem(prob::SciMLBase.NonlinearLeastSquaresProblem, counter)
     return SciMLBase.NonlinearLeastSquaresProblem{SciMLBase.isinplace(prob)}(
         prob.f,
-        tag_numeric(prob.u0, tags),
-        tag_parameters(prob.p, tags);
+        index_numeric(prob.u0, counter),
+        index_parameters(prob.p, counter);
         lb = prob.lb,
         ub = prob.ub,
         prob.kwargs...
     )
 end
 
-function tag_initialization_problem(
-        prob::Union{SciMLBase.NonlinearProblem, SciMLBase.ImmutableNonlinearProblem}, tags
+function index_initialization_problem(
+        prob::Union{SciMLBase.NonlinearProblem, SciMLBase.ImmutableNonlinearProblem}, counter
     )
     return SciMLBase.ImmutableNonlinearProblem{SciMLBase.isinplace(prob)}(
         prob.f,
-        tag_numeric(prob.u0, tags),
-        tag_parameters(prob.p, tags),
+        index_numeric(prob.u0, counter),
+        index_parameters(prob.p, counter),
         prob.problem_type;
         prob.kwargs...
     )
 end
 
-function tag_ode_problem(prob, tags)
+function index_ode_problem(prob, counter)
     return SciMLBase.ImmutableODEProblem(
         prob.f,
-        tag_numeric(prob.u0, tags),
+        index_numeric(prob.u0, counter),
         prob.tspan,
-        tag_parameters(prob.p, tags),
+        index_parameters(prob.p, counter),
         prob.problem_type;
         prob.kwargs...
     )
 end
 
-function source_recipe(x::Union{Number, Symbol}, tags)
-    index = findfirst(Base.Fix2(isequal, x), tags)
-    index === nothing && error(
-        "ModelingToolkit initialization maps must copy numeric values from the ODE or initialization problem."
-    )
-    return InitializationSourceIndex(index)
+function source_recipe(index::Number, source_count)
+    source_index = try
+        Int(index)
+    catch
+        nothing
+    end
+    if source_index === nothing || !isequal(index, source_index) ||
+            !(1 <= source_index <= source_count)
+        error(
+            "ModelingToolkit initialization maps must copy numeric values from the ODE or initialization problem."
+        )
+    end
+    return InitializationSourceIndex(source_index)
 end
-function source_recipe(x::AbstractArray, tags)
-    values = map(Base.Fix2(source_recipe, tags), x)
+function source_recipe(x::AbstractArray, source_count)
+    values = map(Base.Fix2(source_recipe, source_count), x)
     return SArray{Tuple{size(x)...}}(values)
 end
-source_recipe(x::Tuple, tags) = map(Base.Fix2(source_recipe, tags), x)
-source_recipe(x::NamedTuple, tags) = map(Base.Fix2(source_recipe, tags), x)
-function source_recipe(x, tags)
-    values = ntuple(i -> source_recipe(getfield(x, i), tags), fieldcount(typeof(x)))
+source_recipe(x::Tuple, source_count) = map(Base.Fix2(source_recipe, source_count), x)
+source_recipe(x::NamedTuple, source_count) = map(Base.Fix2(source_recipe, source_count), x)
+function source_recipe(x, source_count)
+    values = ntuple(
+        i -> source_recipe(getfield(x, i), source_count), fieldcount(typeof(x))
+    )
     return InitializationStructureRecipe{typeof(x)}(values)
 end
 
 function make_state_map(initprob, map)
     map === nothing && return nothing
-    # Evaluate the host-only MTK map on unique symbolic tags, then retain only the
-    # resulting device-compatible gather indices.
-    tags = Symbol[]
-    tagged_initprob = tag_initialization_problem(initprob, tags)
-    return InitializationStateMap(source_recipe(map(tagged_initprob), tags))
+    # Evaluate the host-only MTK map on sequential source indices, then retain its
+    # device-compatible gather recipe.
+    counter = Ref(0)
+    indexed_initprob = index_initialization_problem(initprob, counter)
+    return InitializationStateMap(source_recipe(map(indexed_initprob), counter[]))
 end
 
 function make_parameter_map(prob, initprob, map)
     map === nothing && return nothing
     # Parameter maps may select from both the ODE problem and nonlinear solution.
-    tags = Symbol[]
-    tagged_prob = tag_ode_problem(prob, tags)
-    tagged_initprob = tag_initialization_problem(initprob, tags)
-    p = map(tagged_prob, tagged_initprob)
+    counter = Ref(0)
+    indexed_prob = index_ode_problem(prob, counter)
+    indexed_initprob = index_initialization_problem(initprob, counter)
+    p = map(indexed_prob, indexed_initprob)
     p isa MTKParameters || error(
         "ModelingToolkit initialization parameter maps must return `MTKParameters`."
     )
     recipe = InitializationParameterRecipe(
-        source_recipe(p.tunable, tags),
-        source_recipe(p.initials, tags),
-        source_recipe(p.discrete, tags),
-        source_recipe(p.constant, tags)
+        source_recipe(p.tunable, counter[]),
+        source_recipe(p.initials, counter[]),
+        source_recipe(p.discrete, counter[]),
+        source_recipe(p.constant, counter[])
     )
     return InitializationParameterMap(recipe)
 end
