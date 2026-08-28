@@ -26,7 +26,7 @@ using Base: setindex
 using CommonSolve: solve
 using LinearSolve: LinearSolve
 using SimpleNonlinearSolve: SimpleNonlinearSolve
-import SimpleNonlinearSolve: SimpleTrustRegion
+import SimpleNonlinearSolve: SimpleGaussNewton, SimpleTrustRegion
 #For gpu_tsit5
 using Adapt: Adapt, adapt
 using SimpleDiffEq: SimpleDiffEq, GPUSimpleATsit5, GPUSimpleAVern7, GPUSimpleAVern9,
