@@ -101,31 +101,69 @@ function make_nonlinear_function_compatible(oldf)
     )
 end
 
-function make_nonlinear_problem_compatible(prob::SciMLBase.NonlinearLeastSquaresProblem)
-    (prob.lb === nothing && prob.ub === nothing) || error(
-        "Bounded nonlinear initialization problems are not supported by EnsembleGPUKernel."
-    )
-    nunknowns = length(prob.u0)
-    nresiduals = if prob.f.resid_prototype === nothing
-        nunknowns
-    else
-        length(prob.f.resid_prototype)
+function _static_initialization_bound(bound, fallback, u0)
+    T = eltype(u0)
+    if bound === nothing
+        return map(Returns(T(fallback)), u0)
+    elseif bound isa Number
+        return map(Returns(T(bound)), u0)
     end
-    if nresiduals != nunknowns
-        status = nresiduals < nunknowns ? "underdetermined" : "overdetermined"
-        throw(
-            ArgumentError(
-                "$status nonlinear initialization problems are not supported by EnsembleGPUKernel: $nresiduals residuals for $nunknowns unknowns."
-            )
-        )
-    end
+    return map(T, make_static_storage(bound))
+end
 
+function _clamp_initialization_value(u, lb, ub)
+    margin_fraction = eps(typeof(u))^(3 / 4)
+    if isfinite(lb) && isfinite(ub)
+        margin = (ub - lb) * margin_fraction
+        return clamp(u, lb + margin, ub - margin)
+    elseif isfinite(lb)
+        return max(u, lb + margin_fraction * max(abs(lb), one(lb)))
+    elseif isfinite(ub)
+        return min(u, ub - margin_fraction * max(abs(ub), one(ub)))
+    else
+        return u
+    end
+end
+
+function _to_unbounded_initialization(u, lb, ub)
+    u = _clamp_initialization_value(u, lb, ub)
+    if isfinite(lb) && isfinite(ub)
+        return log((u - lb) / (ub - u))
+    elseif isfinite(lb)
+        return log(u - lb)
+    elseif isfinite(ub)
+        return log(ub - u)
+    else
+        return u
+    end
+end
+
+function make_nonlinear_problem_compatible(prob::SciMLBase.NonlinearLeastSquaresProblem)
     static_u0 = make_static_storage(prob.u0)
     static_p = make_parameter_compatible(prob.p)
+    compatible_f = make_nonlinear_function_compatible(prob.f)
+
+    if prob.lb !== nothing || prob.ub !== nothing
+        lb = _static_initialization_bound(prob.lb, -Inf, static_u0)
+        ub = _static_initialization_bound(prob.ub, Inf, static_u0)
+        all(map(<, lb, ub)) || throw(
+            ArgumentError("Each lower bound must be less than its upper bound.")
+        )
+        transformed_u0 = map(_to_unbounded_initialization, static_u0, lb, ub)
+        bounded_f = BoundedInitializationFunction(compatible_f.f, lb, ub)
+        compatible_f = SciMLBase.NonlinearFunction{
+            false, SciMLBase.FullSpecialize,
+        }(
+            bounded_f;
+            resid_prototype = compatible_f.resid_prototype
+        )
+        static_u0 = transformed_u0
+    end
+
     return SciMLBase.NonlinearLeastSquaresProblem{false}(
-        make_nonlinear_function_compatible(prob.f), static_u0, static_p;
-        lb = prob.lb,
-        ub = prob.ub,
+        compatible_f, static_u0, static_p;
+        lb = nothing,
+        ub = nothing,
         prob.kwargs...
     )
 end

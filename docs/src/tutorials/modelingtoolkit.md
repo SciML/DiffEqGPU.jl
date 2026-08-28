@@ -10,9 +10,9 @@ tutorial showcases how to effectively use MTK with DiffEqGPU.jl.
 !!! note
 
     `EnsembleGPUKernel` supports mass-matrix DAEs whose ModelingToolkit initialization
-    problem is square and unbounded. See [DAE initialization](@ref dae_initialization) for
-    an example and the current restrictions. Other DAE formulations may still require
-    `EnsembleGPUArray`.
+    problem can be converted to a static nonlinear problem. See
+    [DAE initialization](@ref dae_initialization) for an example and the current
+    restrictions. Other DAE formulations may still require `EnsembleGPUArray`.
 
 The core aspect to doing this right is two things. First of all, MTK respects the types
 chosen by the user, and thus in order for GPU kernel generation to work the user needs
@@ -119,7 +119,8 @@ We can then using symbolic indexing on the result to inspect it:
 
 ModelingToolkit can generate a nonlinear initialization problem for a mass-matrix DAE.
 `EnsembleGPUKernel` converts that problem to static storage on the host, then solves one
-copy per trajectory inside the GPU kernel with `SimpleTrustRegion` from
+copy per trajectory inside the GPU kernel. Square systems use `SimpleTrustRegion`, while
+rectangular nonlinear least-squares systems use `SimpleGaussNewton`, both from
 SimpleNonlinearSolve.jl. The resulting consistent state and parameters are used to start
 the ODE solve.
 
@@ -161,10 +162,12 @@ sol = solve(
 
 The current initialization path has the following restrictions:
 
-  - The nonlinear initialization problem must be square. Both underdetermined and
-    overdetermined problems throw an error before the GPU kernel is launched. Supply
-    enough initial conditions and guesses for ModelingToolkit to produce a square system.
-  - Bounds on the nonlinear initialization problem are not supported.
+  - Square, underdetermined, and overdetermined nonlinear least-squares initialization
+    problems are supported. Rectangular systems use the static-array `SimpleGaussNewton`
+    solve, so their Jacobian must have the rank required by the least-squares step.
+  - Lower and upper bounds are supported through a smooth transformation to unconstrained
+    variables. A solution exactly on a finite bound is represented by a limiting
+    unconstrained value and can therefore converge less robustly than an interior solution.
   - ModelingToolkit's state and parameter initialization maps must copy or restructure
     numeric values from the ODE and initialization problems. DiffEqGPU traces those maps
     on the host and stores only static gather recipes in the kernel.

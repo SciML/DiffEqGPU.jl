@@ -133,24 +133,72 @@ end
 end
 
 # ============================================================================
-# Test 3: Non-square initialization errors
+# Test 3: Non-square and bounded nonlinear least-squares initialization
 # ============================================================================
 
-@testset "Overdetermined initialization error" begin
-    overdetermined_f = SciMLBase.NonlinearFunction{false}(
-        (u, p) -> SA[u[1], u[2], u[1] + u[2]];
-        resid_prototype = SA[0.0, 0.0, 0.0]
+function initialization_test_problem(initprob)
+    initdata = SciMLBase.OverrideInitData(
+        initprob, nothing, sol -> sol.u, nothing, nothing, Val(false)
     )
-    overdetermined_prob = SciMLBase.NonlinearLeastSquaresProblem{false}(
-        overdetermined_f, SA[1.0, 1.0], nothing
+    f = SciMLBase.ODEFunction{false}(
+        (u, p, t) -> zero(u); initialization_data = initdata
     )
-    overdetermined_error = try
-        DiffEqGPU.make_nonlinear_problem_compatible(overdetermined_prob)
-    catch err
-        err
-    end
-    @test overdetermined_error isa ArgumentError
-    @test occursin("overdetermined", sprint(showerror, overdetermined_error))
+    return SciMLBase.ODEProblem{false}(f, initprob.u0, (0.0f0, 0.1f0))
+end
+
+function solve_initialization_test(initprob)
+    prob = initialization_test_problem(initprob)
+    ensemble_prob = EnsembleProblem(prob, safetycopy = false)
+    return solve(
+        ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
+        trajectories = 2, dt = 0.1f0, adaptive = false, save_everystep = false
+    )
+end
+
+@testset "Underdetermined initialization" begin
+    initf = SciMLBase.NonlinearFunction{false}(
+        (u, p) -> SA[u[1] + u[2] - 3.0f0]; resid_prototype = SA[0.0f0]
+    )
+    initprob = SciMLBase.NonlinearLeastSquaresProblem{false}(
+        initf, SA[0.0f0, 0.0f0], nothing
+    )
+    sol = solve_initialization_test(initprob)
+
+    @test length(sol.u) == 2
+    @test sol.u[1].u[1] ≈ SA[1.5f0, 1.5f0] atol = 1.0f-5
+end
+
+@testset "Overdetermined initialization" begin
+    initf = SciMLBase.NonlinearFunction{false}(
+        (u, p) -> SA[u[1] - 2.0f0, 2.0f0 * u[1] - 4.0f0];
+        resid_prototype = SA[0.0f0, 0.0f0]
+    )
+    initprob = SciMLBase.NonlinearLeastSquaresProblem{false}(
+        initf, SA[0.0f0], nothing
+    )
+    sol = solve_initialization_test(initprob)
+
+    @test length(sol.u) == 2
+    @test sol.u[1].u[1] ≈ SA[2.0f0] atol = 1.0f-5
+end
+
+@testset "Bounded initialization" begin
+    initf = SciMLBase.NonlinearFunction{false}(
+        (u, p) -> SA[u[1] - 0.75f0]; resid_prototype = SA[0.0f0]
+    )
+    initprob = SciMLBase.NonlinearLeastSquaresProblem{false}(
+        initf, SA[0.2f0], nothing; lb = SA[0.0f0], ub = SA[1.0f0]
+    )
+    compatible_prob = DiffEqGPU.make_prob_compatible(initialization_test_problem(initprob))
+    compatible_initprob = compatible_prob.f.initialization_data.initializeprob
+    @test compatible_initprob.lb === nothing
+    @test compatible_initprob.ub === nothing
+    @test isbitstype(typeof(compatible_initprob))
+
+    sol = solve_initialization_test(initprob)
+    @test length(sol.u) == 2
+    @test 0.0f0 < only(sol.u[1].u[1]) < 1.0f0
+    @test sol.u[1].u[1] ≈ SA[0.75f0] atol = 1.0f-5
 end
 
 # ============================================================================
@@ -168,18 +216,6 @@ end
     ]
 
     @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
-
-    underdetermined_prob = ODEProblem(
-        pendulum, [py => 0.99], (0.0, 1.0),
-        guesses = [pλ => 0.0, px => 0.1, D(px) => 0.0, D(py) => 0.0]
-    )
-    underdetermined_error = try
-        DiffEqGPU.make_prob_compatible(underdetermined_prob)
-    catch err
-        err
-    end
-    @test underdetermined_error isa ArgumentError
-    @test occursin("underdetermined", sprint(showerror, underdetermined_error))
 
     mtk_prob = ODEProblem(
         pendulum, [py => 0.99, D(px) => 0.0], (0.0, 1.0),
