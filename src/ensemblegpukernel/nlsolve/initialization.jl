@@ -21,9 +21,6 @@ end
     return f.f(bounded_u, p)
 end
 
-@inline initialization_algorithm(
-    ::SciMLBase.NonlinearLeastSquaresProblem, nlsolve_alg
-) = SimpleGaussNewton()
 @inline initialization_algorithm(initprob, nlsolve_alg) =
     nlsolve_alg === nothing ? SimpleTrustRegion() : nlsolve_alg
 
