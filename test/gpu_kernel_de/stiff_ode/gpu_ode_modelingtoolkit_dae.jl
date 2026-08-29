@@ -219,6 +219,54 @@ end
     @test isbitstype(typeof(metadata))
 end
 
+@testset "SCC initialization rejects non-triangular blocks" begin
+    # Row 1 depends on the downstream block, so the claimed SCC layout is wrong and the
+    # sequential solve leaves a nonzero full residual.
+    initprob = SciMLBase.ImmutableNonlinearProblem{false}(
+        (u, p) -> SA[u[1] - u[2], u[2] - 2.0f0],
+        SA[0.0f0, 0.0f0]
+    )
+    metadata = DiffEqGPU.ImmutableSCCInitialization(
+        (
+            DiffEqGPU.ImmutableSCCBlock{1, 1, true}(),
+            DiffEqGPU.ImmutableSCCBlock{2, 1, true}(),
+        )
+    )
+    sol = DiffEqGPU.solve_initialization_problem(
+        initprob, metadata, nothing, 1.0f-6, 1.0f-6
+    )
+    @test !SciMLBase.successful_retcode(sol)
+end
+
+@testset "Stateless all-linear SCC initialization" begin
+    @variables lscc_x lscc_y
+    linear_scc_sys = ModelingToolkit.complete(
+        ModelingToolkit.System(
+            [0 ~ 2.0f0 * lscc_x - 4.0f0, 0 ~ lscc_x + lscc_y - 5.0f0],
+            [lscc_x, lscc_y], []; name = :linear_scc_sys
+        )
+    )
+    # MTK's all-linear SCC problems can carry no state at all; the block contents are
+    # placeholders because the lowered solve only uses the flat residual.
+    linear_blocks = (
+        SciMLBase.LinearProblem(ones(Float32, 1, 1), zeros(Float32, 1)),
+        SciMLBase.LinearProblem(ones(Float32, 1, 1), zeros(Float32, 1)),
+    )
+    sccprob = SciMLBase.SCCNonlinearProblem(
+        linear_blocks, (Returns(nothing), Returns(nothing)); sys = linear_scc_sys
+    )
+    @test SciMLBase.state_values(sccprob) === nothing
+
+    lowered = DiffEqGPU.lower_initialization_problem(sccprob)
+    compat = DiffEqGPU.make_nonlinear_problem_compatible(lowered)
+    sol = DiffEqGPU.solve_initialization_problem(
+        compat.problem, DiffEqGPU.ImmutableSCCInitialization(compat.blocks),
+        nothing, 1.0f-6, 1.0f-6
+    )
+    @test SciMLBase.successful_retcode(sol)
+    @test sol.u ≈ SA[2.0f0, 3.0f0] atol = 1.0f-5
+end
+
 # ============================================================================
 # Test 4: Host symbolic setters and trivial initialization
 # ============================================================================

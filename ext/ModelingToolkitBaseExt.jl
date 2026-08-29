@@ -1,6 +1,6 @@
 module ModelingToolkitBaseExt
 
-using ModelingToolkitBase: MTKParameters, System
+using ModelingToolkitBase: MTKParameters, System, unknowns
 using StaticArraysCore: SArray, StaticArray, SVector
 import DiffEqGPU
 import SciMLBase
@@ -41,20 +41,29 @@ function DiffEqGPU.lower_initialization_problem(prob::SciMLBase.SCCNonlinearProb
         )
     )
 
-    u0 = SciMLBase.state_values(prob)
+    block_states = map(prob.probs) do block_prob
+        block_u0 = SciMLBase.state_values(block_prob)
+        block_u0 !== nothing && return block_u0
+        # A linear block is solved by one exact Newton step, which lands on the solution
+        # from any seed, so a zero seed stands in for the missing state.
+        block_prob isa SciMLBase.LinearProblem || throw(
+            ArgumentError(
+                "Every nonlinear SCC initialization block must have an initial state for EnsembleGPUKernel."
+            )
+        )
+        zero(block_prob.b)
+    end
+    u0 = reduce(vcat, block_states)
+    length(u0) == length(unknowns(sys)) || throw(
+        ArgumentError("SCC initialization block sizes do not match the full state size.")
+    )
     f = SciMLBase.NonlinearFunction{false, SciMLBase.FullSpecialize}(
         sys; u0, p = prob.p, check_compatibility = false
     )
     nonlinear_prob = SciMLBase.NonlinearProblem{false}(f, u0, prob.p)
 
     offset = 0
-    blocks = map(prob.probs) do block_prob
-        block_u0 = SciMLBase.state_values(block_prob)
-        block_u0 === nothing && throw(
-            ArgumentError(
-                "Every SCC initialization block must have an initial state for EnsembleGPUKernel."
-            )
-        )
+    blocks = map(prob.probs, block_states) do block_prob, block_u0
         n = length(block_u0)
         block = DiffEqGPU.ImmutableSCCBlock{
             offset + 1, n, block_prob isa SciMLBase.LinearProblem,
@@ -62,9 +71,6 @@ function DiffEqGPU.lower_initialization_problem(prob::SciMLBase.SCCNonlinearProb
         offset += n
         block
     end
-    offset == length(u0) || throw(
-        ArgumentError("SCC initialization block sizes do not match the full state size.")
-    )
     return DiffEqGPU.ImmutableSCCNonlinearProblem(nonlinear_prob, Tuple(blocks))
 end
 

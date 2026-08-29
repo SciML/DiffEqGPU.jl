@@ -146,6 +146,11 @@ end
         nonlinear_prob, nonlinear_prob.u0, metadata.blocks, alg, abstol, reltol
     )
     residual = nonlinear_prob.f(u, nonlinear_prob.p)
+    # Block-level success trusts the lowered block layout; the full residual also has to
+    # vanish, so a layout that is not actually block-triangular cannot pass silently.
+    r0 = nonlinear_prob.f(nonlinear_prob.u0, nonlinear_prob.p)
+    tolerance = abstol + reltol * initialization_residual_norm(r0)
+    success = success && initialization_residual_norm(residual) <= tolerance
     retcode = success ? ReturnCode.Success : ReturnCode.Failure
     return SciMLBase.build_solution(nonlinear_prob, alg, u, residual; retcode)
 end
