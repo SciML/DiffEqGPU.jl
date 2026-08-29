@@ -94,30 +94,38 @@ end
     return SVector{N}(ntuple(i -> full_u[I + i - 1], Val(N)))
 end
 
-@inline function solve_scc_block(
-        prob, full_u, ::ImmutableSCCBlock{I, N, true}, alg, abstol, reltol
-    ) where {I, N}
-    residual = SCCBlockResidual{typeof(prob.f), typeof(prob.p), typeof(full_u), I, N}(
+@inline function scc_block_residual(prob, full_u, ::ImmutableSCCBlock{I, N}) where {I, N}
+    return SCCBlockResidual{typeof(prob.f), typeof(prob.p), typeof(full_u), I, N}(
         prob.f, prob.p, full_u
     )
-    u0 = scc_block_state(full_u, ImmutableSCCBlock{I, N, true}())
+end
+
+@inline replace_scc_block(full_u, block_u, ::ImmutableSCCBlock{I, N}) where {I, N} =
+    replace_scc_block(full_u, block_u, Val(I), Val(N))
+
+# The Jacobian is re-derived here instead of reusing the `A`/`b` of MTK's linear SCC block:
+# those come from a mutable update function of the upstream blocks' solutions, so they
+# would have to be re-evaluated per trajectory on the device anyway. Differentiating the
+# flattened residual yields the same matrix while keeping the update wrappers on the host.
+@inline function solve_scc_block(
+        prob, full_u, block::ImmutableSCCBlock{I, N, true}, alg, abstol, reltol
+    ) where {I, N}
+    residual = scc_block_residual(prob, full_u, block)
+    u0 = scc_block_state(full_u, block)
     r0 = residual(u0)
-    J = ForwardDiff.jacobian(residual, u0)
-    rhs = J * u0 - r0
-    u = linear_solve(J, rhs)
+    # A linear block's residual is affine, so one Newton step is exact. Solving for the step
+    # avoids forming `J * u0`, which cancels against `r0` for states large next to the step.
+    u = u0 - linear_solve(ForwardDiff.jacobian(residual, u0), r0)
     tolerance = abstol + reltol * initialization_residual_norm(r0)
-    success = initialization_residual_norm(residual(u)) <= tolerance
-    return u, success
+    return u, initialization_residual_norm(residual(u)) <= tolerance
 end
 
 @inline function solve_scc_block(
-        prob, full_u, ::ImmutableSCCBlock{I, N, false}, alg, abstol, reltol
+        prob, full_u, block::ImmutableSCCBlock{I, N, false}, alg, abstol, reltol
     ) where {I, N}
-    residual = SCCBlockResidual{typeof(prob.f), typeof(prob.p), typeof(full_u), I, N}(
-        prob.f, prob.p, full_u
+    block_prob = SciMLBase.ImmutableNonlinearProblem{false}(
+        scc_block_residual(prob, full_u, block), scc_block_state(full_u, block)
     )
-    u0 = scc_block_state(full_u, ImmutableSCCBlock{I, N, false}())
-    block_prob = SciMLBase.ImmutableNonlinearProblem{false}(residual, u0)
     sol = SciMLBase.solve(block_prob, alg; abstol, reltol)
     return sol.u, SciMLBase.successful_retcode(sol)
 end
@@ -127,12 +135,9 @@ end
     block = first(blocks)
     block_u, success = solve_scc_block(prob, full_u, block, alg, abstol, reltol)
     success || return full_u, false
-    I, N = scc_block_range(block)
-    updated_u = replace_scc_block(full_u, block_u, I, N)
+    updated_u = replace_scc_block(full_u, block_u, block)
     return solve_scc_blocks(prob, updated_u, Base.tail(blocks), alg, abstol, reltol)
 end
-
-@inline scc_block_range(::ImmutableSCCBlock{I, N}) where {I, N} = (Val(I), Val(N))
 
 @inline function solve_initialization_problem(
         nonlinear_prob, metadata::ImmutableSCCInitialization, alg, abstol, reltol
