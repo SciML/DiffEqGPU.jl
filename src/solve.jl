@@ -255,30 +255,30 @@ function batch_solve(
             )
             [
                 begin
-                        ts = @view solts[:, i]
-                        us = @view solus[:, i]
-                        sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
-                        if sol_idx === nothing
-                            @error "No solution found" tspan = probs[i].tspan[1] ts
-                            error("Batch solve failed")
+                    ts = @view solts[:, i]
+                    us = @view solus[:, i]
+                    sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
+                    if sol_idx === nothing
+                        @error "No solution found" tspan = probs[i].tspan[1] ts
+                        error("Batch solve failed")
                     end
-                        @views ensembleprob.output_func(
-                            SciMLBase.build_solution(
-                                probs[i],
-                                alg,
-                                ts[1:sol_idx],
-                                us[1:sol_idx],
-                                k = nothing,
-                                stats = nothing,
-                                calculate_error = false,
-                                retcode = sol_idx !=
+                    @views ensembleprob.output_func(
+                        SciMLBase.build_solution(
+                            probs[i],
+                            alg,
+                            ts[1:sol_idx],
+                            us[1:sol_idx],
+                            k = nothing,
+                            stats = nothing,
+                            calculate_error = false,
+                            retcode = sol_idx !=
                                 length(ts) ?
                                 ReturnCode.Terminated :
                                 ReturnCode.Success
-                            ),
-                            _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
-                        )[1]
-                    end
+                        ),
+                        _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
+                    )[1]
+                end
                     for i in eachindex(probs)
             ]
 
@@ -334,22 +334,22 @@ function batch_solve(
 
             [
                 ensembleprob.output_func(
-                        SciMLBase.build_solution(
-                            probs[i], alg,
-                            map(
-                                t -> probs[i].tspan[1] +
+                    SciMLBase.build_solution(
+                        probs[i], alg,
+                        map(
+                            t -> probs[i].tspan[1] +
                                 (
-                                    probs[i].tspan[2] -
+                                probs[i].tspan[2] -
                                     probs[i].tspan[1]
-                                ) *
+                            ) *
                                 t,
-                                sol.t
-                            ), solus[i],
-                            stats = sol.stats,
-                            retcode = sol.retcode
-                        ),
-                        _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
-                    )[1]
+                            sol.t
+                        ), solus[i],
+                        stats = sol.stats,
+                        retcode = sol.retcode
+                    ),
+                    _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
+                )[1]
                     for i in 1:length(probs)
             ]
         else
@@ -365,14 +365,14 @@ function batch_solve(
             )
             [
                 ensembleprob.output_func(
-                        SciMLBase.build_solution(
-                            probs[i], alg, sol.t,
-                            solus[i],
-                            stats = sol.stats,
-                            retcode = sol.retcode
-                        ),
-                        _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
-                    )[1]
+                    SciMLBase.build_solution(
+                        probs[i], alg, sol.t,
+                        solus[i],
+                        stats = sol.stats,
+                        retcode = sol.retcode
+                    ),
+                    _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
+                )[1]
                     for i in 1:length(probs)
             ]
         end
