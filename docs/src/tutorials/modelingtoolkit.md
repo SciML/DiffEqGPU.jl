@@ -175,11 +175,14 @@ The current initialization path has the following restrictions:
     recipes, and entries computed from them (for example states that are observed
     variables of the torn initialization system) are compiled into device-side generated
     functions. Maps that branch on runtime values cannot be traced and are not supported.
-  - Ordinary nonlinear and linear SCC initialization blocks are supported. Initialization
-    containing Modelica `homotopy(actual, simplified)` nodes is not supported: continuation
-    solves do not fit the kernel's static solver set. Since `homotopy(actual, simplified)`
-    evaluates numerically to `actual`, an equivalent supported system is obtained by
-    rewriting each homotopy node to its `actual` branch before `mtkcompile`:
+  - Ordinary nonlinear and linear SCC initialization blocks are supported, including
+    all-linear SCC problems that carry no initial state: missing linear-block states are
+    seeded with zeros, which the exact one-step linear solve does not depend on.
+    Initialization containing Modelica `homotopy(actual, simplified)` nodes is not
+    supported: continuation solves do not fit the kernel's static solver set. Since
+    `homotopy(actual, simplified)` evaluates numerically to `actual`, an equivalent
+    supported system is obtained by rewriting each homotopy node to its `actual` branch
+    before `mtkcompile`:
 
     ```julia
     using ModelingToolkit

@@ -20,10 +20,13 @@ function generate_callback(callback::ContinuousCallback, I, ensemblealg)
     affect! = function (integrator, simultaneous_events::AbstractVector)
         version = get_backend(integrator.u)
         wgs = workgroupsize(version, size(integrator.u, 2))
+        # DiffEqBase passes a `@view` of its host mask buffer. GPU backends only have a
+        # memcpy path for `Array` sources, so materialize the view to avoid scalar indexing.
+        host_events = convert(Vector{eltype(simultaneous_events)}, simultaneous_events)
         simultaneous_events_device = similar(
-            integrator.u, eltype(simultaneous_events), length(simultaneous_events)
+            integrator.u, eltype(host_events), length(host_events)
         )
-        copyto!(simultaneous_events_device, simultaneous_events)
+        copyto!(simultaneous_events_device, host_events)
         return continuous_affect!_kernel(version)(
             _affect!, _affect_neg!, simultaneous_events_device, integrator.u,
             integrator.t, integrator.p;
