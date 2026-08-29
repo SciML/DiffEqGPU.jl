@@ -17,7 +17,7 @@ for pv in pivot_options
         return LU(LowerTriangular(L), UpperTriangular(U), p)
     end
 end
-static_lu(A::StaticLUMatrix; check = true) = static_lu(A, Val(true); check = check)
+static_lu(A::StaticLUMatrix; check = true) = static_lu(A, Val(true); check)
 
 # location of the first zero on the diagonal, 0 when not found
 function _first_zero_on_diagonal(A::StaticLUMatrix{M, N, T}) where {M, N, T}

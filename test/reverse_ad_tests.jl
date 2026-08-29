@@ -14,7 +14,7 @@ function model(θ, ensemblealg)
         return remake(prob, u0 = 0.5 .+ ctx.sim_id / 100 .* prob.u0)
     end
 
-    ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
+    ensemble_prob = EnsembleProblem(prob; prob_func)
     return solve(
         ensemble_prob, Tsit5(), ensemblealg, saveat = 0.1,
         trajectories = 10
@@ -39,4 +39,4 @@ adtype = Optimization.AutoZygote()
 optf = Optimization.OptimizationFunction((x, p) -> loss_gpu(x), adtype)
 optprob = Optimization.OptimizationProblem(optf, θ)
 
-res_gpu = Optimization.solve(optprob, opt; callback = callback, maxiters = 100)
+res_gpu = Optimization.solve(optprob, opt; callback, maxiters = 100)

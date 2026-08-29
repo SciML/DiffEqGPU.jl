@@ -26,13 +26,13 @@ function reduction(u, batch, I)
 end
 
 # no reduction
-prob1 = EnsembleProblem(prob, prob_func = prob_func, output_func = output_func)
+prob1 = EnsembleProblem(prob; prob_func, output_func)
 sim1 = @time solve(prob1, Tsit5(), trajectories = 100, batch_size = 20)
 
 # reduction and EnsembleThreads()
 prob2 = EnsembleProblem(
-    prob, prob_func = prob_func, output_func = output_func,
-    reduction = reduction, u_init = Vector{eltype(prob.u0)}([0.0])
+    prob; prob_func, output_func, reduction,
+    u_init = Vector{eltype(prob.u0)}([0.0])
 )
 sim2 = @time solve(prob2, Tsit5(), trajectories = 100, batch_size = 20)
 

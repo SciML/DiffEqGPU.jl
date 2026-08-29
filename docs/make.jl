@@ -5,7 +5,7 @@ include("pages.jl")
 cp("./docs/Manifest.toml", "./docs/src/assets/Manifest.toml", force = true)
 cp("./docs/Project.toml", "./docs/src/assets/Project.toml", force = true)
 
-makedocs(
+makedocs(;
     sitename = "DiffEqGPU.jl",
     authors = "Chris Rackauckas",
     modules = [DiffEqGPU],
@@ -19,7 +19,7 @@ makedocs(
         assets = ["assets/favicon.ico"],
         canonical = "https://docs.sciml.ai/DiffEqGPU/stable/"
     ),
-    pages = pages
+    pages
 )
 
 deploydocs(

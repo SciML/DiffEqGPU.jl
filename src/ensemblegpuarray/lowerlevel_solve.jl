@@ -63,7 +63,7 @@ function vectorized_map_solve(
     prob = probs[1]
     return sol = vectorized_map_solve_up(
         prob, alg, ensemblealg, I, u0, p;
-        adaptive = adaptive, kwargs...
+        adaptive, kwargs...
     )
 end
 

@@ -18,8 +18,8 @@ prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
 algs = (GPUTsit5(), GPUVern7(), GPUVern9())
 for alg in algs
-    prob_func = (prob, ctx) -> remake(prob, p = p)
-    monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
+    prob_func = (prob, ctx) -> remake(prob; p)
+    monteprob = EnsembleProblem(prob; prob_func, safetycopy = false)
     @info typeof(alg)
 
     local sol = solve(
@@ -50,20 +50,20 @@ for alg in algs
     saveat = [2.0f0, 4.0f0]
 
     local sol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
-        adaptive = false, dt = 0.01f0, saveat = saveat
+        monteprob, alg, EnsembleGPUKernel(backend); trajectories = 2,
+        adaptive = false, dt = 0.01f0, saveat
     )
 
     asol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
+        monteprob, alg, EnsembleGPUKernel(backend); trajectories = 2,
         adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
-        saveat = saveat
+        saveat
     )
 
-    bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0, saveat = saveat)
+    bench_sol = solve(prob, Vern9(); adaptive = false, dt = 0.01f0, saveat)
     bench_asol = solve(
-        prob, Vern9(), dt = 0.1f-1, save_everystep = false, abstol = 1.0f-7,
-        reltol = 1.0f-7, saveat = saveat
+        prob, Vern9(); dt = 0.1f-1, save_everystep = false, abstol = 1.0f-7,
+        reltol = 1.0f-7, saveat
     )
 
     @test norm(asol.u[1].u[end] - sol.u[1].u[end]) < 5.0e-3
@@ -77,20 +77,20 @@ for alg in algs
     saveat = collect(0.0f0:0.1f0:10.0f0)
 
     local sol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
-        adaptive = false, dt = 0.01f0, saveat = saveat
+        monteprob, alg, EnsembleGPUKernel(backend); trajectories = 2,
+        adaptive = false, dt = 0.01f0, saveat
     )
 
     asol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend), trajectories = 2,
+        monteprob, alg, EnsembleGPUKernel(backend); trajectories = 2,
         adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7,
-        saveat = saveat
+        saveat
     )
 
-    bench_sol = solve(prob, Vern9(), adaptive = false, dt = 0.01f0, saveat = saveat)
+    bench_sol = solve(prob, Vern9(); adaptive = false, dt = 0.01f0, saveat)
     bench_asol = solve(
-        prob, Vern9(), dt = 0.1f-1, save_everystep = false, abstol = 1.0f-7,
-        reltol = 1.0f-7, saveat = saveat
+        prob, Vern9(); dt = 0.1f-1, save_everystep = false, abstol = 1.0f-7,
+        reltol = 1.0f-7, saveat
     )
 
     @test norm(asol.u[1].u[end] - sol.u[1].u[end]) < 1.0e-2
@@ -126,7 +126,7 @@ for alg in algs
     ## With random parameters
 
     prob_func = (prob, ctx) -> remake(prob, p = (@SVector rand(Float32, 3)) .* p)
-    monteprob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
+    monteprob = EnsembleProblem(prob; prob_func, safetycopy = false)
 
     local sol = solve(
         monteprob, alg, EnsembleGPUKernel(backend), trajectories = 10,

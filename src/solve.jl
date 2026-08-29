@@ -85,7 +85,7 @@ function SciMLBase.__solve(
             ensembleprob, alg, ensemblealg,
             1:gpu_trajectories, adaptive;
             sim_seeds, rng_func, master_rng = rng,
-            unstable_check = unstable_check, kwargs...
+            unstable_check, kwargs...
         )
         if cpu_trajectories != 0
             wait(t)
@@ -100,7 +100,7 @@ function SciMLBase.__solve(
             batch_solve(
                 ensembleprob, alg, ensemblealg, 1:batch_size, adaptive;
                 sim_seeds, rng_func, master_rng = rng,
-                unstable_check = unstable_check, kwargs...
+                unstable_check, kwargs...
             ),
             0
         ) :
@@ -118,7 +118,7 @@ function SciMLBase.__solve(
                 batch_data = batch_solve(
                     ensembleprob, alg, ensemblealg, I, adaptive;
                     sim_seeds, rng_func, master_rng = rng,
-                    unstable_check = unstable_check, kwargs...
+                    unstable_check, kwargs...
                 )
                 if ensembleprob.reduction !== SciMLBase.DEFAULT_REDUCTION
                     u, _ = ensembleprob.reduction(u, batch_data, I)
@@ -139,7 +139,7 @@ function SciMLBase.__solve(
                 x = batch_solve(
                     ensembleprob, alg, ensemblealg, I, adaptive;
                     sim_seeds, rng_func, master_rng = rng,
-                    unstable_check = unstable_check, kwargs...
+                    unstable_check, kwargs...
                 )
                 yield()
                 if ensembleprob.reduction !== SciMLBase.DEFAULT_REDUCTION
@@ -251,7 +251,7 @@ function batch_solve(
             solts,
                 solus = batch_solve_up_kernel(
                 ensembleprob, probs, alg, ensemblealg, I,
-                adaptive; saveat = saveat, kwargs...
+                adaptive; saveat, kwargs...
             )
             [
                 begin
@@ -327,7 +327,7 @@ function batch_solve(
             sol,
                 solus = batch_solve_up(
                 ensembleprob, probs, alg, ensemblealg, I,
-                u0, p; adaptive = adaptive, kwargs...
+                u0, p; adaptive, kwargs...
             )
 
             probs[1] = orig_prob
@@ -361,7 +361,7 @@ function batch_solve(
             sol,
                 solus = batch_solve_up(
                 ensembleprob, probs, alg, ensemblealg, I, u0, p;
-                adaptive = adaptive, kwargs...
+                adaptive, kwargs...
             )
             [
                 ensembleprob.output_func(

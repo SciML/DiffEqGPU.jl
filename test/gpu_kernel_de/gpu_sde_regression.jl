@@ -23,12 +23,12 @@ for alg in algs
 
     ## solve using off-loading on CPU
     local sol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend), dt = dt, trajectories = 1000,
+        monteprob, alg, EnsembleGPUKernel(backend); dt, trajectories = 1000,
         adaptive = false
     )
 
     sol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt,
+        monteprob, alg, EnsembleGPUKernel(backend, 0.0); dt,
         trajectories = 1000,
         adaptive = false
     )
@@ -61,14 +61,14 @@ for alg in algs
     dt = Float32(1 // 2^(8))
 
     local sol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
+        monteprob, alg, EnsembleGPUKernel(backend, 0.0); dt, trajectories = 10,
         adaptive = false
     )
 
     @test sol.converged == true
 
     sol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
+        monteprob, alg, EnsembleGPUKernel(backend, 0.0); dt, trajectories = 10,
         adaptive = false, save_everystep = false
     )
 
@@ -78,8 +78,8 @@ for alg in algs
     saveat = [0.3f0, 0.5f0]
 
     sol = solve(
-        monteprob, alg, EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
-        adaptive = false, saveat = saveat
+        monteprob, alg, EnsembleGPUKernel(backend, 0.0); dt, trajectories = 10,
+        adaptive = false, saveat
     )
 end
 
@@ -104,18 +104,18 @@ end
 u0 = @SVector ones(Float32, 2)
 dt = Float32(1 // 2^(8))
 noise_rate_prototype = @SMatrix zeros(Float32, 2, 4)
-prob = SDEProblem(f, g, u0, (0.0f0, 1.0f0), noise_rate_prototype = noise_rate_prototype)
+prob = SDEProblem(f, g, u0, (0.0f0, 1.0f0); noise_rate_prototype)
 monteprob = EnsembleProblem(prob)
 
 sol = solve(
-    monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
+    monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0); dt, trajectories = 10,
     adaptive = false
 )
 
 @test sol.converged == true
 
 sol = solve(
-    monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0), dt = dt, trajectories = 10,
+    monteprob, GPUEM(), EnsembleGPUKernel(backend, 0.0); dt, trajectories = 10,
     adaptive = false, save_everystep = false
 )
 
