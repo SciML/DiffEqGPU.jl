@@ -175,7 +175,9 @@ The current initialization path has the following restrictions:
     traces those operations on the host and stores only static gather recipes in the
     kernel. Fallback getters that evaluate derived symbolic expressions are not yet
     lowered.
-  - Ordinary nonlinear and linear SCC initialization blocks are supported. SCC
+  - Ordinary nonlinear and linear SCC initialization blocks are supported, including
+    all-linear SCC problems that carry no initial state: missing linear-block states are
+    seeded with zeros, which the exact one-step linear solve does not depend on. SCC
     initialization containing Modelica homotopy blocks is not supported.
 
 Structured `MTKParameters` storage is converted recursively to static storage, so this
