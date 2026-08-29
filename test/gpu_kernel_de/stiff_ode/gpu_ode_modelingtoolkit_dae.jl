@@ -309,7 +309,11 @@ end
         [D(hsx) ~ -hsx, D(hsy) ~ -hsy], t; initialization_eqs = homotopy_eqs
     )
     hprob = ODEProblem(hsys, [], (0.0, 1.0); guesses = [hsx => 2.5, hsy => 2.5])
-    @test_throws ArgumentError DiffEqGPU.make_prob_compatible(hprob)
+    # Older ModelingToolkit versions lower `homotopy` without emitting a
+    # `HomotopyProblem`, in which case there is no rejection to test.
+    if hprob.f.initialization_data.initializeprob isa SciMLBase.HomotopyProblem
+        @test_throws ArgumentError DiffEqGPU.make_prob_compatible(hprob)
+    end
 
     @mtkcompile hsys2 = ODESystem(
         [D(hsx) ~ -hsx, D(hsy) ~ -hsy], t;
