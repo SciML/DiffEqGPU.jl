@@ -41,6 +41,12 @@ DiffEqGPU.AbstractNLSolverCache
 DiffEqGPU.NLSolver
 ```
 
+## Kernel DAE Initialization
+
+```@docs
+DiffEqGPU.ImmutableSCCNonlinearProblem
+```
+
 ## Lower-Level Solve Interfaces
 
 These entry points drive the kernel and array solver paths directly, without constructing
