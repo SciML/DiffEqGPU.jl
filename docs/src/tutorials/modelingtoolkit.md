@@ -118,7 +118,12 @@ ModelingToolkit can generate a nonlinear initialization problem for a mass-matri
 copy per trajectory inside the GPU kernel. Square systems use `SimpleTrustRegion`, while
 rectangular nonlinear least-squares systems use `SimpleGaussNewton`, both from
 SimpleNonlinearSolve.jl. The resulting consistent state and parameters are used to start
-the ODE solve.
+the ODE solve. ModelingToolkit's default `SCCNonlinearProblem` representation is lowered
+to an immutable nonlinear problem plus statically typed SCC block metadata. The blocks
+are solved sequentially in the kernel: nonlinear blocks use `SimpleTrustRegion`, and
+linear blocks use DiffEqGPU's device-compatible static square solve (closed-form for
+blocks of size three or smaller and pivoted LU otherwise). The mutable SCC caches and
+linear-problem update wrappers are not placed in the kernel.
 
 For example, the Cartesian pendulum can be initialized and solved as follows:
 
@@ -142,7 +147,6 @@ prob = ODEProblem(
     [py => 0.99, D(px) => 0.0],
     (0.0, 1.0);
     guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0],
-    use_scc = false,
 )
 
 ensemble_prob = EnsembleProblem(prob; safetycopy = false)
@@ -171,6 +175,8 @@ The current initialization path has the following restrictions:
     traces those operations on the host and stores only static gather recipes in the
     kernel. Fallback getters that evaluate derived symbolic expressions are not yet
     lowered.
+  - Ordinary nonlinear and linear SCC initialization blocks are supported. SCC
+    initialization containing Modelica homotopy blocks is not supported.
 
 Structured `MTKParameters` storage is converted recursively to static storage, so this
 path does not require `split = false`.
