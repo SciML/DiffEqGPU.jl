@@ -38,6 +38,8 @@ JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
 Metal = "dde4c033-4e86-420c-a63e-0dd931031962"
 ModelingToolkitBase = "7771a370-6774-4173-bd38-47e70ca0b839"
 OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
+RuntimeGeneratedFunctions = "7e49a35a-f44a-4d26-94aa-eba1b4ca6b47"
+Symbolics = "0c5d862f-8b57-4792-8d23-62f2024744c7"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [extensions]
@@ -45,7 +47,7 @@ AMDGPUExt = ["AMDGPU"]
 CUDAExt = ["CUDA"]
 JLArraysExt = ["JLArrays"]
 MetalExt = ["Metal"]
-ModelingToolkitBaseExt = ["ModelingToolkitBase"]
+ModelingToolkitBaseExt = ["ModelingToolkitBase", "RuntimeGeneratedFunctions", "Symbolics"]
 OpenCLExt = ["OpenCL"]
 oneAPIExt = ["oneAPI"]
 
@@ -73,6 +75,7 @@ Parameters = "0.13"
 PrecompileTools = "1.2.1"
 Random = "1"
 RecursiveArrayTools = "4.2"
+RuntimeGeneratedFunctions = "0.5.9"
 SciMLBase = "3.49"
 SciMLPublic = "1"
 Setfield = "1"
@@ -85,6 +88,7 @@ Test = "1"
 UnPack = "1"
 ZygoteRules = "0.2.7"
 SciMLTesting = "2.10"
+Symbolics = "7"
 julia = "1.10"
 oneAPI = "2"
 pocl_jll = "7"

@@ -93,6 +93,15 @@ end
 
 make_initialization_maps_compatible(prob, initprob, umap, pmap, p) = (umap, pmap)
 lower_initialization_problem(prob) = prob
+function lower_initialization_problem(prob::SciMLBase.HomotopyProblem)
+    throw(
+        ArgumentError(
+            "Homotopy initialization problems are not supported by EnsembleGPUKernel. \
+             Rewrite `homotopy(actual, simplified)` nodes to their `actual` branch before \
+             `mtkcompile`; see the ModelingToolkit tutorial in the DiffEqGPU documentation."
+        )
+    )
+end
 
 make_static_storage(x::StaticArrays.StaticArray) =
     StaticArrays.SArray{Tuple{size(x)...}}(map(make_static_storage, x))

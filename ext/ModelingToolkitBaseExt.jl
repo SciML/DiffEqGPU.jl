@@ -1,6 +1,8 @@
 module ModelingToolkitBaseExt
 
 using ModelingToolkitBase: MTKParameters, System, unknowns
+using Symbolics
+using RuntimeGeneratedFunctions: drop_expr
 using StaticArraysCore: SArray, StaticArray, SVector
 import DiffEqGPU
 import SciMLBase
@@ -87,6 +89,20 @@ struct InitializationStructureRecipe{T, R}
     values::R
 end
 
+struct InitializationConstant{V}
+    value::V
+end
+
+struct InitializationScalarExpression{F}
+    f::F
+end
+
+struct InitializationArrayExpression{A, F}
+    f::F
+end
+
+InitializationArrayExpression{A}(f::F) where {A, F} = InitializationArrayExpression{A, F}(f)
+
 struct InitializationStateMap{R}
     recipe::R
 end
@@ -128,6 +144,14 @@ function initialization_sources(valp)
 end
 
 gather_initialization_value(::InitializationSourceIndex{I}, sources) where {I} = sources[I]
+gather_initialization_value(recipe::InitializationConstant, sources) = recipe.value
+gather_initialization_value(recipe::InitializationScalarExpression, sources) =
+    recipe.f(sources)
+function gather_initialization_value(
+        recipe::InitializationArrayExpression{A}, sources
+    ) where {A}
+    return A(Tuple(recipe.f(sources)))
+end
 function gather_initialization_value(
         recipe::InitializationArrayRecipe{A}, sources
     ) where {A}
@@ -165,36 +189,50 @@ function (map::InitializationParameterMap)(prob, sol)
     )
 end
 
-function next_source_index!(counter)
-    counter[] += 1
-    return counter[]
+struct InitializationSourceTrace
+    vars::Vector{Symbolics.Num}
+    lookup::Dict{Any, Int}
+end
+InitializationSourceTrace() = InitializationSourceTrace(Symbolics.Num[], Dict{Any, Int}())
+
+function next_source_token!(trace::InitializationSourceTrace)
+    i = length(trace.vars) + 1
+    var = Symbolics.variable(:ˍdiffeqgpu_source, i)
+    push!(trace.vars, var)
+    trace.lookup[Symbolics.unwrap(var)] = i
+    return var
 end
 
-index_numeric(::Number, counter) = next_source_index!(counter)
-index_numeric(x::AbstractArray, counter) = map(Base.Fix2(index_numeric, counter), x)
-index_numeric(x::Tuple, counter) = map(Base.Fix2(index_numeric, counter), x)
-index_numeric(x::NamedTuple, counter) = map(Base.Fix2(index_numeric, counter), x)
-function index_numeric(x, counter)
-    values = ntuple(i -> index_numeric(getfield(x, i), counter), fieldcount(typeof(x)))
+source_index_of(trace::InitializationSourceTrace, x) =
+    get(trace.lookup, Symbolics.unwrap(x), nothing)
+
+issymbolic(x) = Symbolics.unwrap(x) isa Symbolics.BasicSymbolic
+
+index_numeric(::Number, trace) = next_source_token!(trace)
+index_numeric(x::AbstractArray, trace) = map(Base.Fix2(index_numeric, trace), x)
+index_numeric(x::Tuple, trace) = map(Base.Fix2(index_numeric, trace), x)
+index_numeric(x::NamedTuple, trace) = map(Base.Fix2(index_numeric, trace), x)
+function index_numeric(x, trace)
+    values = ntuple(i -> index_numeric(getfield(x, i), trace), fieldcount(typeof(x)))
     return typeof(x)(values...)
 end
 
-function index_parameters(p::MTKParameters, counter)
+function index_parameters(p::MTKParameters, trace)
     return MTKParameters(
-        index_numeric(p.tunable, counter),
-        index_numeric(p.initials, counter),
-        index_numeric(p.discrete, counter),
-        index_numeric(p.constant, counter),
+        index_numeric(p.tunable, trace),
+        index_numeric(p.initials, trace),
+        index_numeric(p.discrete, trace),
+        index_numeric(p.constant, trace),
         p.nonnumeric,
         p.caches
     )
 end
 
-function index_initialization_problem(prob::SciMLBase.NonlinearLeastSquaresProblem, counter)
+function index_initialization_problem(prob::SciMLBase.NonlinearLeastSquaresProblem, trace)
     return SciMLBase.NonlinearLeastSquaresProblem{SciMLBase.isinplace(prob)}(
         prob.f,
-        index_numeric(prob.u0, counter),
-        index_parameters(prob.p, counter);
+        index_numeric(prob.u0, trace),
+        index_parameters(prob.p, trace);
         lb = prob.lb,
         ub = prob.ub,
         prob.kwargs...
@@ -202,105 +240,140 @@ function index_initialization_problem(prob::SciMLBase.NonlinearLeastSquaresProbl
 end
 
 function index_initialization_problem(
-        prob::DiffEqGPU.ImmutableSCCNonlinearProblem, counter
+        prob::DiffEqGPU.ImmutableSCCNonlinearProblem, trace
     )
-    return index_initialization_problem(prob.problem, counter)
+    return index_initialization_problem(prob.problem, trace)
 end
 
 function index_initialization_problem(
-        prob::Union{SciMLBase.NonlinearProblem, SciMLBase.ImmutableNonlinearProblem}, counter
+        prob::Union{SciMLBase.NonlinearProblem, SciMLBase.ImmutableNonlinearProblem}, trace
     )
     return SciMLBase.ImmutableNonlinearProblem{SciMLBase.isinplace(prob)}(
         prob.f,
-        index_numeric(prob.u0, counter),
-        index_parameters(prob.p, counter),
+        index_numeric(prob.u0, trace),
+        index_parameters(prob.p, trace),
         prob.problem_type;
         prob.kwargs...
     )
 end
 
-function index_ode_problem(prob, counter)
+function index_ode_problem(prob, trace)
     return SciMLBase.ImmutableODEProblem(
         prob.f,
-        index_numeric(prob.u0, counter),
+        index_numeric(prob.u0, trace),
         prob.tspan,
-        index_parameters(prob.p, counter),
+        index_parameters(prob.p, trace),
         prob.problem_type;
         prob.kwargs...
     )
 end
 
-function source_recipe(index::Number, source_count)
-    source_index = try
-        Int(index)
-    catch
-        nothing
-    end
-    if source_index === nothing || !isequal(index, source_index) ||
-            !(1 <= source_index <= source_count)
-        error(
-            "ModelingToolkit initialization maps must copy numeric values from the ODE or initialization problem."
+@inline function compile_sources_function(exprs, trace::InitializationSourceTrace)
+    built = Symbolics.build_function(exprs, trace.vars; expression = Val(false))
+    f = built isa Tuple ? built[1] : built
+    # An RGF's stored `body::Expr` is only for re-generation; dropping it makes the
+    # callable isbits so the recipe can live inside GPU kernel problems.
+    return drop_expr(f)
+end
+
+function scalar_source_recipe(x, trace::InitializationSourceTrace)
+    if issymbolic(x)
+        i = source_index_of(trace, x)
+        i === nothing || return InitializationSourceIndex{i}()
+        return InitializationScalarExpression(
+            compile_sources_function(Symbolics.unwrap(x), trace)
         )
     end
-    return InitializationSourceIndex{source_index}()
+    x isa Number && return InitializationConstant(x)
+    return error(
+        "ModelingToolkit initialization maps produced an unsupported value of type $(typeof(x))."
+    )
 end
-function source_recipe(x::AbstractArray, source_count)
-    values = ntuple(i -> source_recipe(x[i], source_count), length(x))
-    storage_type = typeof(SArray{Tuple{size(x)...}}(x))
-    return InitializationArrayRecipe{storage_type}(values)
-end
-source_recipe(x::Tuple, source_count) = map(Base.Fix2(source_recipe, source_count), x)
-source_recipe(x::NamedTuple, source_count) = map(Base.Fix2(source_recipe, source_count), x)
-function source_recipe(x, source_count)
+
+# A map output entry is either a value copied verbatim from a source slot (a bare traced
+# variable), a literal constant, or a computed symbolic expression. Whole arrays with any
+# computed entry are compiled into one generated gather-and-compute function so the device
+# recipe stays a single call.
+is_direct_entry(x, trace) = !issymbolic(x) || source_index_of(trace, x) !== nothing
+
+function source_recipe(x, trace::InitializationSourceTrace)
+    (x isa Number || issymbolic(x)) && return scalar_source_recipe(x, trace)
     values = ntuple(
-        i -> source_recipe(getfield(x, i), source_count), fieldcount(typeof(x))
+        i -> source_recipe(getfield(x, i), trace), fieldcount(typeof(x))
     )
     return InitializationStructureRecipe{typeof(x)}(values)
 end
-
-source_recipe(x, source_count, prototype) = source_recipe(x, source_count)
-function source_recipe(x::AbstractArray, source_count, prototype::AbstractArray)
-    values = ntuple(i -> source_recipe(x[i], source_count, prototype[i]), length(x))
-    storage_type = typeof(static_parameter_storage(prototype))
-    return InitializationArrayRecipe{storage_type}(values)
+function source_recipe(x::AbstractArray, trace::InitializationSourceTrace)
+    storage_type = SArray{Tuple{size(x)...}}
+    return array_source_recipe(x, trace, storage_type)
 end
-function source_recipe(x::Tuple, source_count, prototype::Tuple)
-    return map(
-        (value, target) -> source_recipe(value, source_count, target), x, prototype
+source_recipe(x::Tuple, trace::InitializationSourceTrace) =
+    map(Base.Fix2(source_recipe, trace), x)
+source_recipe(x::NamedTuple, trace::InitializationSourceTrace) =
+    map(Base.Fix2(source_recipe, trace), x)
+function source_recipe(
+        x::Union{Symbolics.Num, Symbolics.BasicSymbolic}, trace::InitializationSourceTrace
+    )
+    return scalar_source_recipe(x, trace)
+end
+
+function array_source_recipe(x, trace, storage_type)
+    if all(el -> is_direct_entry(el, trace), x)
+        values = ntuple(i -> scalar_source_recipe(x[i], trace), length(x))
+        return InitializationArrayRecipe{storage_type}(values)
+    end
+    exprs = SVector{length(x)}(map(Symbolics.unwrap, vec(x))...)
+    return InitializationArrayExpression{storage_type}(
+        compile_sources_function(exprs, trace)
     )
 end
-function source_recipe(x::NamedTuple, source_count, prototype::NamedTuple)
+
+source_recipe(x, trace::InitializationSourceTrace, prototype) = source_recipe(x, trace)
+function source_recipe(
+        x::AbstractArray, trace::InitializationSourceTrace, prototype::AbstractArray
+    )
+    storage_type = typeof(static_parameter_storage(prototype))
+    return array_source_recipe(x, trace, storage_type)
+end
+function source_recipe(x::Tuple, trace::InitializationSourceTrace, prototype::Tuple)
+    return map(
+        (value, target) -> source_recipe(value, trace, target), x, prototype
+    )
+end
+function source_recipe(
+        x::NamedTuple, trace::InitializationSourceTrace, prototype::NamedTuple
+    )
     values = map(
-        (value, target) -> source_recipe(value, source_count, target), x, prototype
+        (value, target) -> source_recipe(value, trace, target), x, prototype
     )
     return NamedTuple{keys(x)}(values)
 end
 
 function make_state_map(initprob, map)
     map === nothing && return nothing
-    # Evaluate the host-only MTK map on sequential source indices, then retain its
-    # device-compatible gather recipe.
-    counter = Ref(0)
-    indexed_initprob = index_initialization_problem(initprob, counter)
-    return InitializationStateMap(source_recipe(map(indexed_initprob), counter[]))
+    # Evaluate the host-only MTK map on symbolically traced sources: copied slots become
+    # static gather recipes and computed entries compile into generated device functions.
+    trace = InitializationSourceTrace()
+    indexed_initprob = index_initialization_problem(initprob, trace)
+    return InitializationStateMap(source_recipe(map(indexed_initprob), trace))
 end
 
 function make_parameter_map(prob, initprob, map)
     map === nothing && return nothing
     # Parameter maps may select from both the ODE problem and nonlinear solution.
-    counter = Ref(0)
-    indexed_prob = index_ode_problem(prob, counter)
-    indexed_initprob = index_initialization_problem(initprob, counter)
+    trace = InitializationSourceTrace()
+    indexed_prob = index_ode_problem(prob, trace)
+    indexed_initprob = index_initialization_problem(initprob, trace)
     p = map(indexed_prob, indexed_initprob)
     p isa MTKParameters || error(
         "ModelingToolkit initialization parameter maps must return `MTKParameters`."
     )
     prototype = SciMLBase.parameter_values(prob)
     recipe = InitializationParameterRecipe(
-        source_recipe(p.tunable, counter[], prototype.tunable),
-        source_recipe(p.initials, counter[], prototype.initials),
-        source_recipe(p.discrete, counter[], prototype.discrete),
-        source_recipe(p.constant, counter[], prototype.constant)
+        source_recipe(p.tunable, trace, prototype.tunable),
+        source_recipe(p.initials, trace, prototype.initials),
+        source_recipe(p.discrete, trace, prototype.discrete),
+        source_recipe(p.constant, trace, prototype.constant)
     )
     return InitializationParameterMap(recipe)
 end

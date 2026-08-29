@@ -1,6 +1,8 @@
 using DiffEqGPU, StaticArrays, SciMLBase, LinearAlgebra, Test
 using ModelingToolkit, OrdinaryDiffEq
 using ModelingToolkit: t_nounits as t, D_nounits as D
+using ModelingToolkit.Symbolics.SymbolicUtils: @rule
+using ModelingToolkit.Symbolics.SymbolicUtils.Rewriters: Postwalk, PassThrough
 using KernelAbstractions: CPU
 
 const GROUP = get(ENV, "GROUP", "CUDA")
@@ -265,6 +267,64 @@ end
     )
     @test SciMLBase.successful_retcode(sol)
     @test sol.u ≈ SA[2.0f0, 3.0f0] atol = 1.0f-5
+end
+
+@testset "Computed initialization maps" begin
+    @variables cmx(t) cmy(t)
+    # cmy is torn into an observed variable of the initialization system, so the state
+    # map has to evaluate `2cmx + 1` instead of copying a solved value.
+    @mtkcompile cmsys = ODESystem(
+        [D(cmx) ~ -cmx, D(cmy) ~ -cmy], t;
+        initialization_eqs = [cmx^3 + cmx ~ 2, cmy ~ 2cmx + 1]
+    )
+    cmprob = ODEProblem(cmsys, [], (0.0, 1.0); guesses = [cmx => 1.0, cmy => 1.0])
+    @test !SciMLBase.is_trivial_initialization(cmprob.f.initialization_data)
+
+    compatible_prob = DiffEqGPU.make_prob_compatible(cmprob)
+    @test isbitstype(typeof(compatible_prob))
+
+    ensemble_prob = EnsembleProblem(cmprob, safetycopy = false)
+    sol = solve(
+        ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
+        trajectories = 2, dt = 0.01, adaptive = false, save_everystep = false
+    )
+    @test length(sol.u) == 2
+    @test sort(collect(sol.u[1].u[1])) ≈ [1.0, 3.0] atol = 1.0e-5
+end
+
+@testset "Homotopy-stripped initialization" begin
+    rule = @rule ModelingToolkit.homotopy(~a, ~s) => ~a
+    strip_homotopy = Postwalk(PassThrough(rule))
+    strip_eq(eq) =
+        ModelingToolkit.Symbolics.wrap(strip_homotopy(ModelingToolkit.Symbolics.unwrap(eq.lhs))) ~
+        ModelingToolkit.Symbolics.wrap(strip_homotopy(ModelingToolkit.Symbolics.unwrap(eq.rhs)))
+
+    @variables hsx(t) hsy(t)
+    homotopy_eqs = [
+        ModelingToolkit.homotopy(atan(hsx - 3) + hsx - 3, hsx - 3) ~ 0,
+        hsy ~ hsx,
+    ]
+
+    @mtkcompile hsys = ODESystem(
+        [D(hsx) ~ -hsx, D(hsy) ~ -hsy], t; initialization_eqs = homotopy_eqs
+    )
+    hprob = ODEProblem(hsys, [], (0.0, 1.0); guesses = [hsx => 2.5, hsy => 2.5])
+    @test_throws ArgumentError DiffEqGPU.make_prob_compatible(hprob)
+
+    @mtkcompile hsys2 = ODESystem(
+        [D(hsx) ~ -hsx, D(hsy) ~ -hsy], t;
+        initialization_eqs = map(strip_eq, homotopy_eqs)
+    )
+    hprob2 = ODEProblem(hsys2, [], (0.0, 1.0); guesses = [hsx => 2.5, hsy => 2.5])
+    compatible_prob = DiffEqGPU.make_prob_compatible(hprob2)
+    @test isbitstype(typeof(compatible_prob))
+
+    ensemble_prob = EnsembleProblem(hprob2, safetycopy = false)
+    sol = solve(
+        ensemble_prob, GPUTsit5(), EnsembleGPUKernel(backend);
+        trajectories = 2, dt = 0.01, adaptive = false, save_everystep = false
+    )
+    @test sol.u[1].u[1] ≈ [3.0, 3.0] atol = 1.0e-4
 end
 
 # ============================================================================

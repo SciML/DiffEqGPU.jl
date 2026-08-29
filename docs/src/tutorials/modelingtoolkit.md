@@ -170,13 +170,32 @@ The current initialization path has the following restrictions:
   - Lower and upper bounds are supported through a smooth transformation to unconstrained
     variables. A solution exactly on a finite bound is represented by a limiting
     unconstrained value and can therefore converge less robustly than an interior solution.
-  - ModelingToolkit's state and parameter initialization maps may directly select,
-    reorder, and repack numeric values from the ODE and initialization problems. DiffEqGPU
-    traces those operations on the host and stores only static gather recipes in the
-    kernel. Fallback getters that evaluate derived symbolic expressions are not yet
-    lowered.
-  - Ordinary nonlinear and linear SCC initialization blocks are supported. SCC
-    initialization containing Modelica homotopy blocks is not supported.
+  - ModelingToolkit's state and parameter initialization maps are traced symbolically on
+    the host: entries copied from the ODE or initialization problem become static gather
+    recipes, and entries computed from them (for example states that are observed
+    variables of the torn initialization system) are compiled into device-side generated
+    functions. Maps that branch on runtime values cannot be traced and are not supported.
+  - Ordinary nonlinear and linear SCC initialization blocks are supported. Initialization
+    containing Modelica `homotopy(actual, simplified)` nodes is not supported: continuation
+    solves do not fit the kernel's static solver set. Since `homotopy(actual, simplified)`
+    evaluates numerically to `actual`, an equivalent supported system is obtained by
+    rewriting each homotopy node to its `actual` branch before `mtkcompile`:
+
+    ```julia
+    using ModelingToolkit
+    SU = ModelingToolkit.Symbolics.SymbolicUtils
+    rule = SU.@rule ModelingToolkit.homotopy(~a, ~s) => ~a
+    strip_homotopy = SU.Rewriters.Postwalk(SU.Rewriters.PassThrough(rule))
+    strip_eq(eq) =
+        ModelingToolkit.Symbolics.wrap(strip_homotopy(ModelingToolkit.Symbolics.unwrap(eq.lhs))) ~
+        ModelingToolkit.Symbolics.wrap(strip_homotopy(ModelingToolkit.Symbolics.unwrap(eq.rhs)))
+
+    stripped_eqs = map(strip_eq, equations_with_homotopy)
+    ```
+
+    This discards only the `simplified` starting heuristic used by continuation solvers;
+    the solved system is unchanged. Robustness for hard initial guesses then rests on the
+    kernel's `SimpleTrustRegion` solve.
 
 Structured `MTKParameters` storage is converted recursively to static storage, so this
 path does not require `split = false`.
