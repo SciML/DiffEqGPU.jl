@@ -26,20 +26,24 @@ using ModelingToolkit: t_nounits as t, D_nounits as D
 @parameters σ ρ β
 @variables x(t) y(t) z(t)
 
-eqs = [D(D(x)) ~ σ * (y - x),
+eqs = [
+    D(D(x)) ~ σ * (y - x),
     D(y) ~ x * (ρ - z) - y,
-    D(z) ~ x * y - β * z]
+    D(z) ~ x * y - β * z,
+]
 
 @named lorenz = System(eqs, t)
 sys = mtkcompile(lorenz; split = false)
 
-op = @SVector [D(x) => 2.0f0,
+op = @SVector [
+    D(x) => 2.0f0,
     x => 1.0f0,
     y => 0.0f0,
     z => 0.0f0,
     σ => 28.0f0,
     ρ => 10.0f0,
-    β => 8.0f0 / 3.0f0]
+    β => 8.0f0 / 3.0f0,
+]
 
 tspan = (0.0f0, 100.0f0)
 prob = ODEProblem{false}(sys, op, tspan)
@@ -97,12 +101,14 @@ we can build and solve an MTK generated ODE on the GPU using the following:
 using DiffEqGPU, CUDA
 function prob_func2(prob, ctx)
     u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
-    remake(prob, u0 = u0, p = p)
+    return remake(prob; u0, p)
 end
 
 monteprob = EnsembleProblem(prob, prob_func = prob_func2, safetycopy = false)
-sol = solve(monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
-    trajectories = 10_000)
+sol = solve(
+    monteprob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend()),
+    trajectories = 10_000
+)
 ```
 
 We can then using symbolic indexing on the result to inspect it:

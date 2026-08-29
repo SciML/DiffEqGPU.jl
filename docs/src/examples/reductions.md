@@ -18,24 +18,29 @@ ra = rand(100)
 
 function f!(du, u, p, t)
     du[1] = 1.01 * u[1]
+    return
 end
 
 prob = ODEProblem(f!, [0.5], (0.0, 1.0))
 
 function output_func(sol, ctx)
-    last(sol), false
+    return last(sol), false
 end
 
 function prob_func(prob, ctx)
-    remake(prob, u0 = ra[ctx.sim_id] * prob.u0)
+    return remake(prob, u0 = ra[ctx.sim_id] * prob.u0)
 end
 
 function reduction(u, batch, I)
-    u .+ sum(batch), false
+    return u .+ sum(batch), false
 end
 
-prob2 = EnsembleProblem(prob, prob_func = prob_func, output_func = output_func,
-    reduction = reduction, u_init = Vector{eltype(prob.u0)}([0.0]))
-sim4 = solve(prob2, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 100,
-    batch_size = 20)
+prob2 = EnsembleProblem(
+    prob; prob_func, output_func, reduction,
+    u_init = Vector{eltype(prob.u0)}([0.0])
+)
+sim4 = solve(
+    prob2, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()), trajectories = 100,
+    batch_size = 20
+)
 ```

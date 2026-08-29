@@ -1,6 +1,8 @@
 """
-    vectorized_map_solve(probs, alg, ensemblealg::EnsembleArrayAlgorithm, I, adaptive;
-        kwargs...)
+    vectorized_map_solve(
+        probs, alg, ensemblealg::EnsembleArrayAlgorithm, I, adaptive;
+        kwargs...
+    )
 
 Run the `EnsembleArrayAlgorithm` path directly for a selected set of trajectories. The
 function is intended for solver and ensemble package developers that need the lower-level

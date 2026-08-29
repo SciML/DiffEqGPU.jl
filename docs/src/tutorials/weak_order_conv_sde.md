@@ -37,8 +37,10 @@ us_calc = reshape(mean(sol_array, dims = 3), size(sol_array, 2))
 us_expect = u₀ .* exp.(p[1] * ts)
 
 using Plots
-plot(ts, us_expect, lw = 5,
-    xaxis = "Time (t)", yaxis = "y(t)", label = "True Expected value")
+plot(
+    ts, us_expect, lw = 5,
+    xaxis = "Time (t)", yaxis = "y(t)", label = "True Expected value"
+)
 
 plot!(ts, us_calc, lw = 3, ls = :dash, label = "Calculated Expected value")
 ```
