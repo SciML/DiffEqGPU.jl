@@ -1,14 +1,17 @@
-name: "CUDA Tests & Docs"
+name: "CUDA Tests"
 
 on:
   pull_request:
     branches:
       - master
       - 'release-'
+    paths-ignore:
+      - 'docs/**'
   push:
     branches:
       - master
-    tags: '*'
+    paths-ignore:
+      - 'docs/**'
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.ref }}
@@ -44,26 +47,3 @@ jobs:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
-
-  gpu-docs:
-    name: "Documentation"
-    runs-on: [self-hosted, gpu-v100]
-    timeout-minutes: 360
-    if: github.event_name == 'push' || !github.event.pull_request.draft
-    steps:
-      - uses: actions/checkout@v7
-      - uses: julia-actions/setup-julia@v3
-        with:
-          version: "1"
-      - run: |
-          julia --project=docs -e '
-            println("--- Instantiating project")
-            using Pkg
-            Pkg.develop(PackageSpec(path=pwd()))
-            Pkg.instantiate()
-            println("+++ Building documentation")
-            include("docs/make.jl")'
-        env:
-          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-          DOCUMENTER_KEY: ${{ secrets.DOCUMENTER_KEY }}
-          DATADEPS_ALWAYS_ACCEPT: true
