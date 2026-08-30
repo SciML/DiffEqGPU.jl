@@ -37,7 +37,7 @@ function DiffEqGPU.lower_initialization_problem(prob::SciMLBase.SCCNonlinearProb
     )
     any(p -> nameof(typeof(p)) === :HomotopyProblem, prob.probs) && throw(
         ArgumentError(
-            "SCC nonlinear initialization problems containing homotopy blocks are not supported by EnsembleGPUKernel."
+            "SCC nonlinear initialization problems containing homotopy blocks are not supported by EnsembleGPUKernel. Recompile the system with `mtkcompile(sys; homotopy = false)` to replace every `homotopy(actual, simplified)` node by `actual`, which builds an equivalent initialization without homotopy blocks."
         )
     )
 
