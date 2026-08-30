@@ -17,7 +17,7 @@ p = (10.0f0, 28.0f0, 8 / 3.0f0)
 prob = ODEProblem(lorenz, u0, tspan, p)
 const pre_p = [rand(Float32, 3) for i in 1:10]
 prob_func = (prob, ctx) -> remake(prob, p = pre_p[ctx.sim_id] .* p)
-monteprob = EnsembleProblem(prob, prob_func = prob_func)
+monteprob = EnsembleProblem(prob; prob_func)
 
 @info "Explicit Methods"
 
@@ -78,7 +78,7 @@ end
 
 func = ODEFunction(lorenz, jac = lorenz_jac, tgrad = lorenz_tgrad)
 prob_jac = ODEProblem(func, u0, tspan, p)
-monteprob_jac = EnsembleProblem(prob_jac, prob_func = prob_func)
+monteprob_jac = EnsembleProblem(prob_jac; prob_func)
 
 @time solve(
     monteprob_jac, Rodas5(), EnsembleCPUArray(), dt = 0.1,
@@ -117,7 +117,7 @@ end
 # test discrete
 discrete_callback = DiscreteCallback(condition, affect!, save_positions = (false, false))
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = discrete_callback)
-callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+callback_monteprob = EnsembleProblem(callback_prob; prob_func)
 @time solve(
     callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 10,
     saveat = 1.0f0
@@ -137,7 +137,7 @@ continuous_callback = ContinuousCallback(
     save_positions = (false, false)
 )
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = continuous_callback)
-callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+callback_monteprob = EnsembleProblem(callback_prob; prob_func)
 solve(
     callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
     saveat = 1.0f0
@@ -146,7 +146,7 @@ solve(
 # test callback set
 callback_set = CallbackSet(discrete_callback, continuous_callback)
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = callback_set)
-callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+callback_monteprob = EnsembleProblem(callback_prob; prob_func)
 solve(
     callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
     saveat = 1.0f0
@@ -154,7 +154,7 @@ solve(
 
 # test merge
 callback_prob = ODEProblem(lorenz, u0, tspan, p, callback = discrete_callback)
-callback_monteprob = EnsembleProblem(callback_prob, prob_func = prob_func)
+callback_monteprob = EnsembleProblem(callback_prob; prob_func)
 solve(
     callback_monteprob, Tsit5(), EnsembleGPUArray(backend), trajectories = 2,
     saveat = 1.0f0,
@@ -215,7 +215,7 @@ rober_prob = ODEProblem(
 )
 sol = solve(rober_prob, Rodas5(), abstol = 1.0f-8, reltol = 1.0f-8)
 sol = solve(rober_prob, TRBDF2(), abstol = 1.0f-4, reltol = 1.0f-1)
-rober_monteprob = EnsembleProblem(rober_prob, prob_func = prob_func)
+rober_monteprob = EnsembleProblem(rober_prob; prob_func)
 
 if GROUP == "CUDA"
     @time sol = solve(

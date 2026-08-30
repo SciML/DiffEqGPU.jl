@@ -69,10 +69,10 @@ function generate_problem(
     end
 
     f_func = ODEFunction(
-        _f, Wfact = _Wfact!,
+        _f; Wfact = _Wfact!,
         Wfact_t = _Wfact!_t,
-        #colorvec=colorvec,
-        jac_prototype = jac_prototype,
+        #colorvec,
+        jac_prototype,
         sparsity = nothing,
         tgrad = _tgrad
     )
@@ -164,10 +164,10 @@ function generate_problem(prob::SDEProblem, u0, p, jac_prototype, colorvec)
     end
 
     f_func = SDEFunction(
-        _f, _g, Wfact = _Wfact!,
+        _f, _g; Wfact = _Wfact!,
         Wfact_t = _Wfact!_t,
-        #colorvec=colorvec,
-        jac_prototype = jac_prototype,
+        #colorvec,
+        jac_prototype,
         sparsity = nothing,
         tgrad = _tgrad
     )

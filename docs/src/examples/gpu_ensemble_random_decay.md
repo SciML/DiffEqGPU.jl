@@ -49,7 +49,7 @@ prob_func = (prob, ctx) -> begin
     remake(prob, p = @SVector [new_λ])
 end
 
-ensemble_prob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)
+ensemble_prob = EnsembleProblem(prob; prob_func, safetycopy = false)
 ```
 
 # Solving on GPU and CPU
