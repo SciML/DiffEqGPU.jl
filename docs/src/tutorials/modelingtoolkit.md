@@ -184,7 +184,36 @@ The current initialization path has the following restrictions:
   - Ordinary nonlinear and linear SCC initialization blocks are supported, including
     all-linear SCC problems that carry no initial state: missing linear-block states are
     seeded with zeros, which the exact one-step linear solve does not depend on. SCC
-    initialization containing Modelica homotopy blocks is not supported.
+    initialization containing Modelica homotopy blocks is not supported; compile the
+    system with `homotopy = false` to remove them (see
+    [Systems using `homotopy`](@ref homotopy_gpu)).
 
 Structured `MTKParameters` storage is converted recursively to static storage, so this
 path does not require `split = false`.
+
+### [Systems using `homotopy`](@id homotopy_gpu)
+
+A system whose initialization carries Modelica `homotopy(actual, simplified)` operators
+builds a `HomotopyProblem`, which is solved by continuation. Continuation is a host-side
+sweep over a solver, so it has no device-compatible lowering and `EnsembleGPUKernel`
+rejects it:
+
+```
+ArgumentError: SCC nonlinear initialization problems containing homotopy blocks are not
+supported by EnsembleGPUKernel.
+```
+
+Pass `homotopy = false` to `mtkcompile` to compile the system without them:
+
+```julia
+pendulum = mtkcompile(pendulum; homotopy = false)
+```
+
+Every `homotopy(actual, simplified)` node is replaced by `actual` before compilation, so
+the compiled system contains no homotopy nodes, initialization builds a plain nonlinear
+problem, and the result lowers to the kernel like any other system. This is exact rather
+than an approximation: `actual` is what the operator evaluates to numerically anyway, per
+the Modelica specification. What is given up is only the `simplified` starting heuristic —
+the continuation's easier warm start — so a system that relied on it to converge from a
+cold start may need better guesses instead.
+
