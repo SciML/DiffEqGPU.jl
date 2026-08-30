@@ -134,7 +134,7 @@ linear-problem update wrappers are not placed in the kernel.
 For example, the Cartesian pendulum can be initialized and solved as follows:
 
 ```julia
-using CUDA, DiffEqGPU, ModelingToolkit, OrdinaryDiffEq
+using CUDA, DiffEqGPU, ModelingToolkit, OrdinaryDiffEq, SciMLBase
 using ModelingToolkit: t_nounits as t, D_nounits as D
 
 @parameters g = 9.81 L = 1.0
@@ -148,7 +148,7 @@ eqs = [
 
 @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
 
-prob = ODEProblem(
+prob = ODEProblem{true, SciMLBase.FullSpecialize}(
     pendulum,
     [py => 0.99, D(px) => 0.0],
     (0.0, 1.0);
@@ -165,6 +165,21 @@ sol = solve(
     adaptive = false,
 )
 ```
+
+### Specialization level
+
+Construct ModelingToolkit problems intended for `EnsembleGPUKernel` initialization with
+`SciMLBase.FullSpecialize`, passed as the problem type parameter as above
+(`ODEProblem{iip, SciMLBase.FullSpecialize}(sys, ...)`; ModelingToolkit ignores a
+`specialize` keyword argument). ModelingToolkit's default level is
+`SciMLBase.AutoDespecialize`, which trades specialization for compile latency by routing
+generated code through type-erased wrappers. Today DiffEqGPU rebuilds the initialization
+functions fully specialized on the host regardless of the level, so both levels currently
+produce the same kernel and the same results. `FullSpecialize` is the level under which
+ModelingToolkit is planned to emit device-compatible initialization maps directly (see
+[ModelingToolkit.jl#5043](https://github.com/SciML/ModelingToolkit.jl/issues/5043)), and
+DiffEqGPU is expected to require it for kernel initialization once that lands, so new
+code should adopt it now.
 
 The current initialization path has the following restrictions:
 
