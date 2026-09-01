@@ -148,5 +148,8 @@ end
     )
 
     @test overshoot_sol.u[1].t == Float32[0, 1]
-    @test overshoot_sol.u[1].u[end] == SVector(1.0f0)
+    # OpenCL reassociates the endpoint interpolation by up to two Float32 ulps.
+    @test isapprox(
+        overshoot_sol.u[1].u[end], SVector(1.0f0); atol = 2eps(Float32), rtol = 0
+    )
 end
