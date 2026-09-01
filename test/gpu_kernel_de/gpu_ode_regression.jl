@@ -137,3 +137,16 @@ for alg in algs
         adaptive = true, dt = 0.1f-1, abstol = 1.0f-7, reltol = 1.0f-7
     )
 end
+
+@testset "Fixed-step final state after overshoot" begin
+    unit_rate(u, p, t) = SVector(1.0f0)
+    overshoot_prob = ODEProblem{false}(unit_rate, SVector(0.0f0), (0.0f0, 1.0f0))
+    overshoot_ensemble = EnsembleProblem(overshoot_prob; safetycopy = false)
+    overshoot_sol = solve(
+        overshoot_ensemble, GPUTsit5(), EnsembleGPUKernel(backend);
+        trajectories = 2, adaptive = false, dt = 0.3f0, save_everystep = false
+    )
+
+    @test overshoot_sol.u[1].t == Float32[0, 1]
+    @test overshoot_sol.u[1].u[end] == SVector(1.0f0)
+end

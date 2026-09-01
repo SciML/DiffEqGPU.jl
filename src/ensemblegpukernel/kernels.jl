@@ -50,15 +50,14 @@
             saved_in_cb = step!(integ, ts, us)
             !saved_in_cb && savevalues!(integ, ts, us)
         end
+        if saveat === nothing && !save_everystep
+            @inbounds us[2] = integ.u
+            @inbounds ts[2] = integ.t
+        end
         if integ.t > tspan[2] && saveat === nothing
             ## Interpolate to tf
             @inbounds us[end] = integ(tspan[2])
             @inbounds ts[end] = tspan[2]
-        end
-
-        if saveat === nothing && !save_everystep
-            @inbounds us[2] = integ.u
-            @inbounds ts[2] = integ.t
         end
     else
         # Initialization failed — store initial values and bail out
