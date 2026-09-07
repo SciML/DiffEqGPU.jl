@@ -1,6 +1,12 @@
 [CPU]
 versions = ["lts", "1", "pre"]
 
+["CPU 32-bit"]
+group = "CPU"
+versions = ["1"]
+os = ["ubuntu-latest"]
+arch = "x86"
+
 [JLArrays]
 versions = ["lts", "1", "pre"]
 
