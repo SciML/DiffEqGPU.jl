@@ -1,11 +1,7 @@
 using DiffEqGPU, Enzyme, KernelAbstractions, SciMLBase, StaticArrays, Test
 
-const backend = if get(ENV, "GROUP", "Enzyme") == "CUDA"
-    using CUDA
-    CUDA.CUDABackend()
-else
-    CPU()
-end
+using CUDA
+const backend = CUDA.CUDABackend()
 
 exponential_rhs(u, p, t) = p[1] * u
 

@@ -1,7 +1,8 @@
 # Enzyme drops sensitivities through mutable caches when these isbits problem arrays
-# are wrapped in @Const.
+# are wrapped in @Const. Scalar kernel args must stay @Const: GPU Enzyme rejects Active
+# scalars ("Active kernel arguments not supported on GPU").
 @kernel function ode_solve_kernel(
-        probs, alg, _us, _ts, dt, callback,
+        probs, alg, _us, _ts, @Const(dt), callback,
         tstops,
         saveat, ::Val{save_everystep}
     ) where {save_everystep}
@@ -73,8 +74,8 @@
 end
 
 @kernel function ode_asolve_kernel(
-        probs, alg, _us, _ts, dt, callback, tstops,
-        abstol, reltol,
+        probs, alg, _us, _ts, @Const(dt), callback, tstops,
+        @Const(abstol), @Const(reltol),
         saveat,
         ::Val{save_everystep}
     ) where {save_everystep}

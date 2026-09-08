@@ -107,5 +107,17 @@ oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 pocl_jll = "627d6b7a-bbe6-5189-83e7-98cc0a5aeadd"
 
 [targets]
-enzyme = ["Enzyme", "KernelAbstractions", "SciMLBase", "StaticArrays", "Test"]
+test = [
+    "SciMLTesting",
+    "AMDGPU",
+    "CUDA",
+    "DifferentiationInterface",
+    "GPUArraysCore",
+    "JLArrays",
+    "Metal",
+    "OpenCL",
+    "Test",
+    "oneAPI",
+    "pocl_jll",
+]
 enzyme_cuda = ["CUDA", "CUDACore", "Enzyme", "KernelAbstractions", "SciMLBase", "StaticArrays", "Test"]

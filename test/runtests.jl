@@ -19,11 +19,12 @@ const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
 
-if GROUP in ("Enzyme", "CUDA")
+# Enzyme GPU gradients are validated on CUDA only (other backends lack support /
+# conflict with Enzyme's GPUCompiler requirements).
+if GROUP == "CUDA"
     @time @safetestset "Enzyme ensemble gradients" begin
         include("enzyme_environment.jl")
     end
-    GROUP == "Enzyme" && exit()
 end
 
 if GROUP == "QA"

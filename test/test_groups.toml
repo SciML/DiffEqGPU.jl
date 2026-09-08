@@ -15,6 +15,3 @@ versions = ["lts", "1", "pre"]
 
 [QA]
 versions = ["lts", "1"]
-
-[Enzyme]
-versions = ["lts", "1"]
