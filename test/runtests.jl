@@ -42,6 +42,9 @@ end
 @time @safetestset "GPU Kernelized Non Stiff ODE Regression" begin
     include("gpu_kernel_de/gpu_ode_regression.jl")
 end
+@time @safetestset "Tsit5 accuracy" begin
+    include("gpu_kernel_de/tsit5_accuracy.jl")
+end
 @time @safetestset "GPU Kernelized Non Stiff ODE DiscreteCallback" begin
     include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl")
 end
