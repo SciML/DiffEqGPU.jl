@@ -3,6 +3,7 @@ function alg_order(alg::Union{GPUODEAlgorithm, GPUSDEAlgorithm})
 end
 
 alg_order(alg::GPUTsit5) = 5
+alg_order(alg::GPUTsit5IController) = 5
 alg_order(alg::GPUVern7) = 7
 alg_order(alg::GPUVern9) = 9
 alg_order(alg::GPURosenbrock23) = 2

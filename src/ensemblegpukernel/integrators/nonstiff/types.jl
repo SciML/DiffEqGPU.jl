@@ -303,7 +303,7 @@ end
 # Initialization of Integrators
 #######################################################################################
 @inline function init(
-        alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, dt::T,
+        alg::Union{GPUTsit5, GPUTsit5IController}, f::F, IIP::Bool, u0::S, t0::T, dt::T,
         p::P, tstops::TS,
         callback::CB,
         save_everystep::Bool,
@@ -338,7 +338,7 @@ end
 end
 
 @inline function init(
-        alg::GPUTsit5, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
+        alg::Union{GPUTsit5, GPUTsit5IController}, f::F, IIP::Bool, u0::S, t0::T, tf::T, dt::T,
         p::P,
         abstol::TOL, reltol::TOL,
         internalnorm::N, tstops::TS,

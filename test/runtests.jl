@@ -44,6 +44,7 @@ end
 end
 @time @safetestset "Tsit5 accuracy" begin
     include("gpu_kernel_de/tsit5_accuracy.jl")
+    include("gpu_kernel_de/tsit5_i_controller.jl")
 end
 @time @safetestset "GPU Kernelized Non Stiff ODE DiscreteCallback" begin
     include("gpu_kernel_de/gpu_ode_discrete_callbacks.jl")

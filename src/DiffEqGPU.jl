@@ -241,7 +241,7 @@ export BrownFullBasicInit, CheckInit
 
 export EnsembleCPUArray, EnsembleGPUArray, EnsembleGPUKernel, LinSolveGPUSplitFactorize
 
-export GPUTsit5, GPUVern7, GPUVern9, GPUEM, GPUSIEA
+export GPUTsit5, GPUTsit5IController, GPUVern7, GPUVern9, GPUEM, GPUSIEA
 ## Stiff ODE solvers
 export GPURosenbrock23, GPURodas4, GPURodas5P, GPUKvaerno3, GPUKvaerno5
 

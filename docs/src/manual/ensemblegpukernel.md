@@ -10,6 +10,7 @@ EnsembleGPUKernel
 
 ```@docs
 GPUTsit5
+GPUTsit5IController
 GPUVern7
 GPUVern9
 GPUEM
@@ -37,3 +38,4 @@ that one controller is more efficient.
 Changing the controller preserves the Tsit5 Runge–Kutta tableau but changes step
 selection and tolerance behavior. Any I-controlled variant should remain an
 explicit alternative, preserving the existing `GPUTsit5` behavior.
+`GPUTsit5IController()` provides this opt-in I-controller variant.
