@@ -1,4 +1,4 @@
-@inline function step!(integ::GPUT5I{false, S, T}, ts, us) where {T, S}
+@muladd @inline function step!(integ::GPUT5I{false, S, T}, ts, us) where {T, S}
     c1, c2, c3, c4, c5, c6 = integ.cs
     dt = integ.dt
     t = integ.t
