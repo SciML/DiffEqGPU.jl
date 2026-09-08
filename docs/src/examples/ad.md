@@ -134,5 +134,14 @@ The example uses KernelAbstractions' CPU backend. For NVIDIA GPUs, load `CUDA` a
 use `CUDA.CUDABackend()`. Reset `dp` to zero before each reverse-mode call: Enzyme
 accumulates into this buffer. Fixed-step gradients differentiate the numerical
 steps; adaptive gradients differentiate the executed solver path and are not a
-record-and-replay adjoint with a frozen mesh. This example does not cover callbacks,
-DAE initialization, or differentiation of the time grid.
+record-and-replay adjoint with a frozen mesh.
+
+Callbacks and DAE initialization are solver features; their absence from this
+example does not imply that they are unsupported. Representative Float64 CPU
+checks also validate Enzyme gradients through a fixed-time discrete callback,
+nonlinear initialization, the final integration time, and requested `saveat`
+times. These checks do not establish differentiation support for every callback
+or a complete singular-mass DAE solve. In particular, a continuous callback with
+a parameter-dependent event time can produce
+[incorrect gradients](https://github.com/SciML/DiffEqGPU.jl/issues/533); event-time
+sensitivities need separate validation.
