@@ -53,6 +53,7 @@ oneAPIExt = ["oneAPI"]
 AMDGPU = "2"
 Adapt = "4"
 CUDA = "6"
+CUDACore = "6.2"
 ChainRulesCore = "1"
 CommonSolve = "0.2.6"
 DifferentiationInterface = "0.7.18"
@@ -91,6 +92,7 @@ oneAPI = "2"
 pocl_jll = "7"
 
 [extras]
+CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
@@ -103,3 +105,7 @@ OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 pocl_jll = "627d6b7a-bbe6-5189-83e7-98cc0a5aeadd"
+
+[targets]
+enzyme = ["Enzyme", "KernelAbstractions", "SciMLBase", "StaticArrays", "Test"]
+enzyme_cuda = ["CUDA", "CUDACore", "Enzyme", "KernelAbstractions", "SciMLBase", "StaticArrays", "Test"]

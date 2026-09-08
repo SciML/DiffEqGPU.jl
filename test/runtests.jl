@@ -19,11 +19,11 @@ const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
 
-if GROUP == "Enzyme"
+if GROUP in ("Enzyme", "CUDA")
     @time @safetestset "Enzyme ensemble gradients" begin
-        include("gpu_kernel_de/enzyme.jl")
+        include("enzyme_environment.jl")
     end
-    exit()
+    GROUP == "Enzyme" && exit()
 end
 
 if GROUP == "QA"
@@ -130,9 +130,6 @@ if GROUP == "JLArrays"
 end
 
 if GROUP == "CUDA"
-    @time @safetestset "Enzyme ensemble gradients" begin
-        include("gpu_kernel_de/enzyme.jl")
-    end
     @testset "Callbacks" begin
         # Causes dynamic function invocation
         @time @safetestset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
