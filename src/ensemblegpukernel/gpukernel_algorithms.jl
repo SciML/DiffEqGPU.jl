@@ -30,6 +30,25 @@ with the `EnsembleGPUKernel` restrictions.
 struct GPUTsit5 <: GPUODEAlgorithm end
 
 """
+    GPUTsit5IController()
+
+Fifth-order Tsitouras method with a current-error-only integral (I) step-size
+controller for `EnsembleGPUKernel`. The Runge-Kutta tableau, error estimate, and
+interpolation are the same as [`GPUTsit5`](@ref); fixed-step solves are identical.
+
+For adaptive solves, the next step is multiplied by
+`clamp(0.9 * E^(-1/5), 0.2, 5)`, where `E` is the scaled error norm. Zero error
+uses the maximum growth factor. The same rule applies after rejected steps.
+Use `EnsembleGPUKernel(backend, 0.0)`; CPU offloading is not supported.
+
+Generally prefer the PI-controlled [`GPUTsit5`](@ref), which has more stable
+step-size control. On simple nonstiff benchmarks such as Lorenz, an I controller
+can appear faster at identical tolerances partly because it achieves lower
+accuracy. Compare performance at matched achieved error.
+"""
+struct GPUTsit5IController <: GPUODEAlgorithm end
+
+"""
     GPUVern7()
 
 Seventh-order Verner Runge-Kutta method specialized for `EnsembleGPUKernel` ODE

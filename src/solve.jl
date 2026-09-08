@@ -45,6 +45,10 @@ function SciMLBase.__solve(
         round(Int, trajectories * ensemblealg.cpu_offload) : 0
     gpu_trajectories = trajectories - cpu_trajectories
 
+    if alg isa GPUTsit5IController && cpu_trajectories != 0
+        throw(ArgumentError("GPUTsit5IController requires cpu_offload = 0."))
+    end
+
     num_batches = gpu_trajectories ÷ batch_size
     num_batches * batch_size != gpu_trajectories && (num_batches += 1)
 

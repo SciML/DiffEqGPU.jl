@@ -10,6 +10,10 @@ function build_adaptive_controller_cache(alg::A, ::Type{T}) where {A, T}
     return beta1, beta2, qmax, qmin, gamma, qoldinit, qold
 end
 
+function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where {T}
+    return T(1 / 5), zero(T), T(5), T(1 / 5), T(9 / 10), T(1.0e-4), T(1.0e-4)
+end
+
 @inline function savevalues!(
         integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
