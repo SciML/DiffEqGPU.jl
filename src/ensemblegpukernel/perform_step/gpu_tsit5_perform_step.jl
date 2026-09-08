@@ -65,7 +65,7 @@ end
 
 #############################Adaptive Version#####################################
 
-@muladd @inline function step!(integ::GPUAT5I{false, S, T}, ts, us) where {S, T}
+@muladd function step!(integ::GPUAT5I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit,
         _ = build_adaptive_controller_cache(
         integ.alg,
