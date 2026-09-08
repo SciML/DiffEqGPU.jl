@@ -9,7 +9,9 @@ end
 
 @testset "I-controller convergence beyond Lorenz ($T)" for T in
     (GROUP in ("CPU", "CUDA", "AMDGPU") ? (Float32, Float64) : (Float32,))
-    tolerances = T === Float64 ? (T(1.0e-4), T(1.0e-8)) : (T(1.0e-3), T(1.0e-5))
+    # The slow decay component reaches Float32 roundoff before the tighter tolerance.
+    # Keep the coarse solve above that floor so the error-ratio check measures convergence.
+    tolerances = T === Float64 ? (T(1.0e-4), T(1.0e-8)) : (T(1.0e-2), T(1.0e-5))
     cases = (
         ((u, p, t) -> SVector(10 * u[2], -10 * u[1]), SVector(one(T), zero(T)), T(10), SVector(cos(T(100)), -sin(T(100)))),
         ((u, p, t) -> SVector(-u[1], -100 * u[2]), SVector(one(T), one(T)), one(T), SVector(exp(-one(T)), exp(T(-100)))),
