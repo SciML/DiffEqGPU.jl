@@ -96,3 +96,43 @@ monteprob = EnsembleProblem(prob; prob_func)
     saveat = 1.0f0
 )
 ```
+
+## Enzyme reverse mode with `EnsembleGPUKernel`
+
+For `GPUTsit5`, use Enzyme to differentiate a scalar loss of the ensemble's final
+states. Set `cpu_offload` to zero and `save_everystep = false`. Keep the parameters
+on the host when constructing the problems; the ensemble solver transfers the
+compatible problems to the selected backend.
+
+```@example enzyme_kernel
+using DiffEqGPU, Enzyme, KernelAbstractions, SciMLBase, StaticArrays, Test
+
+function ensemble_loss(p, backend)
+    rhs(u, p, t) = p[1] * u
+    prob = ODEProblem{false}(rhs, SVector(1.0), (0.0, 1.0), SVector(p[1]))
+    prob_func = (prob, ctx) -> remake(prob; p = SVector(p[ctx.sim_id]))
+    ensemble = EnsembleProblem(prob; prob_func, safetycopy = false)
+    sol = solve(
+        ensemble, GPUTsit5(), EnsembleGPUKernel(backend, 0.0);
+        trajectories = length(p), adaptive = false, dt = 0.05,
+        save_everystep = false
+    )
+    return sum(s -> sum(s.u[end]), sol.u)
+end
+
+p = [0.2, -0.3]
+dp = zero(p)
+backend = CPU()
+Enzyme.autodiff(
+    Reverse, ensemble_loss, Active, Duplicated(p, dp), Const(backend)
+)
+@test dp ≈ exp.(p)
+dp
+```
+
+The example uses KernelAbstractions' CPU backend. For NVIDIA GPUs, load `CUDA` and
+use `CUDA.CUDABackend()`. Reset `dp` to zero before each reverse-mode call: Enzyme
+accumulates into this buffer. Fixed-step gradients differentiate the numerical
+steps; adaptive gradients differentiate the executed solver path and are not a
+record-and-replay adjoint with a frozen mesh. This example does not cover callbacks,
+DAE initialization, or differentiation of the time grid.

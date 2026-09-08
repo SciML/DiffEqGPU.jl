@@ -1,6 +1,8 @@
+# Enzyme drops sensitivities through mutable caches when these isbits problem arrays
+# are wrapped in @Const.
 @kernel function ode_solve_kernel(
-        @Const(probs), alg, _us, _ts, dt, callback,
-        tstops, nsteps,
+        probs, alg, _us, _ts, dt, callback,
+        tstops,
         saveat, ::Val{save_everystep}
     ) where {save_everystep}
     i = @index(Global, Linear)
@@ -71,7 +73,7 @@
 end
 
 @kernel function ode_asolve_kernel(
-        @Const(probs), alg, _us, _ts, dt, callback, tstops,
+        probs, alg, _us, _ts, dt, callback, tstops,
         abstol, reltol,
         saveat,
         ::Val{save_everystep}

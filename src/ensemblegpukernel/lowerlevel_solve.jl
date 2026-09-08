@@ -63,19 +63,16 @@ function vectorized_solve(
     backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
-    timeseries = prob.tspan[1]:dt:prob.tspan[2]
-    nsteps = length(timeseries)
-
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
     saveat_converted = nothing
 
     if saveat === nothing
         if save_everystep
-            len = length(prob.tspan[1]:dt:prob.tspan[2])
+            timeseries = prob.tspan[1]:dt:prob.tspan[2]
+            len = length(timeseries)
             if tstops !== nothing
                 len += length(tstops) - count(x -> x in tstops, timeseries)
-                nsteps += length(tstops) - count(x -> x in tstops, timeseries)
             end
         else
             len = 2
@@ -119,7 +116,7 @@ function vectorized_solve(
     end
 
     kernel(
-        probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
+        probs, alg, us, ts, dt, callback, tstops, saveat_converted,
         Val(save_everystep);
         ndrange = length(probs)
     )

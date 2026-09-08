@@ -1,4 +1,4 @@
-using DiffEqGPU, OrdinaryDiffEq, StaticArrays, LinearAlgebra, Test
+using DiffEqGPU, OrdinaryDiffEq, SciMLBase, StaticArrays, LinearAlgebra, Test
 include("../utils.jl")
 
 function lorenz(u, p, t)
@@ -57,3 +57,22 @@ end
     trajectories = 10_000,
     saveat = [1.0, 5.0, 10.0]
 ).u[1].t == [1.0f0, 5.0f0, 10.0f0]
+
+@testset "Host problems and construction count" for safetycopy in (false, true)
+    calls = zeros(Int, 3)
+    analytic(u0, p, t) = u0 * exp(p[1] * t)
+    f = ODEFunction{false}((u, p, t) -> p[1] * u; analytic)
+    prob = ODEProblem(f, SVector(1.0f0), (0.0f0, 1.0f0), SVector(0.0f0))
+    prob_func = function (prob, ctx)
+        calls[ctx.sim_id] += 1
+        return remake(prob; p = SVector(Float32(ctx.sim_id)))
+    end
+    ensemble = EnsembleProblem(prob; prob_func, safetycopy)
+    sol = solve(
+        ensemble, GPUTsit5(), EnsembleGPUKernel(backend, 0.0);
+        trajectories = 3, adaptive = false, dt = 0.01f0, save_everystep = false
+    )
+    @test calls == ones(Int, 3)
+    @test [s.prob.p for s in sol.u] == [SVector(Float32(i)) for i in 1:3]
+    @test all(s -> s.prob.f.analytic === analytic, sol.u)
+end

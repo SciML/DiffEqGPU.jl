@@ -19,6 +19,13 @@ const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
 
+if GROUP == "Enzyme"
+    @time @safetestset "Enzyme ensemble gradients" begin
+        include("gpu_kernel_de/enzyme.jl")
+    end
+    exit()
+end
+
 if GROUP == "QA"
     import Pkg
     Pkg.activate(joinpath(@__DIR__, "qa"))
@@ -123,6 +130,9 @@ if GROUP == "JLArrays"
 end
 
 if GROUP == "CUDA"
+    @time @safetestset "Enzyme ensemble gradients" begin
+        include("gpu_kernel_de/enzyme.jl")
+    end
     @testset "Callbacks" begin
         # Causes dynamic function invocation
         @time @safetestset "GPU Kernelized Non Stiff ODE ContinuousCallback" begin
