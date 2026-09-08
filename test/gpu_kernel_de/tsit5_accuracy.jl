@@ -19,13 +19,13 @@ include("../utils.jl")
     end
 end
 
-@testset "Tsit5 short endpoint ($T, reltol=$tol)" for
+@testset "Tsit5 short endpoint ($alg, $T, reltol=$tol)" for
     T in (GROUP in ("CPU", "CUDA", "AMDGPU") ? (Float32, Float64) : (Float32,)),
-        tol in (1.0e-3, 1.0e-4)
+        tol in (1.0e-3, 1.0e-4), alg in (GPUTsit5(), GPUTsit5IController())
     rhs(u, p, t) = SVector(-u[1], -100 * u[2])
     prob = ODEProblem{false}(rhs, SVector(one(T), one(T)), (zero(T), T(0.1)))
     sol = solve(
-        EnsembleProblem(prob), GPUTsit5(), EnsembleGPUKernel(backend, 0.0);
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(backend, 0.0);
         trajectories = 2, adaptive = true, dt = T(0.1),
         abstol = T(tol / 1000), reltol = T(tol), save_everystep = false
     )
