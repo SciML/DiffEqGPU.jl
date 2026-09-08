@@ -62,7 +62,7 @@ end
     calls = zeros(Int, 3)
     analytic(u0, p, t) = u0 * exp(p[1] * t)
     f = ODEFunction{false}((u, p, t) -> p[1] * u; analytic)
-    prob = ODEProblem(f, SVector(1.0f0), (0.0f0, 1.0f0), SVector(0.0f0))
+    prob = ODEProblem(f, [1.0f0], (0.0f0, 1.0f0), SVector(0.0f0))
     prob_func = function (prob, ctx)
         calls[ctx.sim_id] += 1
         return remake(prob; p = SVector(Float32(ctx.sim_id)))
@@ -75,4 +75,26 @@ end
     @test calls == ones(Int, 3)
     @test [s.prob.p for s in sol.u] == [SVector(Float32(i)) for i in 1:3]
     @test all(s -> s.prob.f.analytic === analytic, sol.u)
+    @test all(s -> s.prob.u0 isa SVector{1, Float32}, sol.u)
+end
+
+@testset "Initialization preprocessing runs once" begin
+    updates = Ref(0)
+    initprob = NonlinearProblem{false}((u, p) -> u .- 1.0f0, SVector(0.0f0))
+    update_init = function (initprob, prob)
+        updates[] += 1
+        return initprob
+    end
+    initdata = SciMLBase.OverrideInitData(
+        initprob, update_init, sol -> sol.u, nothing, nothing, Val(true)
+    )
+    f = ODEFunction{false}((u, p, t) -> zero(u); initialization_data = initdata)
+    prob = ODEProblem(f, SVector(0.0f0), (0.0f0, 0.1f0))
+    sol = solve(
+        EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = 3,
+        adaptive = false, dt = 0.1f0, save_everystep = false
+    )
+    @test updates[] == 3
+    @test all(s -> s.u[end] ≈ SVector(1.0f0), sol.u)
 end
