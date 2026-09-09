@@ -1,29 +1,14 @@
 # Enzyme on CUDA needs mutable problem arrays (no @Const) and AbstractFloat scalars
 # packed as 0-d device arrays (Active by-value GPU args are rejected). Other backends
-# keep master's @Const(probs) + scalar dt/tolerances to avoid SPIR-V / Metal IR breaks.
-# ForwardDiff Duals stay scalars: OpenCL cannot compile Dual arrays.
+# keep master's @Const(probs) + scalar dt/tolerances (and unused nsteps) to avoid
+# SPIR-V / Metal IR breaks. ForwardDiff Duals stay scalars.
 @inline _load_kernel_arg(x::Number) = x
 @inline _load_kernel_arg(x::AbstractArray{<:Any, 0}) = @inbounds x[]
 @inline _load_kernel_arg(x::AbstractArray) = x
 
-# CUDA needs non-@Const probs + packed scalars for Enzyme. Other backends keep
-# master's @Const(probs) + scalar args to avoid SPIR-V / Metal IR breaks.
-# Enzyme docs use a forward CPU solve; reverse-mode coverage is CUDA CI.
-@inline _enzyme_safe_kernels(::Type{B}) where {B} = occursin("CUDA", string(B))
-
-@generated function _ode_solve_kernel(backend::B) where {B}
-    return _enzyme_safe_kernels(B) ? :(ode_solve_kernel_ad(backend)) :
-        :(ode_solve_kernel(backend))
-end
-
-@generated function _ode_asolve_kernel(backend::B) where {B}
-    return _enzyme_safe_kernels(B) ? :(ode_asolve_kernel_ad(backend)) :
-        :(ode_asolve_kernel(backend))
-end
-
 @kernel function ode_solve_kernel(
         @Const(probs), alg, _us, _ts, dt, callback,
-        tstops,
+        tstops, nsteps,
         saveat, ::Val{save_everystep}
     ) where {save_everystep}
     i = @index(Global, Linear)

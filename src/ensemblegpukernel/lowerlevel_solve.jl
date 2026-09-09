@@ -52,22 +52,18 @@ ts, us = DiffEqGPU.vectorized_solve(
 """
 function vectorized_solve end
 
-# On CUDA only: pack AbstractFloat scalars into 0-d device arrays so Enzyme uses
-# Duplicated (GPU-supported) instead of Active. Other backends keep plain scalars —
-# 0-d device arrays break OpenCL/Metal SPIR-V on Julia 1.12+. Duals and vector
-# tolerances always pass through unchanged.
-@generated function _pack_kernel_scalar(backend::B, x::AbstractFloat) where {B}
-    if occursin("CUDA", string(B))
-        return quote
-            a = allocate(backend, typeof(x), ())
-            fill!(a, x)
-            return a
-        end
-    else
-        return :(x)
+# CUDA only: pack AbstractFloat scalars into 0-d device arrays so Enzyme uses
+# Duplicated (GPU-supported) instead of Active. Duals / non-floats pass through —
+# never adapt them (OpenCL cannot compile Dual device arrays).
+function _pack_kernel_scalar(backend, x::AbstractFloat)
+    if occursin("CUDA", string(typeof(backend)))
+        a = allocate(backend, typeof(x), ())
+        fill!(a, x)
+        return a
     end
+    return x
 end
-_pack_kernel_scalar(backend, x) = adapt(backend, x)
+_pack_kernel_scalar(backend, x) = x
 
 function vectorized_solve(
         probs, prob::ODEProblem, alg;
@@ -80,16 +76,19 @@ function vectorized_solve(
     backend = maybe_prefer_blocks(backend)
     # if saveat is specified, we'll use a vector of timestamps.
     # otherwise it's a matrix that may be different for each ODE.
+    timeseries = prob.tspan[1]:dt:prob.tspan[2]
+    nsteps = length(timeseries)
+
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
     saveat_converted = nothing
 
     if saveat === nothing
         if save_everystep
-            timeseries = prob.tspan[1]:dt:prob.tspan[2]
-            len = length(timeseries)
+            len = length(prob.tspan[1]:dt:prob.tspan[2])
             if tstops !== nothing
                 len += length(tstops) - count(x -> x in tstops, timeseries)
+                nsteps += length(tstops) - count(x -> x in tstops, timeseries)
             end
         else
             len = 2
@@ -126,19 +125,25 @@ function vectorized_solve(
 
     tstops = adapt(backend, tstops)
 
-    kernel = _ode_solve_kernel(backend)
-
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    # CUDA packs AbstractFloat dt as a 0-d device array for Enzyme; other backends
-    # pass the scalar through. ForwardDiff Duals stay scalars for OpenCL Dual support.
-    kernel(
-        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
-        saveat_converted, Val(save_everystep);
-        ndrange = length(probs)
-    )
+    # Non-CUDA matches master ABI (including unused nsteps) to avoid SPIR-V breaks
+    # on Julia 1.12+. CUDA uses the Enzyme-safe kernel without @Const / with packed dt.
+    if occursin("CUDA", string(typeof(backend)))
+        ode_solve_kernel_ad(backend)(
+            probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
+            saveat_converted, Val(save_everystep);
+            ndrange = length(probs)
+        )
+    else
+        ode_solve_kernel(backend)(
+            probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
+            Val(save_everystep);
+            ndrange = length(probs)
+        )
+    end
 
     # we build the actual solution object on the CPU because the GPU would create one
     # containing CuDeviceArrays, which we cannot use on the host (not GC tracked,
@@ -350,20 +355,26 @@ function vectorized_asolve(
     if saveat_converted !== nothing
         saveat_converted = adapt(backend, saveat_converted)
     end
-    kernel = _ode_asolve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    # CUDA packs AbstractFloat scalars for Enzyme; other backends keep scalars.
-    # Non-AbstractFloat values (e.g. ForwardDiff Dual, vector tolerances) pass through.
-    kernel(
-        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
-        _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),
-        saveat_converted, Val(save_everystep);
-        ndrange = length(probs)
-    )
+    # Non-CUDA matches master ABI; CUDA uses Enzyme-safe packed scalars / no @Const.
+    if occursin("CUDA", string(typeof(backend)))
+        ode_asolve_kernel_ad(backend)(
+            probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
+            _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),
+            saveat_converted, Val(save_everystep);
+            ndrange = length(probs)
+        )
+    else
+        ode_asolve_kernel(backend)(
+            probs, alg, us, ts, dt, callback, tstops,
+            abstol, reltol, saveat_converted, Val(save_everystep);
+            ndrange = length(probs)
+        )
+    end
 
     return ts, us
 end
