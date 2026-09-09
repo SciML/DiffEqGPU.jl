@@ -52,27 +52,6 @@ ts, us = DiffEqGPU.vectorized_solve(
 """
 function vectorized_solve end
 
-@inline _is_cuda_kernel_backend(backend) = occursin("CUDA", string(typeof(backend)))
-
-# CUDA: pack AbstractFloat scalars as 0-d device arrays for Enzyme (Duplicated, not Active).
-# Duals / non-floats pass through — OpenCL cannot compile Dual device arrays.
-function _pack_kernel_scalar(backend, x::AbstractFloat)
-    if _is_cuda_kernel_backend(backend)
-        a = allocate(backend, typeof(x), ())
-        _init_time_matrix!(a, x)
-        return a
-    end
-    return x
-end
-_pack_kernel_scalar(backend, x) = x
-
-# Time matrix init must use tspan[1] as the unused-slot sentinel (see findlast in
-# batch_solve). Under Enzyme, Active fill! scalars are rejected on GPU — mark inactive.
-@noinline function _init_time_matrix!(ts, t0)
-    fill!(ts, t0)
-    return ts
-end
-
 function vectorized_solve(
         probs, prob::ODEProblem, alg;
         dt, saveat = nothing,
@@ -82,15 +61,10 @@ function vectorized_solve(
     )
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
-    cuda = _is_cuda_kernel_backend(backend)
-    # Non-CUDA Const kernels need unused nsteps (master ABI). Skip StepRangeLen on
-    # CUDA — Enzyme's range reverse errors on Float64.hi for Active StepRangeLen.
-    nsteps = 0
-    timeseries = nothing
-    if !cuda
-        timeseries = prob.tspan[1]:dt:prob.tspan[2]
-        nsteps = length(timeseries)
-    end
+    # if saveat is specified, we'll use a vector of timestamps.
+    # otherwise it's a matrix that may be different for each ODE.
+    timeseries = prob.tspan[1]:dt:prob.tspan[2]
+    nsteps = length(timeseries)
 
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
@@ -98,10 +72,7 @@ function vectorized_solve(
 
     if saveat === nothing
         if save_everystep
-            if timeseries === nothing
-                timeseries = prob.tspan[1]:dt:prob.tspan[2]
-            end
-            len = length(timeseries)
+            len = length(prob.tspan[1]:dt:prob.tspan[2])
             if tstops !== nothing
                 len += length(tstops) - count(x -> x in tstops, timeseries)
                 nsteps += length(tstops) - count(x -> x in tstops, timeseries)
@@ -110,7 +81,7 @@ function vectorized_solve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        _init_time_matrix!(ts, prob.tspan[1])
+        fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         # Get the time type from the problem
@@ -135,20 +106,22 @@ function vectorized_solve(
         saveat_converted = adapt(backend, saveat_converted)
 
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        _init_time_matrix!(ts, prob.tspan[1])
+        fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
     tstops = adapt(backend, tstops)
 
+    kernel = ode_solve_kernel(backend)
+
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    # Val dispatch keeps OpenCL/Metal from specializing the CUDA AD kernel (Dual IR break).
-    _launch_ode_solve_kernel(
-        Val(cuda), backend, probs, alg, us, ts, dt, callback, tstops, nsteps,
-        saveat_converted, save_everystep
+    kernel(
+        probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
+        Val(save_everystep);
+        ndrange = length(probs)
     )
 
     # we build the actual solution object on the CPU because the GPU would create one
@@ -158,32 +131,6 @@ function vectorized_solve(
     # EDIT: Done when using with DiffEqGPU
     return ts, us
 end
-
-@noinline function _launch_ode_solve_kernel(
-        ::Val{false}, backend, probs, alg, us, ts, dt, callback, tstops, nsteps,
-        saveat_converted, save_everystep
-    )
-    return ode_solve_kernel(backend)(
-        probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
-        Val(save_everystep);
-        ndrange = length(probs)
-    )
-end
-
-@noinline function _launch_ode_solve_kernel(
-        ::Val{true}, backend, probs, alg, us, ts, dt, callback, tstops, nsteps,
-        saveat_converted, save_everystep
-    )
-    return _cuda_ode_solve_kernel_ad(backend)(
-        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
-        saveat_converted, Val(save_everystep);
-        ndrange = length(probs)
-    )
-end
-
-# Extended by CUDAExt with Enzyme-safe AD kernels.
-function _cuda_ode_solve_kernel_ad end
-function _cuda_ode_asolve_kernel_ad end
 
 # SDEProblems over GPU cannot support u0 as a Number type, because GPU kernels compiled only through u0 being StaticArrays
 function vectorized_solve(
@@ -205,7 +152,7 @@ function vectorized_solve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        _init_time_matrix!(ts, prob.tspan[1])
+        fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         # Get the time type from the problem
@@ -228,7 +175,7 @@ function vectorized_solve(
         end
 
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        _init_time_matrix!(ts, prob.tspan[1])
+        fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
     if saveat_converted !== nothing
@@ -372,11 +319,11 @@ function vectorized_asolve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        _init_time_matrix!(ts, prob.tspan[1])
+        fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        _init_time_matrix!(ts, prob.tspan[1])
+        fill!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
@@ -387,40 +334,19 @@ function vectorized_asolve(
     if saveat_converted !== nothing
         saveat_converted = adapt(backend, saveat_converted)
     end
+    kernel = ode_asolve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    _launch_ode_asolve_kernel(
-        Val(_is_cuda_kernel_backend(backend)), backend, probs, alg, us, ts, dt,
-        callback, tstops, abstol, reltol, saveat_converted, save_everystep
-    )
-
-    return ts, us
-end
-
-@noinline function _launch_ode_asolve_kernel(
-        ::Val{false}, backend, probs, alg, us, ts, dt, callback, tstops,
-        abstol, reltol, saveat_converted, save_everystep
-    )
-    return ode_asolve_kernel(backend)(
+    kernel(
         probs, alg, us, ts, dt, callback, tstops,
         abstol, reltol, saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
-end
 
-@noinline function _launch_ode_asolve_kernel(
-        ::Val{true}, backend, probs, alg, us, ts, dt, callback, tstops,
-        abstol, reltol, saveat_converted, save_everystep
-    )
-    return _cuda_ode_asolve_kernel_ad(backend)(
-        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
-        _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),
-        saveat_converted, Val(save_everystep);
-        ndrange = length(probs)
-    )
+    return ts, us
 end
 
 function vectorized_asolve(
