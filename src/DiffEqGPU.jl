@@ -252,6 +252,7 @@ export terminate!
 # are used by packages that drive the ensemble solvers directly.
 @public EnsembleArrayAlgorithm, EnsembleKernelAlgorithm, GPUODEAlgorithm, GPUSDEAlgorithm,
     GPUODEImplicitAlgorithm, AbstractNLSolver, AbstractNLSolverCache, NLSolver,
+    GPUDiscreteCallback, GPUContinuousCallback,
     make_prob_compatible, make_ensemble_context, generate_callback, batch_solve_gpukernel,
     maxthreads, maybe_prefer_blocks, lufact!, vectorized_solve,
     vectorized_asolve, vectorized_map_solve
