@@ -34,6 +34,9 @@ _agg_accumulate!(dst::StridedCuArray, src::StridedCuArray) = (dst .+= src; nothi
 _agg_accumulate!(dst::StridedCuArray, src::_AggStridedArray) = _agg_accumulate!(dst, CuArray(src))
 _agg_accumulate!(dst::_AggStridedArray, src::StridedCuArray) = _agg_accumulate!(dst, Array(src))
 
+# tspan[1] fill is a sentinel, not a sensitivity (see findlast in batch_solve).
+EnzymeRules.inactive(::typeof(DiffEqGPU._init_time_matrix!), ::Any, ::Any) = nothing
+
 function _agg_accumulate!(
         acc::Union{Ptr, CuPtr}, aoff::Integer,
         val::Union{Ptr, CuPtr}, voff::Integer, n::Integer

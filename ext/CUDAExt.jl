@@ -13,4 +13,11 @@ function DiffEqGPU.lufact!(::CUDABackend, W)
     return nothing
 end
 
+# Enzyme AD kernels live only in the CUDA extension so OpenCL/Metal never load them
+# (Julia 1.12 SPIR-V breaks when those @kernel defs are in the same module image).
+Base.include(
+    DiffEqGPU,
+    joinpath(@__DIR__, "..", "src", "ensemblegpukernel", "kernels_ad.jl")
+)
+
 end

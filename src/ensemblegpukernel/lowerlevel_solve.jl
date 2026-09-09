@@ -59,12 +59,19 @@ function vectorized_solve end
 function _pack_kernel_scalar(backend, x::AbstractFloat)
     if _is_cuda_kernel_backend(backend)
         a = allocate(backend, typeof(x), ())
-        fill!(a, x)
+        _init_time_matrix!(a, x)
         return a
     end
     return x
 end
 _pack_kernel_scalar(backend, x) = x
+
+# Time matrix init must use tspan[1] as the unused-slot sentinel (see findlast in
+# batch_solve). Under Enzyme, Active fill! scalars are rejected on GPU — mark inactive.
+@noinline function _init_time_matrix!(ts, t0)
+    fill!(ts, t0)
+    return ts
+end
 
 function vectorized_solve(
         probs, prob::ODEProblem, alg;
@@ -103,7 +110,7 @@ function vectorized_solve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         # Get the time type from the problem
@@ -128,7 +135,7 @@ function vectorized_solve(
         saveat_converted = adapt(backend, saveat_converted)
 
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
@@ -194,7 +201,7 @@ function vectorized_solve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         # Get the time type from the problem
@@ -217,7 +224,7 @@ function vectorized_solve(
         end
 
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
     if saveat_converted !== nothing
@@ -361,11 +368,11 @@ function vectorized_asolve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
