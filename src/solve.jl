@@ -175,9 +175,6 @@ function _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
     return @set pre_ctx.rng = sim_rng
 end
 
-# Alias for package extensions (CUDA Enzyme path).
-const make_ensemble_context = _make_ensemble_context
-
 function batch_solve(
         ensembleprob, alg,
         ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
@@ -356,7 +353,7 @@ function batch_solve_gpukernel(
         end
     end
 
-    if alg isa Union{GPUODEAlgorithm, GPUSDEAlgorithm}
+    return if alg isa Union{GPUODEAlgorithm, GPUSDEAlgorithm}
         # Get inner saveat if global one isn't specified
         _saveat = get(probs[1].kwargs, :saveat, nothing)
         saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat

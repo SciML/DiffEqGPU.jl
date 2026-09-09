@@ -215,7 +215,6 @@ include("ensemblegpukernel/nlsolve/type.jl")
 include("ensemblegpukernel/nlsolve/utils.jl")
 include("ensemblegpukernel/nlsolve/initialization.jl")
 include("ensemblegpukernel/kernels.jl")
-include("ensemblegpukernel/kernels_ad.jl")
 
 include("ensemblegpukernel/perform_step/gpu_tsit5_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_vern7_perform_step.jl")
@@ -252,9 +251,7 @@ export terminate!
 # are used by packages that drive the ensemble solvers directly.
 @public EnsembleArrayAlgorithm, EnsembleKernelAlgorithm, GPUODEAlgorithm, GPUSDEAlgorithm,
     GPUODEImplicitAlgorithm, AbstractNLSolver, AbstractNLSolverCache, NLSolver,
-    GPUDiscreteCallback, GPUContinuousCallback,
-    make_prob_compatible, make_ensemble_context, generate_callback, batch_solve_gpukernel,
-    maxthreads, maybe_prefer_blocks, lufact!, vectorized_solve,
+    make_prob_compatible, maxthreads, maybe_prefer_blocks, lufact!, vectorized_solve,
     vectorized_asolve, vectorized_map_solve
 
 @setup_workload begin

@@ -9,6 +9,9 @@ using StaticArrays: StaticArray
 
 const KernelODEProblem = Base.get_extension(DiffEqGPU, :CUDAExt).KernelODEProblem
 
+# Float64 ensemble reverse hits Active GPU fill! on the time matrix; treat init as inactive.
+EnzymeRules.inactive(::typeof(DiffEqGPU._init_time_matrix!), ::Any, ::Any) = nothing
+
 function _agg_zero!(ptr::Ptr{T}, off::Integer, n::Integer) where {T}
     Base.Libc.memset(ptr + off * sizeof(T), 0, n * sizeof(T))
     return nothing
