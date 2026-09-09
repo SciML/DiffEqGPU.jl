@@ -23,6 +23,7 @@ let
         ))
         Pkg.instantiate()
         include($(repr(joinpath(@__DIR__, "gpu_kernel_de", "enzyme_cuda_records.jl"))))
+        include($(repr(joinpath(@__DIR__, "gpu_kernel_de", "enzyme_cuda_copy_rules.jl"))))
         include($(repr(joinpath(@__DIR__, "gpu_kernel_de", "enzyme.jl"))))
         """
         run(`$(Base.julia_cmd()) --project=$envdir -e $code`)

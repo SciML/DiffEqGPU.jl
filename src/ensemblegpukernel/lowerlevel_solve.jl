@@ -52,12 +52,20 @@ ts, us = DiffEqGPU.vectorized_solve(
 """
 function vectorized_solve end
 
-# Pack AbstractFloat scalars into 0-d device arrays so Enzyme uses Duplicated (GPU-
-# supported) instead of Active. Other values (Duals, vector tolerances) pass through.
-function _pack_kernel_scalar(backend, x::AbstractFloat)
-    a = allocate(backend, typeof(x), ())
-    fill!(a, x)
-    return a
+# On CUDA only: pack AbstractFloat scalars into 0-d device arrays so Enzyme uses
+# Duplicated (GPU-supported) instead of Active. Other backends keep plain scalars —
+# 0-d device arrays break OpenCL/Metal SPIR-V on Julia 1.12+. Duals and vector
+# tolerances always pass through unchanged.
+@generated function _pack_kernel_scalar(backend::B, x::AbstractFloat) where {B}
+    if occursin("CUDA", string(B))
+        return quote
+            a = allocate(backend, typeof(x), ())
+            fill!(a, x)
+            return a
+        end
+    else
+        return :(x)
+    end
 end
 _pack_kernel_scalar(backend, x) = adapt(backend, x)
 
@@ -118,14 +126,14 @@ function vectorized_solve(
 
     tstops = adapt(backend, tstops)
 
-    kernel = ode_solve_kernel(backend)
+    kernel = _ode_solve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    # 0-d device array for AbstractFloat dt: Enzyme would mark a scalar as Active,
-    # which GPU KA rejects. ForwardDiff Duals stay scalars for OpenCL Dual support.
+    # CUDA packs AbstractFloat dt as a 0-d device array for Enzyme; other backends
+    # pass the scalar through. ForwardDiff Duals stay scalars for OpenCL Dual support.
     kernel(
         probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
         saveat_converted, Val(save_everystep);
@@ -342,13 +350,13 @@ function vectorized_asolve(
     if saveat_converted !== nothing
         saveat_converted = adapt(backend, saveat_converted)
     end
-    kernel = ode_asolve_kernel(backend)
+    kernel = _ode_asolve_kernel(backend)
 
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    # 0-d device arrays for AbstractFloat scalars avoid Enzyme Active GPU args.
+    # CUDA packs AbstractFloat scalars for Enzyme; other backends keep scalars.
     # Non-AbstractFloat values (e.g. ForwardDiff Dual, vector tolerances) pass through.
     kernel(
         probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
