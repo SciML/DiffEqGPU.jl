@@ -189,6 +189,14 @@ _kernel_record(prob) = prob
     return KernelODEProblem{U, T, IIP, P, F, K, PT}(prob.p, prob.u0, prob.tspan, prob.f, prob.kwargs, prob.problem_type)
 end
 
+# KernelODEProblem's layout is for Enzyme on CUDA. Other backends (OpenCL/Metal/…) keep
+# ImmutableODEProblem to avoid SPIR-V / GPUCompiler IR failures.
+_adapt_kernel_problem(backend, prob) = adapt(backend, prob)
+function _adapt_kernel_problem(backend, prob::SciMLBase.ImmutableODEProblem)
+    adapted = adapt(backend, prob)
+    return occursin("CUDA", string(typeof(backend))) ? _kernel_record(adapted) : adapted
+end
+
 @noinline function _make_kernel_problem(ensembleprob, i, sim_seeds, rng_func, master_rng)
     ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
     prob = ensembleprob.safetycopy ? deepcopy(ensembleprob.prob) : ensembleprob.prob
@@ -197,7 +205,7 @@ end
 
 function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func, master_rng)
     first_prob = _make_kernel_problem(ensembleprob, first(I), sim_seeds, rng_func, master_rng)
-    first_adapted = _kernel_record(adapt(backend, first_prob))
+    first_adapted = _adapt_kernel_problem(backend, first_prob)
     first_ref = Ref(first_prob)
     probs = Vector{typeof(first_ref)}(undef, length(I))
     adapted_probs = Vector{typeof(first_adapted)}(undef, length(I))
@@ -207,7 +215,7 @@ function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func,
     for j in 2:length(I)
         prob = _make_kernel_problem(ensembleprob, I[j], sim_seeds, rng_func, master_rng)
         probs[j] = Ref(prob)
-        adapted_probs[j] = _kernel_record(adapt(backend, prob))
+        adapted_probs[j] = _adapt_kernel_problem(backend, prob)
     end
     return probs, adapted_probs
 end
