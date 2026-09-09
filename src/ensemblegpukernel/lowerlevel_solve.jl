@@ -115,10 +115,10 @@ function vectorized_solve(
         @warn "Running the kernel on CPU"
     end
 
-    # Length-1 device array for AbstractFloat dt: Enzyme would mark a scalar as Active,
+    # 0-d device array for AbstractFloat dt: Enzyme would mark a scalar as Active,
     # which GPU KA rejects. ForwardDiff Duals stay scalars for OpenCL Dual support.
     dt_arg = if dt isa AbstractFloat
-        dt_dev = allocate(backend, typeof(dt), (1,))
+        dt_dev = allocate(backend, typeof(dt), ())
         fill!(dt_dev, dt)
         dt_dev
     else
@@ -347,24 +347,24 @@ function vectorized_asolve(
         @warn "Running the kernel on CPU"
     end
 
-    # Length-1 device arrays for AbstractFloat scalars avoid Enzyme Active GPU args.
+    # 0-d device arrays for AbstractFloat scalars avoid Enzyme Active GPU args.
     # Non-AbstractFloat values (e.g. ForwardDiff Dual, vector tolerances) pass through.
     dt_arg = if dt isa AbstractFloat
-        dt_dev = allocate(backend, typeof(dt), (1,))
+        dt_dev = allocate(backend, typeof(dt), ())
         fill!(dt_dev, dt)
         dt_dev
     else
         dt
     end
     abstol_arg = if abstol isa AbstractFloat
-        a = allocate(backend, typeof(abstol), (1,))
+        a = allocate(backend, typeof(abstol), ())
         fill!(a, abstol)
         a
     else
         adapt(backend, abstol)
     end
     reltol_arg = if reltol isa AbstractFloat
-        a = allocate(backend, typeof(reltol), (1,))
+        a = allocate(backend, typeof(reltol), ())
         fill!(a, reltol)
         a
     else

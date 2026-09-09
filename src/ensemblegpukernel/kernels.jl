@@ -2,10 +2,11 @@
 # are wrapped in @Const. AbstractFloat scalar kernel args that affect the loss become
 # Enzyme Active; GPU KA rejects Active by-value args, so callers pass length-1 device
 # arrays for those. ForwardDiff Duals stay scalars (OpenCL cannot compile Dual arrays).
+# 0-d device arrays pack AbstractFloat scalars for Enzyme; Numbers cover ForwardDiff Duals;
+# other arrays (e.g. vector tolerances) pass through unchanged.
 @inline _load_kernel_arg(x::Number) = x
-@inline function _load_kernel_arg(x)
-    return length(x) == 1 ? (@inbounds x[1]) : x
-end
+@inline _load_kernel_arg(x::AbstractArray{<:Any, 0}) = @inbounds x[]
+@inline _load_kernel_arg(x::AbstractArray) = x
 
 @kernel function ode_solve_kernel(
         probs, alg, _us, _ts, _dt, callback,
