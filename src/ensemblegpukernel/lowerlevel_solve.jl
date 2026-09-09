@@ -52,11 +52,12 @@ ts, us = DiffEqGPU.vectorized_solve(
 """
 function vectorized_solve end
 
-# CUDA only: pack AbstractFloat scalars into 0-d device arrays so Enzyme uses
-# Duplicated (GPU-supported) instead of Active. Duals / non-floats pass through —
-# never adapt them (OpenCL cannot compile Dual device arrays).
+@inline _is_cuda_kernel_backend(backend) = occursin("CUDA", string(typeof(backend)))
+
+# CUDA: pack AbstractFloat scalars as 0-d device arrays for Enzyme (Duplicated, not Active).
+# Duals / non-floats pass through — OpenCL cannot compile Dual device arrays.
 function _pack_kernel_scalar(backend, x::AbstractFloat)
-    if occursin("CUDA", string(typeof(backend)))
+    if _is_cuda_kernel_backend(backend)
         a = allocate(backend, typeof(x), ())
         fill!(a, x)
         return a
@@ -129,9 +130,7 @@ function vectorized_solve(
         @warn "Running the kernel on CPU"
     end
 
-    # Non-CUDA matches master ABI (including unused nsteps) to avoid SPIR-V breaks
-    # on Julia 1.12+. CUDA uses the Enzyme-safe kernel without @Const / with packed dt.
-    if occursin("CUDA", string(typeof(backend)))
+    if _is_cuda_kernel_backend(backend)
         ode_solve_kernel_ad(backend)(
             probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
             saveat_converted, Val(save_everystep);
@@ -360,8 +359,7 @@ function vectorized_asolve(
         @warn "Running the kernel on CPU"
     end
 
-    # Non-CUDA matches master ABI; CUDA uses Enzyme-safe packed scalars / no @Const.
-    if occursin("CUDA", string(typeof(backend)))
+    if _is_cuda_kernel_backend(backend)
         ode_asolve_kernel_ad(backend)(
             probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
             _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),

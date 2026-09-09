@@ -215,6 +215,7 @@ include("ensemblegpukernel/nlsolve/type.jl")
 include("ensemblegpukernel/nlsolve/utils.jl")
 include("ensemblegpukernel/nlsolve/initialization.jl")
 include("ensemblegpukernel/kernels.jl")
+include("ensemblegpukernel/kernels_ad.jl")
 
 include("ensemblegpukernel/perform_step/gpu_tsit5_perform_step.jl")
 include("ensemblegpukernel/perform_step/gpu_vern7_perform_step.jl")

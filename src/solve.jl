@@ -203,20 +203,19 @@ end
 function Adapt.adapt_structure(
         to, prob::KernelODEProblem{U, T, IIP, P, F, K, PT}
     ) where {U, T, IIP, P, F, K, PT}
-    return KernelODEProblem{U, T, IIP, P, F, K, PT}(
-        adapt(to, prob.p),
-        adapt(to, prob.u0),
-        adapt(to, prob.tspan),
-        adapt(to, prob.f),
-        adapt(to, prob.kwargs),
-        adapt(to, prob.problem_type),
+    # Only adapt numeric payload. Adapting `f` can change ODEFunction specialize
+    # (AutoSpecialize → FullSpecialize) and break the KernelODEProblem type params.
+    p = adapt(to, prob.p)
+    u0 = adapt(to, prob.u0)
+    tspan = adapt(to, prob.tspan)
+    return KernelODEProblem{typeof(u0), typeof(tspan), IIP, typeof(p), F, K, PT}(
+        p, u0, tspan, prob.f, prob.kwargs, prob.problem_type
     )
 end
 
-# KernelODEProblem's layout is for Enzyme on CUDA. Other backends keep
-# ImmutableODEProblem to avoid SPIR-V / GPUCompiler IR failures.
+# Enzyme CUDA prep uses KernelODEProblem; other backends keep ImmutableODEProblem.
 @inline function _adapt_kernel_problem(backend, prob::SciMLBase.ImmutableODEProblem)
-    return _is_cuda_backend(backend) ? adapt(backend, _kernel_record(prob)) :
+    return _is_cuda_backend(backend) ? _kernel_record(adapt(backend, prob)) :
         adapt(backend, prob)
 end
 @inline _adapt_kernel_problem(backend, prob) = adapt(backend, prob)
@@ -233,10 +232,11 @@ end
 
 function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func, master_rng)
     first_prob = _make_kernel_problem(ensembleprob, first(I), sim_seeds, rng_func, master_rng)
-    # Host Refs use KernelODEProblem so Enzyme can shadow build_solution's problem arg
-    # (ImmutableODEProblem triggers EnzymeNoShadowError).
+    # Host Refs use KernelODEProblem so Enzyme can shadow build_solution's problem arg.
+    # Device copy goes through ImmutableODEProblem adapt (preserves ODEFunction specialize)
+    # then _kernel_record — do not adapt(KernelODEProblem) for the first device copy.
     first_host = _kernel_record(first_prob)
-    first_adapted = adapt(backend, first_host)
+    first_adapted = _kernel_record(adapt(backend, first_prob))
     first_ref = Ref(first_host)
     probs = Vector{typeof(first_ref)}(undef, length(I))
     adapted_probs = Vector{typeof(first_adapted)}(undef, length(I))
@@ -244,11 +244,10 @@ function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func,
     adapted_probs[1] = first_adapted
     # Adapt during construction: a separate broadcast over isbits problems loses Enzyme gradients.
     for j in 2:length(I)
-        host = _kernel_record(
-            _make_kernel_problem(ensembleprob, I[j], sim_seeds, rng_func, master_rng)
-        )
+        prob = _make_kernel_problem(ensembleprob, I[j], sim_seeds, rng_func, master_rng)
+        host = _kernel_record(prob)
         probs[j] = Ref(host)
-        adapted_probs[j] = adapt(backend, host)
+        adapted_probs[j] = _kernel_record(adapt(backend, prob))
     end
     return probs, adapted_probs
 end
