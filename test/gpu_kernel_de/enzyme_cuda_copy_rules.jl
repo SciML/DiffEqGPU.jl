@@ -1,7 +1,8 @@
 # EnzymeCUDAExt registers unsafe_copyto! augmented_primal for all Ptr/CuPtr eltypes
-# but only implements reverse for AbstractFloat. Ensemble problem data uses SVector,
-# so reverse must handle StaticArray (and other isbits aggregates with + / zero).
+# but only implements reverse for AbstractFloat. Ensemble problem data uses SVector
+# and KernelODEProblem, so reverse must handle those isbits aggregates (via `.+=`).
 using CUDA
+using DiffEqGPU: KernelODEProblem
 using Enzyme
 using Enzyme: EnzymeRules
 using StaticArrays: StaticArray
@@ -16,14 +17,16 @@ function _agg_zero!(ptr::CuPtr{T}, off::Integer, n::Integer) where {T}
     return nothing
 end
 
-const _AggStridedSubArray{T, N, I <: Tuple{
+const _AggStridedSubArray{
+    T, N, I <: Tuple{
         Vararg{
             Union{
                 Base.RangeIndex, Base.ReshapedUnitRange,
                 Base.AbstractCartesianIndex,
             },
         },
-    }} = SubArray{T, N, <:Array, I}
+    },
+} = SubArray{T, N, <:Array, I}
 const _AggStridedArray{T, N} = Union{Array{T, N}, _AggStridedSubArray{T, N}}
 
 _agg_accumulate!(dst::_AggStridedArray, src::_AggStridedArray) = (dst .+= src; nothing)
@@ -53,6 +56,8 @@ const _AGG_PTR_COPY_DIRECTIONS = (
     (CuPtr, CuPtr),
 )
 
+const _AggCopyEltype = Union{StaticArray, KernelODEProblem}
+
 for (DstPtr, SrcPtr) in _AGG_PTR_COPY_DIRECTIONS
     @eval begin
         function EnzymeRules.reverse(
@@ -64,7 +69,7 @@ for (DstPtr, SrcPtr) in _AGG_PTR_COPY_DIRECTIONS
                 src::Annotation{<:$SrcPtr{T}},
                 n::Const;
                 kwargs...,
-            ) where {RT, T <: StaticArray}
+            ) where {RT, T <: _AggCopyEltype}
             if !(dest isa Const)
                 for batch in 1:EnzymeRules.width(config)
                     ddest = _agg_shadow(dest, config, batch)

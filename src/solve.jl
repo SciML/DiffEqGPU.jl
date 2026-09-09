@@ -189,6 +189,17 @@ _kernel_record(prob) = prob
     return KernelODEProblem{U, T, IIP, P, F, K, PT}(prob.p, prob.u0, prob.tspan, prob.f, prob.kwargs, prob.problem_type)
 end
 
+# EnzymeCUDAExt reverse of Ptr/CuPtr copies uses `.+=` on wrapped arrays; define fieldwise
+# addition so KernelODEProblem shadows accumulate through host↔device copies.
+function Base.:+(
+        a::KernelODEProblem{U, T, IIP, P, F, K, PT},
+        b::KernelODEProblem{U, T, IIP, P, F, K, PT}
+    ) where {U, T, IIP, P, F, K, PT}
+    return KernelODEProblem{U, T, IIP, P, F, K, PT}(
+        a.p + b.p, a.u0 + b.u0, a.tspan, a.f, a.kwargs, a.problem_type
+    )
+end
+
 # KernelODEProblem's layout is for Enzyme on CUDA. Other backends keep
 # ImmutableODEProblem to avoid SPIR-V / GPUCompiler IR failures. @generated
 # keeps each backend's return type concrete for Enzyme.
@@ -202,6 +213,10 @@ end
     end
 end
 @inline _adapt_kernel_problem(backend, prob) = adapt(backend, prob)
+
+@inline _is_cuda_backend(backend) = occursin("CUDA", string(typeof(backend)))
+# Enzyme-aware problem prep (taped adapts / KernelODEProblem) is CUDA-only.
+@inline _enzyme_kernel_backend(backend) = _is_cuda_backend(backend)
 
 @noinline function _make_kernel_problem(ensembleprob, i, sim_seeds, rng_func, master_rng)
     ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
@@ -226,6 +241,22 @@ function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func,
     return probs, adapted_probs
 end
 
+function _master_kernel_problems(ensembleprob, I, sim_seeds, rng_func, master_rng)
+    if ensembleprob.safetycopy
+        return map(I) do i
+            ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
+            make_prob_compatible(
+                ensembleprob.prob_func(deepcopy(ensembleprob.prob), ctx)
+            )
+        end
+    else
+        return map(I) do i
+            ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
+            make_prob_compatible(ensembleprob.prob_func(ensembleprob.prob, ctx))
+        end
+    end
+end
+
 function batch_solve(
         ensembleprob, alg,
         ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
@@ -239,93 +270,181 @@ function batch_solve(
     #@assert all(p->p.f === probs[1].f,probs)
 
     return if ensemblealg isa EnsembleGPUKernel
-        kernel_probs, adapted_kernel_probs = _prepare_kernel_problems(
-            ensembleprob, ensemblealg.dev, I, sim_seeds, rng_func, master_rng
-        )
-        # Using inner saveat requires all of them to be of same size,
-        # because the dimension of CuMatrix is decided by it.
-        # The columns of it are accessed at each thread.
-        if !all(
-                Base.Fix2(
-                    (prob1, prob2) -> isequal(prob1[].tspan, prob2[].tspan),
-                    kernel_probs[1]
-                ),
-                kernel_probs
+        if _enzyme_kernel_backend(ensemblealg.dev)
+            kernel_probs, adapted_kernel_probs = _prepare_kernel_problems(
+                ensembleprob, ensemblealg.dev, I, sim_seeds, rng_func, master_rng
             )
-            if !iszero(ensemblealg.cpu_offload)
-                error("Different time spans in an Ensemble Simulation with CPU offloading is not supported yet.")
-            end
-            if get(kernel_probs[1][].kwargs, :saveat, nothing) === nothing && !adaptive &&
-                    get(kwargs, :save_everystep, true)
-                error("Using different time-spans require either turning off save_everystep or using saveat. If using saveat, it should be of same length across the ensemble.")
-            end
+            # Using inner saveat requires all of them to be of same size,
+            # because the dimension of CuMatrix is decided by it.
+            # The columns of it are accessed at each thread.
             if !all(
                     Base.Fix2(
-                        (
-                            prob1,
-                            prob2,
-                        ) -> isequal(
-                            sizeof(
-                                get(
-                                    prob1[].kwargs, :saveat,
-                                    nothing
-                                )
-                            ),
-                            sizeof(
-                                get(
-                                    prob2[].kwargs, :saveat,
-                                    nothing
-                                )
-                            )
-                        ),
+                        (prob1, prob2) -> isequal(prob1[].tspan, prob2[].tspan),
                         kernel_probs[1]
                     ),
                     kernel_probs
                 )
-                error("Using different saveat in EnsembleGPUKernel requires all of them to be of same length. Use saveats of same size only.")
-            end
-        end
-
-        if alg isa Union{GPUODEAlgorithm, GPUSDEAlgorithm}
-            # Get inner saveat if global one isn't specified
-            _saveat = get(kernel_probs[1][].kwargs, :saveat, nothing)
-            saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
-            solts,
-                kernel_solus = batch_solve_up_kernel(
-                ensembleprob, kernel_probs, adapted_kernel_probs, alg, ensemblealg, I,
-                adaptive; saveat, kwargs...
-            )
-            [
-                begin
-                    ts = @view solts[:, i]
-                    us = @view kernel_solus[:, i]
-                    sol_idx = findlast(x -> x != kernel_probs[i][].tspan[1], ts)
-                    if sol_idx === nothing
-                        @error "No solution found" tspan = kernel_probs[i][].tspan[1] ts
-                        error("Batch solve failed")
-                    end
-                    @views ensembleprob.output_func(
-                        SciMLBase.build_solution(
-                            kernel_probs[i][],
-                            alg,
-                            ts[1:sol_idx],
-                            us[1:sol_idx],
-                            k = nothing,
-                            stats = nothing,
-                            calculate_error = false,
-                            retcode = sol_idx !=
-                                length(ts) ?
-                                ReturnCode.Terminated :
-                                ReturnCode.Success
-                        ),
-                        _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
-                    )[1]
+                if !iszero(ensemblealg.cpu_offload)
+                    error("Different time spans in an Ensemble Simulation with CPU offloading is not supported yet.")
                 end
-                    for i in eachindex(kernel_probs)
-            ]
+                if get(kernel_probs[1][].kwargs, :saveat, nothing) === nothing && !adaptive &&
+                        get(kwargs, :save_everystep, true)
+                    error("Using different time-spans require either turning off save_everystep or using saveat. If using saveat, it should be of same length across the ensemble.")
+                end
+                if !all(
+                        Base.Fix2(
+                            (
+                                prob1,
+                                prob2,
+                            ) -> isequal(
+                                sizeof(
+                                    get(
+                                        prob1[].kwargs, :saveat,
+                                        nothing
+                                    )
+                                ),
+                                sizeof(
+                                    get(
+                                        prob2[].kwargs, :saveat,
+                                        nothing
+                                    )
+                                )
+                            ),
+                            kernel_probs[1]
+                        ),
+                        kernel_probs
+                    )
+                    error("Using different saveat in EnsembleGPUKernel requires all of them to be of same length. Use saveats of same size only.")
+                end
+            end
 
+            if alg isa Union{GPUODEAlgorithm, GPUSDEAlgorithm}
+                # Get inner saveat if global one isn't specified
+                _saveat = get(kernel_probs[1][].kwargs, :saveat, nothing)
+                saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
+                solts,
+                    kernel_solus = batch_solve_up_kernel(
+                    ensembleprob, kernel_probs, adapted_kernel_probs, alg, ensemblealg, I,
+                    adaptive; saveat, kwargs...
+                )
+                [
+                    begin
+                        ts = @view solts[:, i]
+                        us = @view kernel_solus[:, i]
+                        sol_idx = findlast(x -> x != kernel_probs[i][].tspan[1], ts)
+                        if sol_idx === nothing
+                            @error "No solution found" tspan = kernel_probs[i][].tspan[1] ts
+                            error("Batch solve failed")
+                        end
+                        @views ensembleprob.output_func(
+                            SciMLBase.build_solution(
+                                kernel_probs[i][],
+                                alg,
+                                ts[1:sol_idx],
+                                us[1:sol_idx],
+                                k = nothing,
+                                stats = nothing,
+                                calculate_error = false,
+                                retcode = sol_idx !=
+                                    length(ts) ?
+                                    ReturnCode.Terminated :
+                                    ReturnCode.Success
+                            ),
+                            _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
+                        )[1]
+                    end
+                        for i in eachindex(kernel_probs)
+                ]
+
+            else
+                error("We don't have solvers implemented for this algorithm yet")
+            end
         else
-            error("We don't have solvers implemented for this algorithm yet")
+            # OpenCL/Metal/etc.: match master's host Vector + single device adapt.
+            probs = _master_kernel_problems(
+                ensembleprob, I, sim_seeds, rng_func, master_rng
+            )
+            if !all(
+                    Base.Fix2(
+                        (prob1, prob2) -> isequal(prob1.tspan, prob2.tspan),
+                        probs[1]
+                    ),
+                    probs
+                )
+                if !iszero(ensemblealg.cpu_offload)
+                    error("Different time spans in an Ensemble Simulation with CPU offloading is not supported yet.")
+                end
+                if get(probs[1].kwargs, :saveat, nothing) === nothing && !adaptive &&
+                        get(kwargs, :save_everystep, true)
+                    error("Using different time-spans require either turning off save_everystep or using saveat. If using saveat, it should be of same length across the ensemble.")
+                end
+                if !all(
+                        Base.Fix2(
+                            (
+                                prob1,
+                                prob2,
+                            ) -> isequal(
+                                sizeof(
+                                    get(
+                                        prob1.kwargs, :saveat,
+                                        nothing
+                                    )
+                                ),
+                                sizeof(
+                                    get(
+                                        prob2.kwargs, :saveat,
+                                        nothing
+                                    )
+                                )
+                            ),
+                            probs[1]
+                        ),
+                        probs
+                    )
+                    error("Using different saveat in EnsembleGPUKernel requires all of them to be of same length. Use saveats of same size only.")
+                end
+            end
+
+            if alg isa Union{GPUODEAlgorithm, GPUSDEAlgorithm}
+                _saveat = get(probs[1].kwargs, :saveat, nothing)
+                saveat = _saveat === nothing ? get(kwargs, :saveat, nothing) : _saveat
+                solts,
+                    solus = batch_solve_up_kernel_master(
+                    ensembleprob, probs, alg, ensemblealg, I,
+                    adaptive; saveat, kwargs...
+                )
+                [
+                    begin
+                        ts = @view solts[:, i]
+                        us = @view solus[:, i]
+                        sol_idx = findlast(x -> x != probs[i].tspan[1], ts)
+                        if sol_idx === nothing
+                            @error "No solution found" tspan = probs[i].tspan[1] ts
+                            error("Batch solve failed")
+                        end
+                        @views ensembleprob.output_func(
+                            SciMLBase.build_solution(
+                                probs[i],
+                                alg,
+                                ts[1:sol_idx],
+                                us[1:sol_idx],
+                                k = nothing,
+                                stats = nothing,
+                                calculate_error = false,
+                                retcode = sol_idx !=
+                                    length(ts) ?
+                                    ReturnCode.Terminated :
+                                    ReturnCode.Success
+                            ),
+                            _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
+                        )[1]
+                    end
+                        for i in eachindex(probs)
+                ]
+
+            else
+                error("We don't have solvers implemented for this algorithm yet")
+            end
         end
     else
         if ensembleprob.safetycopy
@@ -442,6 +561,45 @@ function batch_solve_up_kernel(
     probs = adapt(dev, adapted_probs)
 
     #Adaptive version only works with saveat
+    if adaptive
+        ts,
+            us = vectorized_asolve(
+            probs, ensembleprob.prob, alg;
+            kwargs..., callback = _callback
+        )
+    else
+        ts,
+            us = vectorized_solve(
+            probs, ensembleprob.prob, alg;
+            kwargs..., callback = _callback
+        )
+    end
+    solus = Array(us)
+    solts = Array(ts)
+    return (solts, solus)
+end
+
+# Master-compatible launch for non-Enzyme backends (OpenCL/Metal/…).
+function batch_solve_up_kernel_master(
+        ensembleprob, probs, alg, ensemblealg, I, adaptive;
+        kwargs...
+    )
+    _callback = CallbackSet(generate_callback(probs[1], length(I), ensemblealg; kwargs...))
+
+    _callback = CallbackSet(
+        convert.(
+            DiffEqGPU.GPUDiscreteCallback,
+            _callback.discrete_callbacks
+        )...,
+        convert.(
+            DiffEqGPU.GPUContinuousCallback,
+            _callback.continuous_callbacks
+        )...
+    )
+
+    dev = ensemblealg.dev
+    probs = adapt(dev, adapt.((dev,), probs))
+
     if adaptive
         ts,
             us = vectorized_asolve(
