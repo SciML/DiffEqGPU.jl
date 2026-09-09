@@ -52,6 +52,15 @@ ts, us = DiffEqGPU.vectorized_solve(
 """
 function vectorized_solve end
 
+# Pack AbstractFloat scalars into 0-d device arrays so Enzyme uses Duplicated (GPU-
+# supported) instead of Active. Other values (Duals, vector tolerances) pass through.
+function _pack_kernel_scalar(backend, x::AbstractFloat)
+    a = allocate(backend, typeof(x), ())
+    fill!(a, x)
+    return a
+end
+_pack_kernel_scalar(backend, x) = adapt(backend, x)
+
 function vectorized_solve(
         probs, prob::ODEProblem, alg;
         dt, saveat = nothing,
@@ -117,17 +126,9 @@ function vectorized_solve(
 
     # 0-d device array for AbstractFloat dt: Enzyme would mark a scalar as Active,
     # which GPU KA rejects. ForwardDiff Duals stay scalars for OpenCL Dual support.
-    dt_arg = if dt isa AbstractFloat
-        dt_dev = allocate(backend, typeof(dt), ())
-        fill!(dt_dev, dt)
-        dt_dev
-    else
-        dt
-    end
-
     kernel(
-        probs, alg, us, ts, dt_arg, callback, tstops, saveat_converted,
-        Val(save_everystep);
+        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
+        saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
 
@@ -349,31 +350,10 @@ function vectorized_asolve(
 
     # 0-d device arrays for AbstractFloat scalars avoid Enzyme Active GPU args.
     # Non-AbstractFloat values (e.g. ForwardDiff Dual, vector tolerances) pass through.
-    dt_arg = if dt isa AbstractFloat
-        dt_dev = allocate(backend, typeof(dt), ())
-        fill!(dt_dev, dt)
-        dt_dev
-    else
-        dt
-    end
-    abstol_arg = if abstol isa AbstractFloat
-        a = allocate(backend, typeof(abstol), ())
-        fill!(a, abstol)
-        a
-    else
-        adapt(backend, abstol)
-    end
-    reltol_arg = if reltol isa AbstractFloat
-        a = allocate(backend, typeof(reltol), ())
-        fill!(a, reltol)
-        a
-    else
-        adapt(backend, reltol)
-    end
-
     kernel(
-        probs, alg, us, ts, dt_arg, callback, tstops,
-        abstol_arg, reltol_arg, saveat_converted, Val(save_everystep);
+        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
+        _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),
+        saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
 
