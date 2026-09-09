@@ -1,12 +1,19 @@
 # Enzyme drops sensitivities through mutable caches when these isbits problem arrays
-# are wrapped in @Const. Scalar kernel args must stay @Const: GPU Enzyme rejects Active
-# scalars ("Active kernel arguments not supported on GPU").
+# are wrapped in @Const. AbstractFloat scalar kernel args that affect the loss become
+# Enzyme Active; GPU KA rejects Active by-value args, so callers pass length-1 device
+# arrays for those. ForwardDiff Duals stay scalars (OpenCL cannot compile Dual arrays).
+@inline _load_kernel_arg(x::Number) = x
+@inline function _load_kernel_arg(x)
+    return length(x) == 1 ? (@inbounds x[1]) : x
+end
+
 @kernel function ode_solve_kernel(
-        probs, alg, _us, _ts, @Const(dt), callback,
+        probs, alg, _us, _ts, _dt, callback,
         tstops,
         saveat, ::Val{save_everystep}
     ) where {save_everystep}
     i = @index(Global, Linear)
+    dt = _load_kernel_arg(_dt)
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
@@ -74,12 +81,15 @@
 end
 
 @kernel function ode_asolve_kernel(
-        probs, alg, _us, _ts, @Const(dt), callback, tstops,
-        @Const(abstol), @Const(reltol),
+        probs, alg, _us, _ts, _dt, callback, tstops,
+        _abstol, _reltol,
         saveat,
         ::Val{save_everystep}
     ) where {save_everystep}
     i = @index(Global, Linear)
+    dt = _load_kernel_arg(_dt)
+    abstol = _load_kernel_arg(_abstol)
+    reltol = _load_kernel_arg(_reltol)
 
     # get the actual problem for this thread
     prob = @inbounds probs[i]
