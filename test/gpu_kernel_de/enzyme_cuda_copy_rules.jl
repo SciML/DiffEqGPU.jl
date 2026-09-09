@@ -2,10 +2,12 @@
 # but only implements reverse for AbstractFloat. Ensemble problem data uses SVector
 # and KernelODEProblem, so reverse must handle those isbits aggregates (via `.+=`).
 using CUDA
-using DiffEqGPU: KernelODEProblem
+using DiffEqGPU
 using Enzyme
 using Enzyme: EnzymeRules
 using StaticArrays: StaticArray
+
+const KernelODEProblem = Base.get_extension(DiffEqGPU, :CUDAExt).KernelODEProblem
 
 function _agg_zero!(ptr::Ptr{T}, off::Integer, n::Integer) where {T}
     Base.Libc.memset(ptr + off * sizeof(T), 0, n * sizeof(T))
