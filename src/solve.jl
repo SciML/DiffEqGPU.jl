@@ -190,18 +190,18 @@ _kernel_record(prob) = prob
 end
 
 # KernelODEProblem's layout is for Enzyme on CUDA. Other backends keep
-# ImmutableODEProblem to avoid SPIR-V / GPUCompiler IR failures. Dispatch on
-# Val{...} so the return type stays concrete (no Union for Enzyme).
-@inline function _adapt_kernel_problem(backend::B, prob) where {B}
-    return _adapt_kernel_problem_impl(Val(occursin("CUDA", string(B))), backend, prob)
+# ImmutableODEProblem to avoid SPIR-V / GPUCompiler IR failures. @generated
+# keeps each backend's return type concrete for Enzyme.
+@generated function _adapt_kernel_problem(
+        backend::B, prob::SciMLBase.ImmutableODEProblem
+    ) where {B}
+    if occursin("CUDA", string(B))
+        return :(_kernel_record(adapt(backend, prob)))
+    else
+        return :(adapt(backend, prob))
+    end
 end
-@inline function _adapt_kernel_problem_impl(
-        ::Val{true}, backend, prob::SciMLBase.ImmutableODEProblem
-    )
-    return _kernel_record(adapt(backend, prob))
-end
-@inline _adapt_kernel_problem_impl(::Val{true}, backend, prob) = adapt(backend, prob)
-@inline _adapt_kernel_problem_impl(::Val{false}, backend, prob) = adapt(backend, prob)
+@inline _adapt_kernel_problem(backend, prob) = adapt(backend, prob)
 
 @noinline function _make_kernel_problem(ensembleprob, i, sim_seeds, rng_func, master_rng)
     ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
