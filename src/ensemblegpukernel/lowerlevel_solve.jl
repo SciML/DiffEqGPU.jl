@@ -174,12 +174,16 @@ end
         ::Val{true}, backend, probs, alg, us, ts, dt, callback, tstops, nsteps,
         saveat_converted, save_everystep
     )
-    return ode_solve_kernel_ad(backend)(
+    return _cuda_ode_solve_kernel_ad(backend)(
         probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
         saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
 end
+
+# Extended by CUDAExt with Enzyme-safe AD kernels.
+function _cuda_ode_solve_kernel_ad end
+function _cuda_ode_asolve_kernel_ad end
 
 # SDEProblems over GPU cannot support u0 as a Number type, because GPU kernels compiled only through u0 being StaticArrays
 function vectorized_solve(
@@ -411,7 +415,7 @@ end
         ::Val{true}, backend, probs, alg, us, ts, dt, callback, tstops,
         abstol, reltol, saveat_converted, save_everystep
     )
-    return ode_asolve_kernel_ad(backend)(
+    return _cuda_ode_asolve_kernel_ad(backend)(
         probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
         _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),
         saveat_converted, Val(save_everystep);
