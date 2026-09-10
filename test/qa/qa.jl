@@ -67,12 +67,6 @@ run_qa(
                 # CUDA batched LU used by DiffEqGPU.lufact!. CUDA's cuBLAS wrappers
                 # are not `public`, and there is no public batched-getrf spelling.
                 :getrf_strided_batched!,
-                # CUDAExt Enzyme path: private GPU-kernel integrator / callback hooks
-                # (not part of the documented public API; used only by the extension).
-                :init, :step!, :savevalues!, :gpu_initialization_solve,
-                :generate_callback, :_make_ensemble_context, :_init_time_matrix!,
-                :_cuda_ode_solve_kernel_ad, :_cuda_ode_asolve_kernel_ad,
-                :GPUDiscreteCallback, :GPUContinuousCallback,
             ),
         ),
         # Non-public names imported explicitly from upstream packages. The

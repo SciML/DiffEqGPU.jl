@@ -52,17 +52,13 @@ ts, us = DiffEqGPU.vectorized_solve(
 """
 function vectorized_solve end
 
-@inline _is_cuda_kernel_backend(backend) = occursin("CUDA", string(typeof(backend)))
 
-# CUDA: pack AbstractFloat scalars as 0-d device arrays for Enzyme (Duplicated, not Active).
-# Duals / non-floats pass through — OpenCL cannot compile Dual device arrays.
+# Pack AbstractFloat kernel scalars as 0-d device arrays so Enzyme sees Duplicated,
+# not Active, GPU args. Duals and non-floats pass through unchanged.
 function _pack_kernel_scalar(backend, x::AbstractFloat)
-    if _is_cuda_kernel_backend(backend)
-        a = allocate(backend, typeof(x), ())
-        _init_time_matrix!(a, x)
-        return a
-    end
-    return x
+    a = allocate(backend, typeof(x), ())
+    _init_time_matrix!(a, x)
+    return a
 end
 _pack_kernel_scalar(backend, x) = x
 
@@ -73,6 +69,7 @@ _pack_kernel_scalar(backend, x) = x
     return ts
 end
 
+
 function vectorized_solve(
         probs, prob::ODEProblem, alg;
         dt, saveat = nothing,
@@ -82,29 +79,17 @@ function vectorized_solve(
     )
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
-    cuda = _is_cuda_kernel_backend(backend)
-    # Non-CUDA Const kernels need unused nsteps (master ABI). Skip StepRangeLen on
-    # CUDA — Enzyme's range reverse errors on Float64.hi for Active StepRangeLen.
-    nsteps = 0
-    timeseries = nothing
-    if !cuda
-        timeseries = prob.tspan[1]:dt:prob.tspan[2]
-        nsteps = length(timeseries)
-    end
 
+    # Avoid StepRangeLen: Enzyme reverse and some Dual GPU backends mishandle it.
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
     saveat_converted = nothing
 
     if saveat === nothing
         if save_everystep
-            if timeseries === nothing
-                timeseries = prob.tspan[1]:dt:prob.tspan[2]
-            end
-            len = length(timeseries)
+            len = ceil(Int, abs(prob.tspan[2] - prob.tspan[1]) / abs(dt)) + 1
             if tstops !== nothing
-                len += length(tstops) - count(x -> x in tstops, timeseries)
-                nsteps += length(tstops) - count(x -> x in tstops, timeseries)
+                len += length(tstops)
             end
         else
             len = 2
@@ -113,16 +98,12 @@ function vectorized_solve(
         _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        # Get the time type from the problem
         Tt = eltype(prob.tspan)
-
-        # FIX for Issue #379: Convert saveat to proper type
         saveat_converted = if saveat isa AbstractRange
             Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
         elseif saveat isa AbstractVector
             Tt.(collect(saveat))
         else
-            # saveat is a Number (step size)
             t0, tf = Tt.(prob.tspan)
             if Tt(saveat) == Tt(0.0)
                 Tt.([t0, tf])
@@ -131,9 +112,7 @@ function vectorized_solve(
                 Tt.(collect(range(t0, tf, length = num_points)))
             end
         end
-
         saveat_converted = adapt(backend, saveat_converted)
-
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
         _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
@@ -145,45 +124,14 @@ function vectorized_solve(
         @warn "Running the kernel on CPU"
     end
 
-    # Val dispatch keeps OpenCL/Metal from specializing the CUDA AD kernel (Dual IR break).
-    _launch_ode_solve_kernel(
-        Val(cuda), backend, probs, alg, us, ts, dt, callback, tstops, nsteps,
-        saveat_converted, save_everystep
-    )
-
-    # we build the actual solution object on the CPU because the GPU would create one
-    # containing CuDeviceArrays, which we cannot use on the host (not GC tracked,
-    # no useful operations, etc). That's unfortunate though, since this loop is
-    # generally slower than the entire GPU execution, and necessitates synchronization
-    # EDIT: Done when using with DiffEqGPU
-    return ts, us
-end
-
-@noinline function _launch_ode_solve_kernel(
-        ::Val{false}, backend, probs, alg, us, ts, dt, callback, tstops, nsteps,
-        saveat_converted, save_everystep
-    )
-    return ode_solve_kernel(backend)(
-        probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
-        Val(save_everystep);
-        ndrange = length(probs)
-    )
-end
-
-@noinline function _launch_ode_solve_kernel(
-        ::Val{true}, backend, probs, alg, us, ts, dt, callback, tstops, nsteps,
-        saveat_converted, save_everystep
-    )
-    return _cuda_ode_solve_kernel_ad(backend)(
+    ode_solve_kernel(backend)(
         probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
         saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
-end
 
-# Extended by CUDAExt with Enzyme-safe AD kernels.
-function _cuda_ode_solve_kernel_ad end
-function _cuda_ode_asolve_kernel_ad end
+    return ts, us
+end
 
 # SDEProblems over GPU cannot support u0 as a Number type, because GPU kernels compiled only through u0 being StaticArrays
 function vectorized_solve(
@@ -387,40 +335,18 @@ function vectorized_asolve(
     if saveat_converted !== nothing
         saveat_converted = adapt(backend, saveat_converted)
     end
-
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    _launch_ode_asolve_kernel(
-        Val(_is_cuda_kernel_backend(backend)), backend, probs, alg, us, ts, dt,
-        callback, tstops, abstol, reltol, saveat_converted, save_everystep
-    )
-
-    return ts, us
-end
-
-@noinline function _launch_ode_asolve_kernel(
-        ::Val{false}, backend, probs, alg, us, ts, dt, callback, tstops,
-        abstol, reltol, saveat_converted, save_everystep
-    )
-    return ode_asolve_kernel(backend)(
-        probs, alg, us, ts, dt, callback, tstops,
-        abstol, reltol, saveat_converted, Val(save_everystep);
-        ndrange = length(probs)
-    )
-end
-
-@noinline function _launch_ode_asolve_kernel(
-        ::Val{true}, backend, probs, alg, us, ts, dt, callback, tstops,
-        abstol, reltol, saveat_converted, save_everystep
-    )
-    return _cuda_ode_asolve_kernel_ad(backend)(
+    ode_asolve_kernel(backend)(
         probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
         _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),
         saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
+
+    return ts, us
 end
 
 function vectorized_asolve(

@@ -3,11 +3,10 @@
 # and KernelODEProblem, so reverse must handle those isbits aggregates (via `.+=`).
 using CUDA
 using DiffEqGPU
+using DiffEqGPU: KernelODEProblem
 using Enzyme
 using Enzyme: EnzymeRules
 using StaticArrays: StaticArray
-
-const KernelODEProblem = Base.get_extension(DiffEqGPU, :CUDAExt).KernelODEProblem
 
 # Float64 ensemble reverse hits Active GPU fill! on the time matrix; treat init as inactive.
 EnzymeRules.inactive(::typeof(DiffEqGPU._init_time_matrix!), ::Any, ::Any) = nothing
