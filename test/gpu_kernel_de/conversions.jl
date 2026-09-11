@@ -78,23 +78,29 @@ end
     @test all(s -> s.prob.u0 isa SVector{1, Float32}, sol.u)
 end
 
-@testset "Initialization preprocessing runs once" begin
-    updates = Ref(0)
-    initprob = NonlinearProblem{false}((u, p) -> u .- 1.0f0, SVector(0.0f0))
-    update_init = function (initprob, prob)
-        updates[] += 1
-        return initprob
+# The in-kernel init solve for a plain OverrideInitData dispatches through
+# generic NonlinearSolve machinery that SPIR-V/Metal codegen cannot lower
+# (runtime type operations). This is a backend capability limit, so skip on
+# the strict-codegen backends.
+if ENV["GROUP"] ∉ ("OpenCL", "Metal", "oneAPI")
+    @testset "Initialization preprocessing runs once" begin
+        updates = Ref(0)
+        initprob = NonlinearProblem{false}((u, p) -> u .- 1.0f0, SVector(0.0f0))
+        update_init = function (initprob, prob)
+            updates[] += 1
+            return initprob
+        end
+        initdata = SciMLBase.OverrideInitData(
+            initprob, update_init, sol -> sol.u, nothing, nothing, Val(true)
+        )
+        f = ODEFunction{false}((u, p, t) -> zero(u); initialization_data = initdata)
+        prob = ODEProblem(f, SVector(0.0f0), (0.0f0, 0.1f0))
+        sol = solve(
+            EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
+            EnsembleGPUKernel(backend, 0.0); trajectories = 3,
+            adaptive = false, dt = 0.1f0, save_everystep = false
+        )
+        @test updates[] == 3
+        @test all(s -> s.u[end] ≈ SVector(1.0f0), sol.u)
     end
-    initdata = SciMLBase.OverrideInitData(
-        initprob, update_init, sol -> sol.u, nothing, nothing, Val(true)
-    )
-    f = ODEFunction{false}((u, p, t) -> zero(u); initialization_data = initdata)
-    prob = ODEProblem(f, SVector(0.0f0), (0.0f0, 0.1f0))
-    sol = solve(
-        EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
-        EnsembleGPUKernel(backend, 0.0); trajectories = 3,
-        adaptive = false, dt = 0.1f0, save_everystep = false
-    )
-    @test updates[] == 3
-    @test all(s -> s.u[end] ≈ SVector(1.0f0), sol.u)
 end
