@@ -52,7 +52,8 @@ function SciMLBase.__solve(
     num_batches = gpu_trajectories ÷ batch_size
     num_batches * batch_size != gpu_trajectories && (num_batches += 1)
 
-    if cpu_trajectories != 0 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
+    cpu_work = if cpu_trajectories != 0 &&
+            ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
         cpu_II = (gpu_trajectories + 1):trajectories
         _alg = if alg isa GPUODEAlgorithm
             if adaptive == false
@@ -82,6 +83,9 @@ function SciMLBase.__solve(
             put!(cpu_sols, f())
         end
         schedule(t)
+        (; cpu_sols, t)
+    else
+        nothing
     end
 
     if num_batches == 1 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
@@ -91,9 +95,9 @@ function SciMLBase.__solve(
             sim_seeds, rng_func, master_rng = rng,
             unstable_check, kwargs...
         )
-        if cpu_trajectories != 0
-            wait(t)
-            sol = vcat(sol, take!(cpu_sols))
+        if cpu_work !== nothing
+            wait(cpu_work.t)
+            sol = vcat(sol, take!(cpu_work.cpu_sols))
         end
         return SciMLBase.EnsembleSolution(sol, time, true)
     end
@@ -156,9 +160,9 @@ function SciMLBase.__solve(
     end
 
     return if ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
-        if cpu_trajectories != 0
-            wait(t)
-            sols = vcat(reduce(vcat, vec.(sols)), take!(cpu_sols))
+        if cpu_work !== nothing
+            wait(cpu_work.t)
+            sols = vcat(reduce(vcat, vec.(sols)), take!(cpu_work.cpu_sols))
         else
             sols = reduce(vcat, sols)
         end
