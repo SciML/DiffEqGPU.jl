@@ -181,7 +181,12 @@ end
     )
 
     @test overshoot_sol.u[1].t == Float32[0, 0.3]
-    @test isapprox(
-        overshoot_sol.u[1].u[end], SVector(0.3f0); atol = 2eps(Float32), rtol = 0
-    )
+    if alg isa Union{GPURodas4, GPURodas5P}
+        @test isapprox(
+            overshoot_sol.u[1].u[end], SVector(0.3f0);
+            atol = 8 * eps(0.3f0), rtol = 0
+        )
+    else
+        @test overshoot_sol.u[1].u[end] == SVector(0.3f0)
+    end
 end

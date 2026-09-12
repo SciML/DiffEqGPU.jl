@@ -164,7 +164,5 @@ end
     )
 
     @test overshoot_sol.u[1].t == Float32[0, 0.3]
-    @test isapprox(
-        overshoot_sol.u[1].u[end], SVector(0.3f0); atol = 2eps(Float32), rtol = 0
-    )
+    @test overshoot_sol.u[1].u[end] == SVector(0.3f0)
 end
