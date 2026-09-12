@@ -204,7 +204,7 @@ end
 function _maybe_convert_mass_matrix(prob)
     mm = prob.f.mass_matrix
     # Already an SArray, UniformScaling, or I — nothing to do
-    (mm isa StaticArrays.StaticArray || mm === LinearAlgebra.I) && return prob
+    (mm isa Union{StaticArrays.StaticArray, LinearAlgebra.UniformScaling}) && return prob
     # Convert to SMatrix
     N = length(prob.u0)
     smm = StaticArrays.SMatrix{N, N}(mm)

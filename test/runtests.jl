@@ -19,6 +19,13 @@ const GROUP = get(ENV, "GROUP", "CUDA")
 
 using SafeTestsets, Test
 
+if GROUP in ("CUDA", "Enzyme")
+    @time @safetestset "Enzyme ensemble gradients" begin
+        include("enzyme_environment.jl")
+    end
+    GROUP == "Enzyme" && exit()
+end
+
 if GROUP == "QA"
     import Pkg
     Pkg.activate(joinpath(@__DIR__, "qa"))

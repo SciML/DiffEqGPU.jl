@@ -121,10 +121,10 @@ end
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
+        q11 = EEst^beta1
         if iszero(EEst)
             q = integ.alg isa GPUTsit5IController ? zero(T) : inv(qmax)
         else
-            q11 = EEst^beta1
             q = q11 / (qold^beta2)
         end
 

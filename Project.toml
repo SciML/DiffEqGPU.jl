@@ -4,6 +4,7 @@ authors = ["Chris Rackauckas", "SciML"]
 version = "3.21.0"
 
 [deps]
+EnzymeCore = "f151be2c-9106-41f4-ab19-57ee4f262869"
 Adapt = "79e6a3ab-5dfb-504d-930d-738a2a938a0e"
 ChainRulesCore = "d360d2e6-b24c-11e9-a2a3-2a2ae2dbcce4"
 CommonSolve = "38540f10-b2f7-11e9-35d8-d573e4eb0ff2"
@@ -32,6 +33,7 @@ UnPack = "3a884ed6-31ef-47d7-9d2a-63182c4928ed"
 ZygoteRules = "700de1a5-db45-46bc-99cf-38207098b444"
 
 [weakdeps]
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
 JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
@@ -41,6 +43,7 @@ OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 
 [extensions]
+EnzymeExt = "Enzyme"
 AMDGPUExt = ["AMDGPU"]
 CUDAExt = ["CUDA"]
 JLArraysExt = ["JLArrays"]
@@ -53,12 +56,16 @@ oneAPIExt = ["oneAPI"]
 AMDGPU = "2"
 Adapt = "4"
 CUDA = "6"
+CUDACore = "6.2"
 ChainRulesCore = "1"
 CommonSolve = "0.2.6"
 DifferentiationInterface = "0.7.18"
 DiffEqBase = "7.19"
 Distributed = "1"
 DocStringExtensions = "0.9"
+Enzyme = "0.13.201"
+EnzymeCore = "0.8.21"
+ExplicitImports = "1.15"
 ForwardDiff = "1.3.3"
 GPUArraysCore = "0.2"
 JLArrays = "0.3"
@@ -90,6 +97,9 @@ oneAPI = "2"
 pocl_jll = "7"
 
 [extras]
+ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
+CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
 AMDGPU = "21141c5a-9bdb-4563-92ae-f87d6854732e"
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
@@ -101,3 +111,20 @@ OpenCL = "08131aa3-fb12-5dee-8b74-c09406e224a2"
 Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
 oneAPI = "8f75cd03-7ff8-4ecb-9b8f-daf728133b1b"
 pocl_jll = "627d6b7a-bbe6-5189-83e7-98cc0a5aeadd"
+
+[targets]
+test = [
+    "SciMLTesting",
+    "AMDGPU",
+    "CUDA",
+    "DifferentiationInterface",
+    "GPUArraysCore",
+    "JLArrays",
+    "Metal",
+    "OpenCL",
+    "Test",
+    "oneAPI",
+    "pocl_jll",
+]
+enzyme_cuda = ["CUDA", "CUDACore", "Enzyme", "ExplicitImports", "KernelAbstractions", "SciMLBase", "StaticArrays", "Test"]
+enzyme = ["Enzyme", "ExplicitImports", "JLArrays", "KernelAbstractions", "SciMLBase", "StaticArrays", "Test"]

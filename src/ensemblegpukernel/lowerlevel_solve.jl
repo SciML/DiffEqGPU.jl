@@ -52,6 +52,32 @@ ts, us = DiffEqGPU.vectorized_solve(
 """
 function vectorized_solve end
 
+
+function _kernel_transfer(backend, x::AbstractArray)
+    dest = allocate(backend, eltype(x), size(x))
+    copyto!(dest, x)
+    return dest
+end
+
+# GPU reverse kernels require duplicated storage for active scalar arguments.
+function _pack_kernel_scalar(backend, x::AbstractFloat)
+    return within_autodiff() ? _kernel_transfer(backend, fill(x)) : x
+end
+_pack_kernel_scalar(backend, x) = x
+_pack_kernel_scalar(::CPU, x::AbstractFloat) = x
+
+@kernel function _fill_time_kernel!(ts, t0)
+    i = @index(Global, Linear)
+    @inbounds ts[i] = _load_kernel_arg(t0)
+end
+
+function _init_time_matrix!(ts, t0)
+    backend = get_backend(ts)
+    _fill_time_kernel!(backend)(ts, _pack_kernel_scalar(backend, t0); ndrange = length(ts))
+    return ts
+end
+_init_time_matrix!(ts::Array, t0) = fill!(ts, t0)
+
 function vectorized_solve(
         probs, prob::ODEProblem, alg;
         dt, saveat = nothing,
@@ -61,10 +87,6 @@ function vectorized_solve(
     )
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
-    # if saveat is specified, we'll use a vector of timestamps.
-    # otherwise it's a matrix that may be different for each ODE.
-    timeseries = prob.tspan[1]:dt:prob.tspan[2]
-    nsteps = length(timeseries)
 
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
@@ -72,28 +94,24 @@ function vectorized_solve(
 
     if saveat === nothing
         if save_everystep
-            len = length(prob.tspan[1]:dt:prob.tspan[2])
+            timeseries = prob.tspan[1]:dt:prob.tspan[2]
+            len = length(timeseries)
             if tstops !== nothing
                 len += length(tstops) - count(x -> x in tstops, timeseries)
-                nsteps += length(tstops) - count(x -> x in tstops, timeseries)
             end
         else
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
-        # Get the time type from the problem
         Tt = eltype(prob.tspan)
-
-        # FIX for Issue #379: Convert saveat to proper type
         saveat_converted = if saveat isa AbstractRange
             Tt.(collect(range(Tt(first(saveat)), Tt(last(saveat)), length = length(saveat))))
         elseif saveat isa AbstractVector
             Tt.(collect(saveat))
         else
-            # saveat is a Number (step size)
             t0, tf = Tt.(prob.tspan)
             if Tt(saveat) == Tt(0.0)
                 Tt.([t0, tf])
@@ -102,33 +120,24 @@ function vectorized_solve(
                 Tt.(collect(range(t0, tf, length = num_points)))
             end
         end
-
         saveat_converted = adapt(backend, saveat_converted)
-
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
     tstops = adapt(backend, tstops)
 
-    kernel = ode_solve_kernel(backend)
-
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    kernel(
-        probs, alg, us, ts, dt, callback, tstops, nsteps, saveat_converted,
-        Val(save_everystep);
+    ode_solve_kernel(backend)(
+        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
+        saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
 
-    # we build the actual solution object on the CPU because the GPU would create one
-    # containing CuDeviceArrays, which we cannot use on the host (not GC tracked,
-    # no useful operations, etc). That's unfortunate though, since this loop is
-    # generally slower than the entire GPU execution, and necessitates synchronization
-    # EDIT: Done when using with DiffEqGPU
     return ts, us
 end
 
@@ -152,7 +161,7 @@ function vectorized_solve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         # Get the time type from the problem
@@ -175,18 +184,20 @@ function vectorized_solve(
         end
 
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
     if saveat_converted !== nothing
         saveat_converted = adapt(backend, saveat_converted)
     end
-    if alg isa GPUEM
-        kernel = em_kernel(backend)
+    kernel = if alg isa GPUEM
+        em_kernel(backend)
     elseif alg isa Union{GPUSIEA}
         SciMLBase.is_diagonal_noise(prob) ? nothing :
             error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
-        kernel = siea_kernel(backend)
+        siea_kernel(backend)
+    else
+        error("The algorithm is not compatible with the chosen problem type. Please see the documentation on the solver methods")
     end
 
     if backend isa CPU
@@ -319,11 +330,11 @@ function vectorized_asolve(
             len = 2
         end
         ts = allocate(backend, typeof(dt), (len, length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (len, length(probs)))
     else
         ts = allocate(backend, typeof(dt), (length(saveat_converted), length(probs)))
-        fill!(ts, prob.tspan[1])
+        _init_time_matrix!(ts, prob.tspan[1])
         us = allocate(backend, typeof(prob.u0), (length(saveat_converted), length(probs)))
     end
 
@@ -334,15 +345,14 @@ function vectorized_asolve(
     if saveat_converted !== nothing
         saveat_converted = adapt(backend, saveat_converted)
     end
-    kernel = ode_asolve_kernel(backend)
-
     if backend isa CPU
         @warn "Running the kernel on CPU"
     end
 
-    kernel(
-        probs, alg, us, ts, dt, callback, tstops,
-        abstol, reltol, saveat_converted, Val(save_everystep);
+    ode_asolve_kernel(backend)(
+        probs, alg, us, ts, _pack_kernel_scalar(backend, dt), callback, tstops,
+        _pack_kernel_scalar(backend, abstol), _pack_kernel_scalar(backend, reltol),
+        saveat_converted, Val(save_everystep);
         ndrange = length(probs)
     )
 

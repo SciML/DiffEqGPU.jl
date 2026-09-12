@@ -52,3 +52,18 @@ sol = solve(
 
 @test norm(bench_sol.u[1] - sol.u[1].u[1]) < 8.0e-4
 @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 8.0e-4
+
+@testset "UniformScaling mass matrix" for mass in (I, 2.0f0I, 0.0f0I)
+    initial = iszero(mass.λ) ? 0.0f0 : 1.0f0
+    f = ODEFunction{false}((u, p, t) -> -u; mass_matrix = mass)
+    prob = ODEProblem(f, SVector(initial), (0.0f0, 1.0f0))
+    compatible = @inferred DiffEqGPU.make_prob_compatible(prob)
+    @test compatible.f.mass_matrix === mass
+    sol = solve(
+        EnsembleProblem(prob), GPURosenbrock23(), EnsembleGPUKernel(backend, 0.0);
+        trajectories = 2, dt = 0.001f0, adaptive = true,
+        abstol = 1.0f-8, reltol = 1.0f-8, save_everystep = false
+    )
+    expected = iszero(initial) ? initial : exp(-1.0f0 / mass.λ)
+    @test all(s -> isapprox(s.u[end][1], expected; atol = 2.0f-6), sol.u)
+end

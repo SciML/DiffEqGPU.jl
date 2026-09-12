@@ -152,10 +152,10 @@ end
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
+        q11 = EEst^beta1
         if iszero(EEst)
             q = inv(qmax)
         else
-            q11 = EEst^beta1
             q = q11 / (qold^beta2)
         end
 

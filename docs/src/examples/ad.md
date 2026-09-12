@@ -96,3 +96,54 @@ monteprob = EnsembleProblem(prob; prob_func)
     saveat = 1.0f0
 )
 ```
+
+## Enzyme reverse mode with `EnsembleGPUKernel`
+
+For `GPUTsit5`, use Enzyme to differentiate a scalar loss of the ensemble's final
+states. Set `cpu_offload` to zero and `save_everystep = false`. Keep the parameters
+on the host when constructing the problems; the ensemble solver transfers the
+compatible problems to the selected backend.
+
+```@example enzyme_kernel
+using DiffEqGPU, Enzyme, KernelAbstractions, SciMLBase, StaticArrays
+
+function ensemble_loss(p, backend)
+    rhs(u, p, t) = p[1] * u
+    prob = ODEProblem{false}(rhs, SVector(1.0), (0.0, 1.0), SVector(p[1]))
+    prob_func = (prob, ctx) -> remake(prob; p = SVector(p[ctx.sim_id]))
+    ensemble = EnsembleProblem(prob; prob_func, safetycopy = false)
+    sol = solve(
+        ensemble, GPUTsit5(), EnsembleGPUKernel(backend, 0.0);
+        trajectories = length(p), adaptive = false, dt = 0.05,
+        save_everystep = false
+    )
+    return sum(s -> sum(s.u[end]), sol.u)
+end
+
+p = [0.2, -0.3]
+backend = CPU()
+dp = zero(p)
+Enzyme.autodiff(Reverse, ensemble_loss, Active, Duplicated(p, dp), Const(backend))
+@assert dp ≈ exp.(p)
+dp
+```
+
+For NVIDIA GPUs, load `CUDA` and pass `CUDA.CUDABackend()` instead of `CPU()`.
+The draft CUDA tests currently require a
+[CUDACore allocation-rule backport](https://github.com/ChrisRackauckas-Claude/CUDA.jl/commit/081de781a6f81a63cb8d1d88c77eb7f5243a163a);
+CUDA gradients with released dependencies remain unverified.
+Loading Enzyme activates DiffEqGPU's transfer rules automatically. Reset the shadow
+buffer `dp` to zero before each independent reverse-mode call: Enzyme accumulates
+into it. Fixed-step gradients differentiate the numerical steps; adaptive gradients
+differentiate the executed solver path and are not a record-and-replay adjoint
+with a frozen mesh.
+
+Callbacks and DAE initialization are solver features; their absence from this
+example does not imply that they are unsupported. Representative Float64 CPU
+checks also validate Enzyme gradients through a fixed-time discrete callback,
+nonlinear initialization, the final integration time, and requested `saveat`
+times. These checks do not establish differentiation support for every callback
+or a complete singular-mass DAE solve. In particular, a continuous callback with
+a parameter-dependent event time can produce
+[incorrect gradients](https://github.com/SciML/DiffEqGPU.jl/issues/533); event-time
+sensitivities need separate validation.
