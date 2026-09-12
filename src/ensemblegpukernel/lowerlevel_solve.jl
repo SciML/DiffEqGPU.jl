@@ -53,22 +53,30 @@ ts, us = DiffEqGPU.vectorized_solve(
 function vectorized_solve end
 
 
-# Pack AbstractFloat kernel scalars as 0-d device arrays so Enzyme sees Duplicated,
-# not Active, GPU args. Duals and non-floats pass through unchanged.
+function _kernel_transfer(backend, x::AbstractArray)
+    dest = allocate(backend, eltype(x), size(x))
+    copyto!(dest, x)
+    return dest
+end
+
+# GPU reverse kernels require duplicated storage for active scalar arguments.
 function _pack_kernel_scalar(backend, x::AbstractFloat)
-    a = allocate(backend, typeof(x), ())
-    _init_time_matrix!(a, x)
-    return a
+    return within_autodiff() ? _kernel_transfer(backend, fill(x)) : x
 end
 _pack_kernel_scalar(backend, x) = x
+_pack_kernel_scalar(::CPU, x::AbstractFloat) = x
 
-# Time matrix init must use tspan[1] as the unused-slot sentinel (see findlast in
-# batch_solve). Under Enzyme, Active fill! scalars are rejected on GPU — mark inactive.
-@noinline function _init_time_matrix!(ts, t0)
-    fill!(ts, t0)
-    return ts
+@kernel function _fill_time_kernel!(ts, t0)
+    i = @index(Global, Linear)
+    @inbounds ts[i] = _load_kernel_arg(t0)
 end
 
+function _init_time_matrix!(ts, t0)
+    backend = get_backend(ts)
+    _fill_time_kernel!(backend)(ts, _pack_kernel_scalar(backend, t0); ndrange = length(ts))
+    return ts
+end
+_init_time_matrix!(ts::Array, t0) = fill!(ts, t0)
 
 function vectorized_solve(
         probs, prob::ODEProblem, alg;
@@ -80,16 +88,16 @@ function vectorized_solve(
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
 
-    # Avoid StepRangeLen: Enzyme reverse and some Dual GPU backends mishandle it.
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
     saveat_converted = nothing
 
     if saveat === nothing
         if save_everystep
-            len = ceil(Int, abs(prob.tspan[2] - prob.tspan[1]) / abs(dt)) + 1
+            timeseries = prob.tspan[1]:dt:prob.tspan[2]
+            len = length(timeseries)
             if tstops !== nothing
-                len += length(tstops)
+                len += length(tstops) - count(x -> x in tstops, timeseries)
             end
         else
             len = 2

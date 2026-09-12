@@ -10,9 +10,7 @@ function f(u, p, t)
 end
 
 u0 = @SVector[45.0f0, 0.0f0]
-# The bounce crossings sit at t = 3, 9, 15; ending at t = 15 places an event
-# exactly on tspan[2], where OrdinaryDiffEq and the GPU kernel legitimately
-# disagree on whether the callback fires (diff ≈ 60 = one applied bounce).
+# End away from the velocity jump at t = 15 so roundoff cannot change the endpoint side.
 tspan = (0.0f0, 16.0f0)
 p = @SVector [10.0f0]
 prob = ODEProblem{false}(f, u0, tspan, p)

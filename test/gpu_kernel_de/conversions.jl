@@ -72,35 +72,50 @@ end
         ensemble, GPUTsit5(), EnsembleGPUKernel(backend, 0.0);
         trajectories = 3, adaptive = false, dt = 0.01f0, save_everystep = false
     )
+    @test remake(sol.u[1].prob; p = SVector(2.0f0)).p == SVector(2.0f0)
     @test calls == ones(Int, 3)
     @test [s.prob.p for s in sol.u] == [SVector(Float32(i)) for i in 1:3]
     @test all(s -> s.prob.f.analytic === analytic, sol.u)
     @test all(s -> s.prob.u0 isa SVector{1, Float32}, sol.u)
 end
 
-# The in-kernel init solve for a plain OverrideInitData dispatches through
-# generic NonlinearSolve machinery that SPIR-V/Metal codegen cannot lower
-# (runtime type operations). This is a backend capability limit, so skip on
-# the strict-codegen backends.
-if ENV["GROUP"] ∉ ("OpenCL", "Metal", "oneAPI")
-    @testset "Initialization preprocessing runs once" begin
-        updates = Ref(0)
-        initprob = NonlinearProblem{false}((u, p) -> u .- 1.0f0, SVector(0.0f0))
-        update_init = function (initprob, prob)
-            updates[] += 1
-            return initprob
-        end
-        initdata = SciMLBase.OverrideInitData(
-            initprob, update_init, sol -> sol.u, nothing, nothing, Val(true)
-        )
-        f = ODEFunction{false}((u, p, t) -> zero(u); initialization_data = initdata)
-        prob = ODEProblem(f, SVector(0.0f0), (0.0f0, 0.1f0))
-        sol = solve(
-            EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
-            EnsembleGPUKernel(backend, 0.0); trajectories = 3,
-            adaptive = false, dt = 0.1f0, save_everystep = false
-        )
-        @test updates[] == 3
-        @test all(s -> s.u[end] ≈ SVector(1.0f0), sol.u)
+@testset "Initialization preprocessing runs once" begin
+    updates = Ref(0)
+    initprob = NonlinearProblem{false}((u, p) -> u .- 1.0f0, SVector(0.0f0))
+    update_init = function (initprob, prob)
+        updates[] += 1
+        return initprob
     end
+    initdata = SciMLBase.OverrideInitData(
+        initprob, update_init, sol -> sol.u, nothing, nothing, Val(true)
+    )
+    f = ODEFunction{false}((u, p, t) -> zero(u); initialization_data = initdata)
+    prob = ODEProblem(f, SVector(0.0f0), (0.0f0, 0.1f0))
+    sol = solve(
+        EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = 3,
+        adaptive = false, dt = 0.1f0, save_everystep = false
+    )
+    @test updates[] == 3
+    @test all(s -> s.u[end] ≈ SVector(1.0f0), sol.u)
+end
+
+@testset "Saving a stop already on the fixed time grid" begin
+    prob = ODEProblem{false}((u, p, t) -> -u, SVector(1.0f0), (0.0f0, 1.0f0))
+    sol = solve(
+        EnsembleProblem(prob), GPUTsit5(), EnsembleGPUKernel(backend, 0.0);
+        trajectories = 3, adaptive = false, dt = 0.25f0, tstops = [0.5f0],
+        save_everystep = true
+    )
+    @test all(s -> s.retcode == ReturnCode.Success, sol.u)
+    @test all(s -> s.t == Float32[0, 0.25, 0.5, 0.75, 1], sol.u)
+end
+
+@testset "Unboxed host problems outside differentiation" begin
+    prob = ODEProblem{false}((u, p, t) -> p[1] * u, SVector(1.0f0), (0.0f0, 1.0f0), SVector(0.2f0))
+    ensemble = EnsembleProblem(prob; safetycopy = false)
+    host, device = DiffEqGPU._prepare_kernel_problems(
+        ensemble, backend, 1:3, nothing, ctx -> nothing, nothing
+    )
+    @test isbitstype(eltype(host))
 end

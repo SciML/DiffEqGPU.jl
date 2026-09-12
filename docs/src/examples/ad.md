@@ -105,7 +105,7 @@ on the host when constructing the problems; the ensemble solver transfers the
 compatible problems to the selected backend.
 
 ```@example enzyme_kernel
-using DiffEqGPU, KernelAbstractions, SciMLBase, StaticArrays
+using DiffEqGPU, Enzyme, KernelAbstractions, SciMLBase, StaticArrays
 
 function ensemble_loss(p, backend)
     rhs(u, p, t) = p[1] * u
@@ -122,17 +122,19 @@ end
 
 p = [0.2, -0.3]
 backend = CPU()
-# Forward solve on CPU for the docs build. Reverse-mode Enzyme gradients for this
-# loss are validated on CUDA in the test suite (`test/gpu_kernel_de/enzyme.jl`).
-ensemble_loss(p, backend)
+dp = zero(p)
+Enzyme.autodiff(Reverse, ensemble_loss, Active, Duplicated(p, dp), Const(backend))
+@assert dp ≈ exp.(p)
+dp
 ```
 
-The listing above runs the forward ensemble on KernelAbstractions' CPU backend so
-documentation builds stay device-agnostic. Reverse-mode Enzyme through the same
-`ensemble_loss` is exercised on CUDA in CI (`test/gpu_kernel_de/enzyme.jl`). For
-NVIDIA GPUs, load `CUDA` and pass `CUDA.CUDABackend()` instead of `CPU()`. Reset
-any shadow buffer to zero before each reverse-mode call: Enzyme accumulates into
-it. Fixed-step gradients differentiate the numerical steps; adaptive gradients
+For NVIDIA GPUs, load `CUDA` and pass `CUDA.CUDABackend()` instead of `CPU()`.
+The draft CUDA tests currently require a
+[CUDACore allocation-rule backport](https://github.com/ChrisRackauckas-Claude/CUDA.jl/commit/081de781a6f81a63cb8d1d88c77eb7f5243a163a);
+CUDA gradients with released dependencies remain unverified.
+Loading Enzyme activates DiffEqGPU's transfer rules automatically. Reset the shadow
+buffer `dp` to zero before each independent reverse-mode call: Enzyme accumulates
+into it. Fixed-step gradients differentiate the numerical steps; adaptive gradients
 differentiate the executed solver path and are not a record-and-replay adjoint
 with a frozen mesh.
 
