@@ -23,6 +23,9 @@ StochasticDiffEq = "789caeaf-c7a9-5a7d-9973-96adeb23e2a0"
 SymbolicIndexingInterface = "2efcf032-c050-4f8e-a9bb-153293bab1f5"
 Zygote = "e88e6eb3-aa80-5325-afca-941959d7151f"
 
+[sources]
+DiffEqGPU = {path = "/home/runner/_work/DiffEqGPU.jl/DiffEqGPU.jl"}
+
 [compat]
 Adapt = "4"
 BenchmarkTools = "1"
