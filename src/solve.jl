@@ -52,6 +52,7 @@ function SciMLBase.__solve(
     num_batches = gpu_trajectories ÷ batch_size
     num_batches * batch_size != gpu_trajectories && (num_batches += 1)
 
+    t = nothing
     if cpu_trajectories != 0 && ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION
         cpu_II = (gpu_trajectories + 1):trajectories
         _alg = if alg isa GPUODEAlgorithm

@@ -181,12 +181,14 @@ function vectorized_solve(
     if saveat_converted !== nothing
         saveat_converted = adapt(backend, saveat_converted)
     end
-    if alg isa GPUEM
-        kernel = em_kernel(backend)
+    kernel = if alg isa GPUEM
+        em_kernel(backend)
     elseif alg isa Union{GPUSIEA}
         SciMLBase.is_diagonal_noise(prob) ? nothing :
             error("The algorithm is not compatible with the chosen noise type. Please see the documentation on the solver methods")
-        kernel = siea_kernel(backend)
+        siea_kernel(backend)
+    else
+        throw(ArgumentError("Unsupported SDE algorithm for kernel-based solving: $(typeof(alg))"))
     end
 
     if backend isa CPU

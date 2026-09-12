@@ -1,6 +1,15 @@
-using DiffEqGPU, JLArrays, GPUArraysCore, Test
+using DiffEqGPU, JLArrays, GPUArraysCore, SciMLBase, Test
 
 GPUArraysCore.allowscalar(false)
+
+@testset "GPUContinuousCallback defaults" begin
+    condition(u, t, integrator) = u[1]
+    affect!(integrator) = nothing
+    cb = DiffEqGPU.GPUContinuousCallback(condition, affect!, affect!)
+    @test cb.rootfind === SciMLBase.LeftRootFind
+    cb = DiffEqGPU.GPUContinuousCallback(condition, affect!)
+    @test cb.rootfind === SciMLBase.LeftRootFind
+end
 
 @testset "continuous callback direction dispatch" begin
     affect!(integrator) = (integrator.u[1] += 10)
