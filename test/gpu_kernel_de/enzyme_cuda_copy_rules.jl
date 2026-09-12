@@ -62,6 +62,115 @@ const _AGG_PTR_COPY_DIRECTIONS = (
 
 const _AggCopyEltype = Union{StaticArray, KernelODEProblem}
 
+# EnzymeCUDAExt only registers the array-level unsafe_copyto! rules for
+# AbstractFloat/Complex eltypes, so host↔device copies of aggregate records need
+# their own augmented_primal + reverse (the Ptr-level rules above are only hit
+# once Enzyme successfully descends through the array methods).
+const _AGG_ARRAY_COPY_DIRECTIONS = (
+    (StridedCuArray, StridedCuArray),
+    (StridedCuArray, Array),
+    (Array, StridedCuArray),
+)
+
+for (DstArr, SrcArr) in _AGG_ARRAY_COPY_DIRECTIONS
+    @eval begin
+        function EnzymeRules.augmented_primal(
+                config::EnzymeRules.RevConfig,
+                func::Const{typeof(Base.unsafe_copyto!)},
+                ::Type{RT},
+                dest::Annotation{<:$DstArr{T}},
+                src::Annotation{<:$SrcArr{T}},
+                n::Const;
+                kwargs...,
+            ) where {RT, T <: _AggCopyEltype}
+            func.val(dest.val, src.val, n.val; kwargs...)
+            primal = EnzymeRules.needs_primal(config) ? dest.val : nothing
+            shadow = if !(RT <: Const) && EnzymeRules.needs_shadow(config) &&
+                    !(dest isa Const)
+                dest.dval
+            else
+                nothing
+            end
+            return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
+        end
+
+        function EnzymeRules.reverse(
+                config::EnzymeRules.RevConfig,
+                func::Const{typeof(Base.unsafe_copyto!)},
+                ::Type{RT},
+                tape,
+                dest::Annotation{<:$DstArr{T}},
+                src::Annotation{<:$SrcArr{T}},
+                n::Const;
+                kwargs...,
+            ) where {RT, T <: _AggCopyEltype}
+            if !(dest isa Const)
+                for batch in 1:EnzymeRules.width(config)
+                    ddest = _agg_shadow(dest, config, batch)
+                    if !(src isa Const)
+                        dsrc = _agg_shadow(src, config, batch)
+                        _agg_accumulate!(
+                            @view(dsrc[1:n.val]), @view(ddest[1:n.val])
+                        )
+                    end
+                    _agg_zero!(pointer(ddest), 0, n.val)
+                end
+            end
+            return (nothing, nothing, nothing)
+        end
+
+        function EnzymeRules.augmented_primal(
+                config::EnzymeRules.RevConfig,
+                func::Const{typeof(Base.unsafe_copyto!)},
+                ::Type{RT},
+                dest::Annotation{<:$DstArr{T}},
+                doffs::Const,
+                src::Annotation{<:$SrcArr{T}},
+                soffs::Const,
+                n::Const;
+                kwargs...,
+            ) where {RT, T <: _AggCopyEltype}
+            func.val(dest.val, doffs.val, src.val, soffs.val, n.val; kwargs...)
+            primal = EnzymeRules.needs_primal(config) ? dest.val : nothing
+            shadow = if !(RT <: Const) && EnzymeRules.needs_shadow(config) &&
+                    !(dest isa Const)
+                dest.dval
+            else
+                nothing
+            end
+            return EnzymeRules.AugmentedReturn(primal, shadow, nothing)
+        end
+
+        function EnzymeRules.reverse(
+                config::EnzymeRules.RevConfig,
+                func::Const{typeof(Base.unsafe_copyto!)},
+                ::Type{RT},
+                tape,
+                dest::Annotation{<:$DstArr{T}},
+                doffs::Const,
+                src::Annotation{<:$SrcArr{T}},
+                soffs::Const,
+                n::Const;
+                kwargs...,
+            ) where {RT, T <: _AggCopyEltype}
+            if !(dest isa Const)
+                for batch in 1:EnzymeRules.width(config)
+                    ddest = _agg_shadow(dest, config, batch)
+                    if !(src isa Const)
+                        dsrc = _agg_shadow(src, config, batch)
+                        _agg_accumulate!(
+                            @view(dsrc[soffs.val:(soffs.val + n.val - 1)]),
+                            @view(ddest[doffs.val:(doffs.val + n.val - 1)])
+                        )
+                    end
+                    _agg_zero!(pointer(ddest, doffs.val), 0, n.val)
+                end
+            end
+            return (nothing, nothing, nothing, nothing, nothing)
+        end
+    end
+end
+
 for (DstPtr, SrcPtr) in _AGG_PTR_COPY_DIRECTIONS
     @eval begin
         function EnzymeRules.reverse(
