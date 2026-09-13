@@ -18,6 +18,13 @@ else
     const backend = CPU()
 end
 
+# Kernel initialization evaluates ModelingToolkit's generated maps on the device, so the
+# problem has to be built with `FullSpecialize` (which emits device-compatible maps),
+# out-of-place, and with static storage. All three are needed: an `MVector` is a mutable
+# struct and so is not isbits, while an in-place problem cannot write into an immutable
+# `SVector`, which leaves out-of-place + `SVector` as the only kernel-compatible pairing.
+static_constructor(values) = SVector{length(values)}(values)
+
 # ============================================================================
 # Test 1: Direct mass matrix DAE (no MTK, no initialization)
 # ============================================================================
@@ -278,7 +285,10 @@ end
         [D(population) ~ -decay_rate * population], t
     )
 
-    decay_prob = ODEProblem(decay_system, [], (0.0, 0.1))
+    decay_prob = ODEProblem{false, SciMLBase.FullSpecialize}(
+        decay_system, [], (0.0, 0.1);
+        u0_constructor = static_constructor, p_constructor = static_constructor
+    )
     @test SciMLBase.has_initialization_data(decay_prob.f)
     @test SciMLBase.is_trivial_initialization(decay_prob)
 
@@ -319,9 +329,10 @@ end
 
     @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
 
-    mtk_prob = ODEProblem(
+    mtk_prob = ODEProblem{false, SciMLBase.FullSpecialize}(
         pendulum, [py => 0.99, D(px) => 0.0], (0.0, 1.0),
-        guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0]
+        guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0],
+        u0_constructor = static_constructor, p_constructor = static_constructor
     )
 
     @test SciMLBase.has_initialization_data(mtk_prob.f)
@@ -330,6 +341,12 @@ end
 
     compatible_prob = DiffEqGPU.make_prob_compatible(mtk_prob)
     @test isbitstype(typeof(compatible_prob))
+    # `FullSpecialize` maps are device-compatible as ModelingToolkit emits them, so they
+    # are carried into the kernel untouched rather than lowered to a gather recipe.
+    @test compatible_prob.f.initialization_data.initializeprobmap ===
+        mtk_prob.f.initialization_data.initializeprobmap
+    @test compatible_prob.f.initialization_data.initializeprobpmap ===
+        mtk_prob.f.initialization_data.initializeprobpmap
     @test SciMLBase.has_initialization_data(compatible_prob.f)
     @test isbitstype(typeof(compatible_prob.f.initialization_data.initializeprob))
     @test compatible_prob.f.initialization_data.initializeprob isa
@@ -357,4 +374,141 @@ end
     @test !any(isnan, sol_mtk.u[1].u[end])
     @test norm(sol_mtk.u[1].u[1] - ref_sol.u[1]) < 1.0e-5
     @test norm(sol_mtk.u[1].u[end] - ref_sol.u[end]) < 1.0
+end
+
+# ============================================================================
+# Test 6: Computed initialization maps and the FullSpecialize requirement
+# ============================================================================
+
+@testset "Computed initialization maps" begin
+    # `my` is an observed variable of the torn initialization system, so the state map
+    # computes it rather than copying it. ModelingToolkit compiles that into the
+    # generated map under `FullSpecialize`; the correct initialization is mx = 1, my = 3.
+    @variables mx(t) my(t)
+    @parameters mr = 1.0
+    @mtkcompile computed_system = System(
+        [D(mx) ~ -mr * mx, D(my) ~ -my], t;
+        initialization_eqs = [mx^3 + mx ~ 2, my ~ 2mx + 1]
+    )
+    guesses = [mx => 1.0, my => 1.0]
+
+    computed_prob = ODEProblem{false, SciMLBase.FullSpecialize}(
+        computed_system, [], (0.0, 0.1); guesses,
+        u0_constructor = static_constructor, p_constructor = static_constructor
+    )
+    ref_sol = solve(computed_prob, Rodas5P())
+    @test SciMLBase.successful_retcode(ref_sol)
+
+    compatible_prob = DiffEqGPU.make_prob_compatible(computed_prob)
+    @test isbitstype(typeof(compatible_prob))
+
+    sol = solve(
+        EnsembleProblem(computed_prob, safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend);
+        trajectories = 2, dt = 0.001, adaptive = false, save_everystep = false
+    )
+    @test length(sol.u) == 2
+    @test sol.u[1].u[1] ≈ ref_sol.u[1] atol = 1.0e-8
+end
+
+@testset "Initialization maps must be kernel-compatible" begin
+    # The requirement is on the maps, not on the specialization level: a map is accepted
+    # when it is itself isbits and builds an isbits `u0`. `FullSpecialize` plus static
+    # storage is the recipe that guarantees that; a small enough system can satisfy it by
+    # accident at other levels, which is fine and is not something to reject.
+    @variables sx(t)
+    @parameters sr = 1.0
+    @mtkcompile spec_system = System(
+        [D(sx) ~ -sr * sx], t; initialization_eqs = [sx^3 + sx ~ 2]
+    )
+
+    # Without static storage the generated state map builds a heap `u0`, which a kernel
+    # can neither allocate nor hold.
+    heap_prob = ODEProblem{false, SciMLBase.FullSpecialize}(
+        spec_system, [], (0.0, 0.1); guesses = [sx => 1.0]
+    )
+    err = try
+        DiffEqGPU.make_prob_compatible(heap_prob)
+        nothing
+    catch e
+        e
+    end
+    @test err isa ArgumentError
+    @test occursin("static", err.msg)
+    @test occursin("out-of-place", err.msg)
+
+    static_prob = ODEProblem{false, SciMLBase.FullSpecialize}(
+        spec_system, [], (0.0, 0.1); guesses = [sx => 1.0],
+        u0_constructor = static_constructor, p_constructor = static_constructor
+    )
+    @test isbitstype(typeof(DiffEqGPU.make_prob_compatible(static_prob)))
+end
+
+@testset "Non-isbits parameters are rejected" begin
+    # A callable parameter closing over an array is nonnumeric and not isbits, so no
+    # amount of static-storage conversion makes the problem uploadable.
+    scale = let d = [2.0]
+        x -> d[1] * x
+    end
+    @test !isbitstype(typeof(scale))
+    @variables nx(t) = 1.0
+    @parameters (nscale::typeof(scale))(..) = scale [tunable = false]
+    @mtkcompile nonbits_system = System([D(nx) ~ -nscale(nx)], t)
+    nonbits_prob = ODEProblem{false, SciMLBase.FullSpecialize}(
+        nonbits_system, [], (0.0, 0.1);
+        u0_constructor = static_constructor, p_constructor = static_constructor
+    )
+    err = try
+        DiffEqGPU.make_prob_compatible(nonbits_prob)
+        nothing
+    catch e
+        e
+    end
+    @test err isa ArgumentError
+    @test occursin("nonnumeric", err.msg)
+    @test occursin("not isbits", err.msg)
+end
+
+# ============================================================================
+# Test 7: `make_static_storage` as the conversion hook for foreign types
+# ============================================================================
+
+struct HeapParameter
+    data::Vector{Float64}
+end
+
+struct StaticParameter{N}
+    data::SVector{N, Float64}
+end
+
+struct UnhookedParameter
+    data::Vector{Float64}
+end
+
+# What a package owning `HeapParameter` would add so its type survives the trip to a
+# kernel. DiffEqGPU knows nothing about either type.
+DiffEqGPU.make_static_storage(x::HeapParameter) =
+    StaticParameter(SVector{length(x.data)}(x.data))
+
+@testset "make_static_storage is the conversion hook" begin
+    @test !isbitstype(HeapParameter)
+    @test isbitstype(StaticParameter{2})
+
+    hooked = MTKParameters([1.0], Float64[], (), (), (HeapParameter([1.0, 2.0]),), ())
+    compatible = DiffEqGPU.make_parameter_compatible(hooked)
+    @test isbits(compatible)
+    @test only(compatible.nonnumeric) === StaticParameter(SVector(1.0, 2.0))
+
+    # Without a method the value is left alone, and the problem is rejected by name
+    # rather than failing inside the kernel.
+    unhooked = MTKParameters([1.0], Float64[], (), (), (UnhookedParameter([1.0, 2.0]),), ())
+    err = try
+        DiffEqGPU.make_parameter_compatible(unhooked)
+        nothing
+    catch e
+        e
+    end
+    @test err isa ArgumentError
+    @test occursin("nonnumeric", err.msg)
+    @test occursin("make_static_storage", err.msg)
 end

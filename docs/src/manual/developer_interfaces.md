@@ -21,8 +21,14 @@ DiffEqGPU.LinSolveGPUSplitFactorize
 problems to the lower-level kernel interface. Backend extensions may add methods to the
 developer interfaces above, but should preserve the documented return and mutation rules.
 
+`make_static_storage` is the per-value hook it uses to turn `u0` and parameters into
+storage a kernel can hold. Packages owning a type that is not isbits add a method for it
+so their type survives the trip to the device; see
+[Parameters that are not plain numbers](@ref modelingtoolkit_gpu_initialization).
+
 ```@docs
 DiffEqGPU.make_prob_compatible
+DiffEqGPU.make_static_storage
 ```
 
 ## Kernel ODE and SDE Algorithms
