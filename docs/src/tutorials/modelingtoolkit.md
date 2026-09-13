@@ -134,7 +134,7 @@ linear-problem update wrappers are not placed in the kernel.
 For example, the Cartesian pendulum can be initialized and solved as follows:
 
 ```julia
-using CUDA, DiffEqGPU, ModelingToolkit, OrdinaryDiffEq, SciMLBase
+using CUDA, DiffEqGPU, ModelingToolkit, OrdinaryDiffEq, SciMLBase, StaticArrays
 using ModelingToolkit: t_nounits as t, D_nounits as D
 
 @parameters g = 9.81 L = 1.0
@@ -148,11 +148,15 @@ eqs = [
 
 @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
 
-prob = ODEProblem{true, SciMLBase.FullSpecialize}(
+static_constructor(values) = SVector{length(values)}(values)
+
+prob = ODEProblem{false, SciMLBase.FullSpecialize}(
     pendulum,
     [py => 0.99, D(px) => 0.0],
     (0.0, 1.0);
     guesses = [pλ => 0.0, px => 0.1, D(py) => 0.0],
+    u0_constructor = static_constructor,
+    p_constructor = static_constructor,
 )
 
 ensemble_prob = EnsembleProblem(prob; safetycopy = false)
@@ -166,20 +170,57 @@ sol = solve(
 )
 ```
 
-### Specialization level
+### How the problem must be built
 
-Construct ModelingToolkit problems intended for `EnsembleGPUKernel` initialization with
-`SciMLBase.FullSpecialize`, passed as the problem type parameter as above
-(`ODEProblem{iip, SciMLBase.FullSpecialize}(sys, ...)`; ModelingToolkit ignores a
-`specialize` keyword argument). ModelingToolkit's default level is
-`SciMLBase.AutoDespecialize`, which trades specialization for compile latency by routing
-generated code through type-erased wrappers. Today DiffEqGPU rebuilds the initialization
-functions fully specialized on the host regardless of the level, so both levels currently
-produce the same kernel and the same results. `FullSpecialize` is the level under which
-ModelingToolkit is planned to emit device-compatible initialization maps directly (see
-[ModelingToolkit.jl#5043](https://github.com/SciML/ModelingToolkit.jl/issues/5043)), and
-DiffEqGPU is expected to require it for kernel initialization once that lands, so new
-code should adopt it now.
+Kernel initialization evaluates ModelingToolkit's own state and parameter initialization
+maps on the device, so the problem has to be built so that those maps are usable there.
+Three things are needed together, as in the example above:
+
+ 1. **`SciMLBase.FullSpecialize`**, passed as the problem type parameter
+    (`ODEProblem{iip, SciMLBase.FullSpecialize}(sys, ...)`; ModelingToolkit ignores a
+    `specialize` keyword argument). This is the level at which ModelingToolkit emits the
+    initialization maps as isbits `RuntimeGeneratedFunction`s
+    ([ModelingToolkit.jl#5043](https://github.com/SciML/ModelingToolkit.jl/issues/5043));
+    at the default `SciMLBase.AutoDespecialize` they are host closures that cannot be
+    uploaded. DiffEqGPU uses the generated maps exactly as ModelingToolkit produces them.
+ 2. **Static storage**, through `u0_constructor` and `p_constructor`. The maps rebuild
+    `u0` and `p` inside the kernel, which cannot allocate, so those buffers have to be
+    `StaticArray`s. ModelingToolkit fixes the container when the problem is built, so it
+    cannot be corrected afterwards.
+ 3. **Out-of-place** (`ODEProblem{false, ...}`). This follows from the other two rather
+    than being an independent choice: an `MVector` is a mutable struct and so is not
+    isbits, which rules it out of a device array entirely, while an in-place problem
+    cannot write into an immutable `SVector`. Out-of-place with `SVector` storage is the
+    only combination that is both isbits and self-consistent.
+
+A problem that misses any of these is rejected with an error saying which, rather than
+failing inside the kernel.
+
+### [Parameters that are not plain numbers](@id modelingtoolkit_gpu_initialization)
+
+Everything reaching a kernel has to be isbits. Converting buffer storage to `SArray`
+cannot rescue a parameter whose *contents* are not — an interpolation object, a callable
+closing over an array, a type. Such a problem is rejected by name:
+
+```
+These `MTKParameters` cannot be used by EnsembleGPUKernel: the nonnumeric portion holds
+values that are not isbits, so the problem cannot be uploaded to the device.
+```
+
+A package owning such a type can make it work by giving it an isbits stand-in, via a
+[`DiffEqGPU.make_static_storage`](@ref) method. DiffEqGPU calls that hook while converting
+`u0` and the parameters, so no change to DiffEqGPU is needed:
+
+```julia
+# In the package that owns `MyInterpolation`
+function DiffEqGPU.make_static_storage(itp::MyInterpolation)
+    return MyStaticInterpolation(
+        DiffEqGPU.make_static_storage(itp.t), DiffEqGPU.make_static_storage(itp.u)
+    )
+end
+```
+
+The stand-in has to be isbits and has to implement whatever the model calls on it.
 
 The current initialization path has the following restrictions:
 
@@ -191,11 +232,10 @@ The current initialization path has the following restrictions:
   - Lower and upper bounds are supported through a smooth transformation to unconstrained
     variables. A solution exactly on a finite bound is represented by a limiting
     unconstrained value and can therefore converge less robustly than an interior solution.
-  - ModelingToolkit's state and parameter initialization maps may directly select,
-    reorder, and repack numeric values from the ODE and initialization problems. DiffEqGPU
-    traces those operations on the host and stores only static gather recipes in the
-    kernel. Fallback getters that evaluate derived symbolic expressions are not yet
-    lowered.
+  - ModelingToolkit's state and parameter initialization maps are used as generated, so
+    entries computed from the solved initialization system (for example states that are
+    observed variables of the torn initialization system) are supported alongside entries
+    copied straight from the ODE and initialization problems.
   - Ordinary nonlinear and linear SCC initialization blocks are supported, including
     all-linear SCC problems that carry no initial state: missing linear-block states are
     seeded with zeros, which the exact one-step linear solve does not depend on. SCC

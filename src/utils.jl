@@ -94,6 +94,29 @@ end
 make_initialization_maps_compatible(prob, initprob, umap, pmap, p) = (umap, pmap)
 lower_initialization_problem(prob) = prob
 
+"""
+    DiffEqGPU.make_static_storage(x)
+
+Convert `x` into storage a GPU kernel can hold: arrays become `SArray`s, and `Tuple`s and
+`NamedTuple`s are rebuilt element by element. Everything else is returned unchanged, so a
+value that is already isbits passes straight through.
+
+This is the extension point for types that a kernel cannot take as-is. A package owning
+such a type adds a method converting it to an isbits stand-in, and `EnsembleGPUKernel`
+picks it up when converting `u0` and the parameters:
+
+```julia
+# In a package that owns `MyInterpolation`
+function DiffEqGPU.make_static_storage(itp::MyInterpolation)
+    return MyStaticInterpolation(
+        DiffEqGPU.make_static_storage(itp.t), DiffEqGPU.make_static_storage(itp.u)
+    )
+end
+```
+
+Without such a method the value is left alone, and the problem is rejected with an error
+naming it rather than failing inside the kernel.
+"""
 make_static_storage(x::StaticArrays.StaticArray) =
     StaticArrays.SArray{Tuple{size(x)...}}(map(make_static_storage, x))
 make_static_storage(x::Array) =
