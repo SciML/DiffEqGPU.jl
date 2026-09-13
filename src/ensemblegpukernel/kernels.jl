@@ -1,22 +1,25 @@
+# Shared EnsembleGPUKernel ODE launchers. Non-@Const probs + scalar unpacking so
+# Enzyme reverse works; Duals / plain floats both go through _load_kernel_arg.
+
+@inline _load_kernel_arg(x::Number) = x
+@inline _load_kernel_arg(x::AbstractArray{<:Any, 0}) = @inbounds x[]
+@inline _load_kernel_arg(x::AbstractArray) = x
+
 @kernel function ode_solve_kernel(
-        @Const(probs), alg, _us, _ts, dt, callback,
-        tstops, nsteps,
+        probs, alg, _us, _ts, _dt, callback,
+        tstops,
         saveat, ::Val{save_everystep}
     ) where {save_everystep}
     i = @index(Global, Linear)
+    dt = _load_kernel_arg(_dt)
 
-    # get the actual problem for this thread
     prob = @inbounds probs[i]
-
-    # get the input/output arrays for this thread
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
 
     _saveat = get(prob.kwargs, :saveat, nothing)
-
     saveat = _saveat === nothing ? saveat : _saveat
 
-    # Check if initialization is needed for DAEs
     u0, p_init,
         init_success = if SciMLBase.has_initialization_data(prob.f)
         gpu_initialization_solve(prob, SimpleTrustRegion(), 1.0e-6, 1.0e-6)
@@ -25,7 +28,6 @@
     end
 
     if init_success
-        # Use initialized values
         integ = init(
             alg, prob.f, false, u0, prob.tspan[1], dt, p_init, tstops,
             callback, save_everystep, saveat
@@ -45,7 +47,6 @@
         end
 
         integ.step_idx += 1
-        # FSAL
         while integ.t < tspan[2] && integ.retcode != DiffEqBase.ReturnCode.Terminated
             saved_in_cb = step!(integ, ts, us)
             !saved_in_cb && savevalues!(integ, ts, us)
@@ -55,12 +56,10 @@
             @inbounds ts[2] = integ.t
         end
         if integ.t > tspan[2] && saveat === nothing
-            ## Interpolate to tf
             @inbounds us[end] = integ(tspan[2])
             @inbounds ts[end] = tspan[2]
         end
     else
-        # Initialization failed — store initial values and bail out
         @inbounds us[1] = prob.u0
         @inbounds ts[1] = prob.tspan[1]
         if saveat === nothing && !save_everystep
@@ -71,25 +70,23 @@
 end
 
 @kernel function ode_asolve_kernel(
-        @Const(probs), alg, _us, _ts, dt, callback, tstops,
-        abstol, reltol,
+        probs, alg, _us, _ts, _dt, callback, tstops,
+        _abstol, _reltol,
         saveat,
         ::Val{save_everystep}
     ) where {save_everystep}
     i = @index(Global, Linear)
+    dt = _load_kernel_arg(_dt)
+    abstol = _load_kernel_arg(_abstol)
+    reltol = _load_kernel_arg(_reltol)
 
-    # get the actual problem for this thread
     prob = @inbounds probs[i]
-    # get the input/output arrays for this thread
     ts = @inbounds view(_ts, :, i)
     us = @inbounds view(_us, :, i)
-    # TODO: optimize contiguous view to return a CuDeviceArray
 
     _saveat = get(prob.kwargs, :saveat, nothing)
-
     saveat = _saveat === nothing ? saveat : _saveat
 
-    # Check if initialization is needed for DAEs
     u0, p_init,
         init_success = if SciMLBase.has_initialization_data(prob.f)
         gpu_initialization_solve(prob, SimpleTrustRegion(), abstol, reltol)
@@ -99,15 +96,9 @@ end
 
     if init_success
         tspan = prob.tspan
-        f = prob.f
-        p = p_init
-
-        t = tspan[1]
-        tf = prob.tspan[2]
-
         integ = init(
             alg, prob.f, false, u0, prob.tspan[1], prob.tspan[2], dt,
-            p,
+            p_init,
             abstol, reltol, DiffEqBase.ODE_DEFAULT_NORM, tstops, callback,
             saveat
         )
@@ -130,7 +121,6 @@ end
         end
 
         if integ.t > tspan[2] && saveat === nothing
-            ## Interpolate to tf
             @inbounds us[end] = integ(tspan[2])
             @inbounds ts[end] = tspan[2]
         end
@@ -140,7 +130,6 @@ end
             @inbounds ts[2] = integ.t
         end
     else
-        # Initialization failed — store initial values and bail out
         @inbounds us[1] = prob.u0
         @inbounds ts[1] = prob.tspan[1]
         if saveat === nothing && !save_everystep
