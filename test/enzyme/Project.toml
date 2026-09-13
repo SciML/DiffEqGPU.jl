@@ -1,0 +1,27 @@
+[deps]
+CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
+CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
+DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
+JLArrays = "27aeb0d3-9eb9-45fb-866b-73c2ecf80fcb"
+KernelAbstractions = "63c18a36-062a-441e-b654-da1e3ab1ce7c"
+SciMLBase = "0bca4576-84f4-4d90-8ffe-ffa030f20462"
+SciMLTesting = "09d9d899-5365-40a9-917a-5f67fddea283"
+StaticArrays = "90137ffa-7385-5640-81b9-e52037218182"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[sources]
+DiffEqGPU = {path = "../.."}
+
+[compat]
+CUDA = "6"
+CUDACore = "6.2"
+Enzyme = "0.13.201"
+ExplicitImports = "1.15"
+JLArrays = "0.3"
+KernelAbstractions = "0.9.38"
+SciMLBase = "3.49"
+SciMLTesting = "2.10"
+StaticArrays = "1.9.14"
+julia = "1.10"
