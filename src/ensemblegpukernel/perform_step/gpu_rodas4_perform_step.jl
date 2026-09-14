@@ -1,4 +1,4 @@
-@inline function step!(integ::GPURodas4I{false, S, T}, ts, us) where {T, S}
+@muladd @inline function step!(integ::GPURodas4I{false, S, T}, ts, us) where {T, S}
     dt = integ.dt
     t = integ.t
     p = integ.p
@@ -115,14 +115,14 @@
     return saved_in_cb
 end
 
-@inline function step!(integ::GPUARodas4I{false, S, T}, ts, us) where {T, S}
+@muladd @inline function step!(integ::GPUARodas4I{false, S, T}, ts, us) where {T, S}
     beta1, beta2, qmax, qmin, gamma, qoldinit,
         _ = build_adaptive_controller_cache(
         integ.alg,
         T
     )
 
-    dt = integ.dtnew
+    dt = integ.tdir * min(abs(integ.dtnew), abs(integ.tf - integ.t))
     t = integ.t
     p = integ.p
     tf = integ.tf
@@ -253,7 +253,7 @@ end
             integ.tprev = t
             integ.u = u
 
-            if (tf - t - dt) < convert(T, 1.0f-14)
+            if integ.tdir * (tf - t - dt) < convert(T, 1.0f-14)
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
