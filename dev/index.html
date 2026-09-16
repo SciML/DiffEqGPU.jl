@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs · DiffEqGPU.jl</title><meta name="title" content="DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs · DiffEqGPU.jl"/><meta property="og:title" content="DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs · DiffEqGPU.jl"/><meta property="twitter:title" content="DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs · DiffEqGPU.jl"/><meta name="description" content="Documentation for DiffEqGPU.jl."/><meta property="og:description" content="Documentation for DiffEqGPU.jl."/><meta property="twitter:description" content="Documentation for DiffEqGPU.jl."/><meta property="og:url" content="https://docs.sciml.ai/DiffEqGPU/stable/"/><meta property="twitter:url" content="https://docs.sciml.ai/DiffEqGPU/stable/"/><link rel="canonical" href="https://docs.sciml.ai/DiffEqGPU/stable/"/><script data-outdated-warner src="assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.63.2/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="assets/documenter.js"></script><script src="search_index.js"></script><script src="siteinfo.js"></script><script src="../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="assets/themeswap.js"></script><link href="assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href><img src="assets/logo.png" alt="DiffEqGPU.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href>DiffEqGPU.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li class="is-active"><a class="tocitem" href>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a><ul class="internal"><li><a class="tocitem" href="#Installation"><span>Installation</span></a></li><li><a class="tocitem" href="#Contributing"><span>Contributing</span></a></li><li><a class="tocitem" href="#Reproducibility"><span>Reproducibility</span></a></li></ul></li><li><a class="tocitem" href="getting_started/">Getting Started with GPU-Accelerated Differential Equations in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox"/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation</a></li><li><a class="tocitem" href="tutorials/parallel_callbacks/">Massively Parallel ODE Solving with Event Handling and Callbacks</a></li><li><a class="tocitem" href="tutorials/modelingtoolkit/">Symbolic-Numeric GPU Acceleration with ModelingToolkit</a></li><li><a class="tocitem" href="tutorials/multigpu/">Setting Up Multi-GPU Parallel Parameter Sweeps</a></li><li><a class="tocitem" href="tutorials/lower_level_api/">Using the Lower Level API for Decreased Overhead with GPU accelerated Ensembles</a></li><li><a class="tocitem" href="tutorials/weak_order_conv_sde/">Using the EnsembleGPUKernel SDE solvers for the expectation of SDEs </a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="tutorials/within_method_gpu/">Within-Method GPU Parallelism of Ordinary Differential Equation Solves</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/gpu_ensemble_random_decay/">GPU Ensemble Simulation with Random Decay Rates</a></li><li><a class="tocitem" href="examples/sde/">GPU Parallel Solving of Stochastic Differential Equations</a></li><li><a class="tocitem" href="examples/ad/">Using GPU-accelerated Ensembles with Automatic Differentiation</a></li><li><a class="tocitem" href="examples/reductions/">Batched Reductions for Lowering Peak Memory Requirements</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="examples/reaction_diffusion/">GPU-Accelerated Stochastic Partial Differential Equations</a></li><li><a class="tocitem" href="examples/bruss/">GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a></li></ul></li></ul></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="manual/ensemblegpukernel/">EnsembleGPUKernel</a></li><li><a class="tocitem" href="manual/ensemblegpuarray/">EnsembleGPUArray</a></li><li><a class="tocitem" href="manual/backends/">Compute Backends (GPU Choices)</a></li><li><a class="tocitem" href="manual/optimal_trajectories/">Choosing Optimal Numbers of Trajectories</a></li><li><a class="tocitem" href="manual/choosing_ensembler/">Choosing the Ensemble: EnsembleGPUArray vs EnsembleGPUKernel</a></li><li><a class="tocitem" href="manual/developer_interfaces/">Developer Interfaces</a></li><li><a class="tocitem" href="manual/api/">API</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li class="is-active"><a href>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/DiffEqGPU.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/DiffEqGPU.jl/blob/master/docs/src/index.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs"><a class="docs-heading-anchor" href="#DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs">DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a><a id="DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs-1"></a><a class="docs-heading-anchor-permalink" href="#DiffEqGPU:-Massively-Data-Parallel-GPU-Solving-of-ODEs" title="Permalink"></a></h1><p>This library is a component package of the DifferentialEquations.jl ecosystem. It includes functionality for making use of GPUs in the differential equation solvers.</p><h2 id="Installation"><a class="docs-heading-anchor" href="#Installation">Installation</a><a id="Installation-1"></a><a class="docs-heading-anchor-permalink" href="#Installation" title="Permalink"></a></h2><p>To install DiffEqGPU.jl, use the Julia package manager:</p><pre><code class="language-julia hljs">using Pkg
 Pkg.add(&quot;DiffEqGPU&quot;)</code></pre><p>This will also install all the dependencies, including the <a href="https://cuda.juliagpu.org/stable/">CUDA.jl</a>, which will also install all the required versions of CUDA and CuDNN required by these libraries. Note that the same requirements of CUDA.jl apply to DiffEqGPU, such as requiring a GPU with CUDA v11 compatibility. For more information on these requirements, see <a href="https://cuda.juliagpu.org/stable/installation/overview/">the requirements of CUDA.jl</a>.</p><h2 id="Contributing"><a class="docs-heading-anchor" href="#Contributing">Contributing</a><a id="Contributing-1"></a><a class="docs-heading-anchor-permalink" href="#Contributing" title="Permalink"></a></h2><ul><li><p>Please refer to the <a href="https://github.com/SciML/ColPrac/blob/master/README.md">SciML ColPrac: Contributor&#39;s Guide on Collaborative Practices for Community Packages</a> for guidance on PRs, issues, and other matters relating to contributing to SciML.</p></li><li><p>There are a few community forums:</p><ul><li>the #diffeq-bridged channel in the <a href="https://julialang.org/slack/">Julia Slack</a></li><li><a href="https://gitter.im/JuliaDiffEq/Lobby">JuliaDiffEq</a> on Gitter</li><li>on the <a href="https://discourse.julialang.org">Julia Discourse forums</a></li><li>see also <a href="https://sciml.ai/community/">SciML Community page</a></li></ul></li></ul><h2 id="Reproducibility"><a class="docs-heading-anchor" href="#Reproducibility">Reproducibility</a><a id="Reproducibility-1"></a><a class="docs-heading-anchor-permalink" href="#Reproducibility" title="Permalink"></a></h2><details><summary>The documentation of this SciML package was built using these direct dependencies,</summary><pre class="documenter-example-output"><code class="nohighlight hljs ansi">Status `~/_work/DiffEqGPU.jl/DiffEqGPU.jl/docs/Project.toml`
-  [79e6a3ab] Adapt v4.7.0
+  [79e6a3ab] Adapt v4.7.1
   [6e4b80f9] BenchmarkTools v1.8.0
 ⌃ [052768ef] CUDA v6.2.2
   [2b5f629d] DiffEqBase v7.21.1
@@ -16,9 +16,9 @@ Pkg.add(&quot;DiffEqGPU&quot;)</code></pre><p>This will also install all the dep
   [1dea7af3] OrdinaryDiffEq v7.8.1
   [91a5bcdd] Plots v1.41.7
   [1bc83da4] SafeTestsets v0.1.0
-  [0bca4576] SciMLBase v3.54.0
+  [0bca4576] SciMLBase v3.55.0
   [1ed8b502] SciMLSensitivity v7.119.8
-  [90137ffa] StaticArrays v1.9.20
+  [90137ffa] StaticArrays v1.9.21
   [10745b16] Statistics v1.11.5
   [789caeaf] StochasticDiffEq v7.2.0
   [2efcf032] SymbolicIndexingInterface v0.3.55
@@ -47,13 +47,13 @@ Environment:
   [6e696c72] AbstractPlutoDingetjes v1.4.1
   [1520ce14] AbstractTrees v0.4.5
   [7d9f7c33] Accessors v0.1.45
-  [79e6a3ab] Adapt v4.7.0
+  [79e6a3ab] Adapt v4.7.1
   [66dad0bd] AliasTables v1.1.3
   [ec485272] ArnoldiMethod v0.4.0
   [4fba245c] ArrayInterface v7.30.2
   [4c555306] ArrayLayouts v1.12.2
   [a9b6321e] Atomix v1.2.1
-  [ab4f0b2a] BFloat16s v0.6.1
+  [ab4f0b2a] BFloat16s v0.6.2
   [aae01518] BandedMatrices v1.12.0
   [6e4b80f9] BenchmarkTools v1.8.0
   [e2ed5e7c] Bijections v0.2.2
@@ -98,11 +98,11 @@ Environment:
   [163ba53b] DiffResults v1.1.0
   [b552c78f] DiffRules v1.16.0
   [a0c0ee7d] DifferentiationInterface v0.7.21
-  [8d63f2c5] DispatchDoctor v0.4.28
+  [8d63f2c5] DispatchDoctor v0.4.29
   [31c24e10] Distributions v0.25.131
   [ffbed154] DocStringExtensions v0.9.5
   [e30172f5] Documenter v1.19.0
-  [5b8099bc] DomainSets v0.8.1
+  [5b8099bc] DomainSets v0.8.2
   [7c1d4256] DynamicPolynomials v0.6.8
   [4e289a0a] EnumX v1.0.7
   [7da242da] Enzyme v0.13.204
@@ -182,9 +182,9 @@ Environment:
 ⌅ [611af6d1] NVML v6.2.2
   [5da4648a] NVTX v1.0.3
   [77ba4419] NaNMath v1.1.4
-  [8913a72c] NonlinearSolve v4.31.0
+  [8913a72c] NonlinearSolve v4.32.0
   [be0214bd] NonlinearSolveBase v2.51.1
-  [5959db7a] NonlinearSolveFirstOrder v2.7.0
+  [5959db7a] NonlinearSolveFirstOrder v2.8.0
   [9a2c21bd] NonlinearSolveQuasiNewton v1.15.3
   [26075421] NonlinearSolveSpectralMethods v1.8.3
   [d8793406] ObjectFile v0.5.1
@@ -195,9 +195,9 @@ Environment:
   [6ad6398a] OrdinaryDiffEqBDF v2.4.10
   [bbf590c4] OrdinaryDiffEqCore v4.17.4
   [50262376] OrdinaryDiffEqDefault v2.6.2
-  [4302a76b] OrdinaryDiffEqDifferentiation v3.12.1
+  [4302a76b] OrdinaryDiffEqDifferentiation v3.12.2
   [127b3ac7] OrdinaryDiffEqNonlinearSolve v2.9.8
-  [43230ef6] OrdinaryDiffEqRosenbrock v2.7.3
+  [43230ef6] OrdinaryDiffEqRosenbrock v2.7.4
   [b4bd8bb3] OrdinaryDiffEqRosenbrockTableaus v2.4.2
   [2d112036] OrdinaryDiffEqSDIRK v2.9.6
   [b1df2697] OrdinaryDiffEqTsit5 v2.1.4
@@ -206,7 +206,7 @@ Environment:
   [d96e819e] Parameters v0.13.1
   [69de0a69] Parsers v3.0.0
   [ccf2f8ad] PlotThemes v3.3.0
-  [995b91a9] PlotUtils v1.4.4
+  [995b91a9] PlotUtils v1.5.0
   [91a5bcdd] Plots v1.41.7
   [e409e4f3] PoissonRandom v0.4.13
   [d236fae5] PreallocationTools v1.7.1
@@ -232,13 +232,13 @@ Environment:
   [ae029012] Requires v1.3.1
   [ae5879a3] ResettableStacks v1.4.0
   [9fe22ead] RespecializeParams v1.3.0
-  [37e2e3b7] ReverseDiff v1.17.0
+  [37e2e3b7] ReverseDiff v1.17.2
   [79098fc4] Rmath v0.9.0
   [f2b01f46] Roots v3.0.8
   [7e49a35a] RuntimeGeneratedFunctions v0.5.26
   [9dfe8606] SCCNonlinearSolve v1.15.3
   [1bc83da4] SafeTestsets v0.1.0
-  [0bca4576] SciMLBase v3.54.0
+  [0bca4576] SciMLBase v3.55.0
   [19f34311] SciMLJacobianOperators v0.1.19
   [a6db7da4] SciMLLogging v2.1.0
   [c0aeaf25] SciMLOperators v1.30.1
@@ -252,16 +252,16 @@ Environment:
   [05bca326] SimpleDiffEq v1.18.0
   [727e6d20] SimpleNonlinearSolve v2.14.5
   [699a6c99] SimpleTraits v0.9.6
+  [ed01d8cd] Sobol v1.5.0
   [a2af1166] SortingAlgorithms v1.2.3
   [a57abbd0] SparseColumnPivotedQR v2.1.8
   [dc90abb0] SparseInverseSubset v0.1.3
   [0a514795] SparseMatrixColorings v0.4.28
   [276daf66] SpecialFunctions v2.9.0
-  [860ef19b] StableRNGs v1.0.4
   [0c0c59c1] StarAlgebras v0.3.0
   [64909d44] StateSelection v1.11.1
   [aedffcd0] Static v1.4.6
-  [90137ffa] StaticArrays v1.9.20
+  [90137ffa] StaticArrays v1.9.21
   [1e83bf80] StaticArraysCore v1.4.4
   [10745b16] Statistics v1.11.5
   [82ae8749] StatsAPI v1.8.0
@@ -292,7 +292,7 @@ Environment:
   [ed4db957] TaskLocalValues v0.1.3
   [62fd8b95] TensorCore v0.1.1
   [8ea1fca8] TermInterface v2.0.0
-  [a759f4b9] TimerOutputs v1.2.1
+  [a759f4b9] TimerOutputs v1.2.2
   [9f7883ad] Tracker v0.2.39
   [e689c965] Tracy v0.1.6
   [3bb67fe8] TranscodingStreams v0.11.3
@@ -456,4 +456,4 @@ Environment:
   [8e850b90] libblastrampoline_jll v5.15.0+0
   [8e850ede] nghttp2_jll v1.67.1+0
   [3f19e933] p7zip_jll v17.8.2+0
-Info Packages marked with ⌃ and ⌅ have new versions available. Those with ⌃ may be upgradable, but those with ⌅ are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/DiffEqGPU.jl/tree/gh-pages/v3.21.2/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/DiffEqGPU.jl/tree/gh-pages/v3.21.2/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with GPU-Accelerated Differential Equations in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Monday 14 September 2026 13:37">Monday 14 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+Info Packages marked with ⌃ and ⌅ have new versions available. Those with ⌃ may be upgradable, but those with ⌅ are restricted by compatibility constraints from upgrading. To see why use `status --outdated -m`</code></pre></details><p>You can also download the <a href="https://github.com/SciML/DiffEqGPU.jl/tree/gh-pages/v3.21.2/assets/Manifest.toml">manifest</a> file and the <a href="https://github.com/SciML/DiffEqGPU.jl/tree/gh-pages/v3.21.2/assets/Project.toml">project</a> file.</p></article><nav class="docs-footer"><a class="docs-footer-nextpage" href="getting_started/">Getting Started with GPU-Accelerated Differential Equations in Julia »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Wednesday 16 September 2026 20:44">Wednesday 16 September 2026</span>. Using Julia version 1.13.0.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
