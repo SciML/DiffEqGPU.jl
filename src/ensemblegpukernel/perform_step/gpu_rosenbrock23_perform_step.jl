@@ -77,7 +77,7 @@ end
         integ.alg,
         T
     )
-    dt = integ.dtnew
+    dt = integ.tdir * min(abs(integ.dtnew), abs(integ.tf - integ.t))
     t = integ.t
     p = integ.p
     tf = integ.tf
@@ -178,7 +178,7 @@ end
             integ.tprev = t
             integ.u = u
 
-            if (tf - t - dt) < convert(T, 1.0f-14)
+            if integ.tdir * (tf - t - dt) < convert(T, 1.0f-14)
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
