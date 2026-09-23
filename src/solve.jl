@@ -315,7 +315,7 @@ function batch_solve(
                 ensembleprob.prob_func(ensembleprob.prob, ctx)
             end
         end
-        u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
+        u0 = reduce(hcat, [Array(probs[i].u0) for i in 1:length(I)])
 
         if !all(
                 Base.Fix2(
@@ -331,8 +331,10 @@ function batch_solve(
             # Remaking the problem to normalize time span values..."
             p = reduce(
                 hcat,
-                ParamWrapper(probs[i].p, probs[i].tspan)
-                    for i in 1:length(I)
+                [
+                    ParamWrapper(probs[i].p, probs[i].tspan)
+                        for i in 1:length(I)
+                ]
             )
 
             # Change the tspan of first problem to (0,1)
@@ -373,8 +375,10 @@ function batch_solve(
         else
             p = reduce(
                 hcat,
-                probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-                    for i in 1:length(I)
+                [
+                    probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
+                        for i in 1:length(I)
+                ]
             )
             sol,
                 solus = batch_solve_up(

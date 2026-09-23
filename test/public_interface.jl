@@ -2,7 +2,7 @@ using Adapt
 using DiffEqGPU
 using KernelAbstractions: CPU
 using OrdinaryDiffEq: Tsit5
-using SciMLBase: EnsembleProblem, ImmutableODEProblem, ODEProblem, SDEProblem, solve
+using SciMLBase: EnsembleProblem, ImmutableODEProblem, ODEProblem, SDEProblem, remake, solve
 using StaticArrays: SVector, @SVector
 using Test
 
@@ -77,4 +77,30 @@ end
     )
     @test length(sol.u) == 2
     @test all(sol -> sol.u[1] == @SVector([1.0f0]), sol.u)
+end
+
+@testset "array ensemble batch assembly scales linearly" begin
+    function lorenz_rhs(u, p, t)
+        return SVector(
+            10.0f0 * (u[2] - u[1]), p[1] * u[1] - u[2] - u[1] * u[3],
+            u[1] * u[2] - 2.666f0 * u[3]
+        )
+    end
+    base = ODEProblem{false}(
+        lorenz_rhs, @SVector([1.0f0, 0.0f0, 0.0f0]), (0.0f0, 0.1f0), @SVector([21.0f0])
+    )
+    function run_array_ensemble(n)
+        eprob = EnsembleProblem(
+            base; prob_func = (prob, ctx) -> remake(prob; p = @SVector([Float32(ctx.sim_id)])),
+            safetycopy = false
+        )
+        return solve(
+            eprob, Tsit5(), DiffEqGPU.EnsembleCPUArray(); trajectories = n,
+            adaptive = false, dt = 0.01f0, save_everystep = false, dense = false
+        )
+    end
+    run_array_ensemble(16)
+    small = @allocated run_array_ensemble(4096)
+    large = @allocated run_array_ensemble(16384)
+    @test large / small < 6
 end
