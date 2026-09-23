@@ -101,23 +101,27 @@ end
     while EEst > T(1.0)
         dt < T(1.0e-14) && error("dt<dtmin")
 
-        tmp = uprev + dt * a21 * k1
-        k2 = f(tmp, p, t + c1 * dt)
-        tmp = uprev + dt * (a31 * k1 + a32 * k2)
-        k3 = f(tmp, p, t + c2 * dt)
-        tmp = uprev + dt * (a41 * k1 + a42 * k2 + a43 * k3)
-        k4 = f(tmp, p, t + c3 * dt)
-        tmp = uprev + dt * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4)
-        k5 = f(tmp, p, t + c4 * dt)
-        tmp = uprev + dt * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5)
-        k6 = f(tmp, p, t + dt)
-        u = uprev + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
-        k7 = f(u, p, t + dt)
+        # Fuse only the stage and error-estimate arithmetic; the step-size
+        # controller and endpoint logic below keep unfused rounding.
+        @muladd begin
+            tmp = uprev + dt * a21 * k1
+            k2 = f(tmp, p, t + c1 * dt)
+            tmp = uprev + dt * (a31 * k1 + a32 * k2)
+            k3 = f(tmp, p, t + c2 * dt)
+            tmp = uprev + dt * (a41 * k1 + a42 * k2 + a43 * k3)
+            k4 = f(tmp, p, t + c3 * dt)
+            tmp = uprev + dt * (a51 * k1 + a52 * k2 + a53 * k3 + a54 * k4)
+            k5 = f(tmp, p, t + c4 * dt)
+            tmp = uprev + dt * (a61 * k1 + a62 * k2 + a63 * k3 + a64 * k4 + a65 * k5)
+            k6 = f(tmp, p, t + dt)
+            u = uprev + dt * (a71 * k1 + a72 * k2 + a73 * k3 + a74 * k4 + a75 * k5 + a76 * k6)
+            k7 = f(u, p, t + dt)
 
-        tmp = dt * (
-            btilde1 * k1 + btilde2 * k2 + btilde3 * k3 + btilde4 * k4 +
-                btilde5 * k5 + btilde6 * k6 + btilde7 * k7
-        )
+            tmp = dt * (
+                btilde1 * k1 + btilde2 * k2 + btilde3 * k3 + btilde4 * k4 +
+                    btilde5 * k5 + btilde6 * k6 + btilde7 * k7
+            )
+        end
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
 
