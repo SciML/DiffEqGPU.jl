@@ -239,7 +239,7 @@ end
             q = max(inv(qmax), min(inv(qmin), q / gamma))
             qold = max(EEst, qoldinit)
             dtnew = dt / q #dtnew
-            dtnew = min(abs(dtnew), abs(tf - t - dt))
+            dtnew = min(abs(dtnew), abs(tf - (t + dt)))
 
             @inbounds begin # Necessary for interpolation
                 @unpack h21, h22, h23, h24, h25, h31, h32, h33, h34, h35 = integ.tab
@@ -253,7 +253,7 @@ end
             integ.tprev = t
             integ.u = u
 
-            if (tf - t - dt) < convert(T, 1.0f-14)
+            if tf - (t + dt) < convert(T, 1.0f-14)
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
