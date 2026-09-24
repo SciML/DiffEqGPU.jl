@@ -1,0 +1,96 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation · DiffEqGPU.jl</title><script async src="https://www.googletagmanager.com/gtag/js?id=UA-90474609-3"></script><script>  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'UA-90474609-3', {'page_path': location.pathname + location.search + location.hash});
+</script><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://docs.sciml.ai/DiffEqGPU/stable/examples/bruss/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="DiffEqGPU.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DiffEqGPU.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li><li><a class="tocitem" href="../../getting_started/">Getting Started with GPU-Accelerated Differential Equations in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox"/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation</a></li><li><a class="tocitem" href="../../tutorials/parallel_callbacks/">Massively Parallel ODE Solving with Event Handling and Callbacks</a></li><li><a class="tocitem" href="../../tutorials/multigpu/">Setting Up Multi-GPU Parallel Parameter Sweeps</a></li><li><a class="tocitem" href="../../tutorials/lower_level_api/">Using the Lower Level API for Decreased Overhead with GPU acclerated Ensembles</a></li><li><a class="tocitem" href="../../tutorials/weak_order_conv_sde/">Using the EnsembleGPUKernel SDE solvers for the expectation of SDEs </a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../tutorials/within_method_gpu/">Within-Method GPU Parallelism of Ordinary Differential Equation Solves</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../sde/">GPU Parallel Solving of Stochastic Differential Equations</a></li><li><a class="tocitem" href="../ad/">Using GPU-accelerated Ensembles with Automatic Differentiation</a></li><li><a class="tocitem" href="../reductions/">Batched Reductions for Lowering Peak Memory Requirements</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox" checked/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../reaction_diffusion/">GPU-Accelerated Stochastic Partial Differential Equations</a></li><li class="is-active"><a class="tocitem" href>GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a></li></ul></li></ul></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/ensemblegpukernel/">EnsembleGPUKernel</a></li><li><a class="tocitem" href="../../manual/ensemblegpuarray/">EnsembleGPUArray</a></li><li><a class="tocitem" href="../../manual/backends/">Compute Backends (GPU Choices)</a></li><li><a class="tocitem" href="../../manual/optimal_trajectories/">Choosing Optimal Numbers of Trajectories</a></li><li><a class="tocitem" href="../../manual/choosing_ensembler/">Choosing the Ensemble: EnsembleGPUArray vs EnsembleGPUKernel</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li><a class="is-disabled">Within-Method GPU</a></li><li class="is-active"><a href>GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/SciML/DiffEqGPU.jl/blob/master/docs/src/examples/bruss.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="GPU-Acceleration-of-a-Stiff-Nonlinear-Partial-Differential-Equation"><a class="docs-heading-anchor" href="#GPU-Acceleration-of-a-Stiff-Nonlinear-Partial-Differential-Equation">GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a><a id="GPU-Acceleration-of-a-Stiff-Nonlinear-Partial-Differential-Equation-1"></a><a class="docs-heading-anchor-permalink" href="#GPU-Acceleration-of-a-Stiff-Nonlinear-Partial-Differential-Equation" title="Permalink"></a></h1><p>The following is a demonstration of a GPU-accelerated implicit solve of a stiff nonlinear partial differential equation (the Brusselator model):</p><pre><code class="language-julia hljs">using OrdinaryDiffEq, CUDA, LinearAlgebra
+
+const N = 32
+const xyd_brusselator = range(0, stop = 1, length = N)
+brusselator_f(x, y, t) = (((x - 0.3)^2 + (y - 0.6)^2) &lt;= 0.1^2) * (t &gt;= 1.1) * 5.0
+limit(a, N) = a == N + 1 ? 1 : a == 0 ? N : a
+kernel_u! = let N = N, xyd = xyd_brusselator, dx = step(xyd_brusselator)
+    @inline function (du, u, A, B, α, II, I, t)
+        i, j = Tuple(I)
+        x = xyd[I[1]]
+        y = xyd[I[2]]
+        ip1 = limit(i + 1, N)
+        im1 = limit(i - 1, N)
+        jp1 = limit(j + 1, N)
+        jm1 = limit(j - 1, N)
+        du[II[i, j, 1]] = α * (u[II[im1, j, 1]] + u[II[ip1, j, 1]] + u[II[i, jp1, 1]] +
+                           u[II[i, jm1, 1]] - 4u[II[i, j, 1]]) +
+                          B + u[II[i, j, 1]]^2 * u[II[i, j, 2]] - (A + 1) * u[II[i, j, 1]] +
+                          brusselator_f(x, y, t)
+    end
+end
+kernel_v! = let N = N, xyd = xyd_brusselator, dx = step(xyd_brusselator)
+    @inline function (du, u, A, B, α, II, I, t)
+        i, j = Tuple(I)
+        ip1 = limit(i + 1, N)
+        im1 = limit(i - 1, N)
+        jp1 = limit(j + 1, N)
+        jm1 = limit(j - 1, N)
+        du[II[i, j, 2]] = α * (u[II[im1, j, 2]] + u[II[ip1, j, 2]] + u[II[i, jp1, 2]] +
+                           u[II[i, jm1, 2]] - 4u[II[i, j, 2]]) +
+                          A * u[II[i, j, 1]] - u[II[i, j, 1]]^2 * u[II[i, j, 2]]
+    end
+end
+brusselator_2d = let N = N, xyd = xyd_brusselator, dx = step(xyd_brusselator)
+    function (du, u, p, t)
+        @inbounds begin
+            ii1 = N^2
+            ii2 = ii1 + N^2
+            ii3 = ii2 + 2(N^2)
+            A = p[1]
+            B = p[2]
+            α = p[3] / dx^2
+            II = LinearIndices((N, N, 2))
+            kernel_u!.(Ref(du), Ref(u), A, B, α, Ref(II), CartesianIndices((N, N)), t)
+            kernel_v!.(Ref(du), Ref(u), A, B, α, Ref(II), CartesianIndices((N, N)), t)
+            return nothing
+        end
+    end
+end
+p = (3.4, 1.0, 10.0, step(xyd_brusselator))
+
+function init_brusselator_2d(xyd)
+    N = length(xyd)
+    u = zeros(N, N, 2)
+    for I in CartesianIndices((N, N))
+        x = xyd[I[1]]
+        y = xyd[I[2]]
+        u[I, 1] = 22 * (y * (1 - y))^(3 / 2)
+        u[I, 2] = 27 * (x * (1 - x))^(3 / 2)
+    end
+    u
+end
+u0 = init_brusselator_2d(xyd_brusselator)
+prob_ode_brusselator_2d = ODEProblem(brusselator_2d, u0, (0.0, 11.5), p)
+
+du = similar(u0)
+brusselator_2d(du, u0, p, 0.0)
+du[34] # 802.9807693762164
+du[1058] # 985.3120721709204
+du[2000] # -403.5817880634729
+du[end] # 1431.1460373522068
+du[521] # -323.1677459142322
+
+du2 = similar(u0)
+brusselator_2d(du2, u0, p, 1.3)
+du2[34] # 802.9807693762164
+du2[1058] # 985.3120721709204
+du2[2000] # -403.5817880634729
+du2[end] # 1431.1460373522068
+du2[521] # -318.1677459142322
+
+prob_ode_brusselator_2d_cuda = ODEProblem(brusselator_2d, CuArray(u0), (0.0f0, 11.5f0), p,
+    tstops = [1.1f0])
+solve(prob_ode_brusselator_2d_cuda, Rosenbrock23(), save_everystep = false);</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">retcode: Success
+Interpolation: 1st order linear
+t: 2-element Vector{Float32}:
+  0.0
+ 11.5
+u: 2-element Vector{CUDA.CuArray{Float64, 3, CUDA.Mem.DeviceBuffer}}:
+ [0.0 0.12134432813715873 … 0.1213443281371586 0.0; 0.0 0.12134432813715873 … 0.1213443281371586 0.0; … ; 0.0 0.12134432813715873 … 0.1213443281371586 0.0; 0.0 0.12134432813715873 … 0.1213443281371586 0.0;;; 0.0 0.0 … 0.0 0.0; 0.14892258453196755 0.14892258453196755 … 0.14892258453196755 0.14892258453196755; … ; 0.14892258453196738 0.14892258453196738 … 0.14892258453196738 0.14892258453196738; 0.0 0.0 … 0.0 0.0]
+ [3.0478431718176133 3.0478158588958384 … 3.047934407132488 3.0478829076399707; 3.0478921742796787 3.0478615839692695 … 3.0479950350866707 3.0479368431642384; … ; 3.0477574497062734 3.04773545592171 … 3.0478300382484087 3.047789226504652; 3.047797767524695 3.0477733366890103 … 3.047878867861117 3.047833184325156;;; 2.567054744858359 2.5670562676074793 … 2.567049778296592 2.567052560054736; 2.567051711744317 2.56705334622074 … 2.5670463664110166 2.5670493630392817; … ; 2.567060148333675 2.567061482264857 … 2.567055819529447 2.567058240137795; 2.567057591432184 2.567059013089459 … 2.567052966605906 2.567055554756332]</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../reaction_diffusion/">« GPU-Accelerated Stochastic Partial Differential Equations</a><a class="docs-footer-nextpage" href="../../manual/ensemblegpukernel/">EnsembleGPUKernel »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.24 on <span class="colophon-date" title="Monday 26 June 2023 19:27">Monday 26 June 2023</span>. Using Julia version 1.9.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
