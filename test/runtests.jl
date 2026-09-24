@@ -121,6 +121,9 @@ if GROUP == "CPU"
     @time @safetestset "Public generic interfaces" begin
         include("public_interface.jl")
     end
+    @time @safetestset "Adaptive endpoint termination" begin
+        include("gpu_kernel_de/adaptive_endpoint.jl")
+    end
 end
 
 if GROUP == "JLArrays"
