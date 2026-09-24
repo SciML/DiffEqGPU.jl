@@ -170,3 +170,17 @@ for alg in algs
         )
     end
 end
+
+@testset "Adaptive final state after overshoot ($alg)" for alg in
+    (GPURosenbrock23(), GPURodas4(), GPUKvaerno3(), GPUKvaerno5())
+    unit_rate(u, p, t) = SVector(1.0f0)
+    overshoot_prob = ODEProblem{false}(unit_rate, SVector(0.0f0), (0.0f0, 0.3f0))
+    overshoot_ensemble = EnsembleProblem(overshoot_prob; safetycopy = false)
+    overshoot_sol = solve(
+        overshoot_ensemble, alg, EnsembleGPUKernel(backend, 0.0);
+        trajectories = 2, adaptive = true, dt = 1.0f0, save_everystep = false
+    )
+
+    @test overshoot_sol.u[1].t == Float32[0, 0.3]
+    @test overshoot_sol.u[1].u[end] == SVector(0.3f0)
+end
