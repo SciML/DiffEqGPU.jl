@@ -121,6 +121,9 @@ if GROUP == "CPU"
     @time @safetestset "Public generic interfaces" begin
         include("public_interface.jl")
     end
+    @time @safetestset "EnsembleGPUArray host concatenation" begin
+        include("ensemblegpuarray_hcat.jl")
+    end
 end
 
 if GROUP == "JLArrays"

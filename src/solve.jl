@@ -221,6 +221,12 @@ function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func,
     return probs, adapted_probs
 end
 
+# A single column is returned unchanged. Array columns are concatenated; other columns form a row.
+function _hcat_batch(cols)
+    length(cols) == 1 && return cols[1]
+    return cols[1] isa AbstractArray ? reduce(hcat, cols) : reshape(cols, 1, :)
+end
+
 function batch_solve(
         ensembleprob, alg,
         ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
@@ -315,7 +321,7 @@ function batch_solve(
                 ensembleprob.prob_func(ensembleprob.prob, ctx)
             end
         end
-        u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
+        u0 = _hcat_batch([Array(probs[i].u0) for i in 1:length(I)])
 
         if !all(
                 Base.Fix2(
@@ -329,11 +335,7 @@ function batch_solve(
             @assert all(prob -> isbits(prob.p), probs)
 
             # Remaking the problem to normalize time span values..."
-            p = reduce(
-                hcat,
-                ParamWrapper(probs[i].p, probs[i].tspan)
-                    for i in 1:length(I)
-            )
+            p = _hcat_batch([ParamWrapper(probs[i].p, probs[i].tspan) for i in 1:length(I)])
 
             # Change the tspan of first problem to (0,1)
             orig_prob = probs[1]
@@ -371,10 +373,11 @@ function batch_solve(
                     for i in 1:length(probs)
             ]
         else
-            p = reduce(
-                hcat,
-                probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-                    for i in 1:length(I)
+            p = _hcat_batch(
+                [
+                    probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
+                        for i in 1:length(I)
+                ]
             )
             sol,
                 solus = batch_solve_up(
