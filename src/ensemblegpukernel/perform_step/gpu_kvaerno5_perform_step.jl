@@ -263,7 +263,6 @@ end
             q = max(inv(qmax), min(inv(qmin), q / gamma))
             qold = max(EEst, qoldinit)
             dtnew = dt / q #dtnew
-            dtnew = min(abs(dtnew), abs(tf - (t + dt)))
 
             @inbounds begin # Necessary for interpolation
                 integ.k1 = k1
@@ -271,7 +270,6 @@ end
             end
 
             integ.dt = dt
-            integ.dtnew = dtnew
             integ.qold = qold
             integ.tprev = t
             integ.u = u
@@ -291,6 +289,7 @@ end
                     integ.t += dt
                 end
             end
+            integ.dtnew = min(abs(dtnew), abs(tf - integ.t))
         end
     end
 
