@@ -297,7 +297,7 @@ end
             integ.tprev = t
             integ.u = u
 
-            if tf - (t + dt) < convert(T, 1.0e-14)
+            if (tf - t - dt) < convert(T, 1.0e-14)
                 integ.t = tf
             else
                 if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
