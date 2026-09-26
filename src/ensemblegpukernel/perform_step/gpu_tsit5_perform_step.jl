@@ -134,7 +134,7 @@ end
             q = max(inv(qmax), min(inv(qmin), q / gamma))
             qold = max(EEst, qoldinit)
             dtnew = dt / q #dtnew
-            dtnew = min(abs(dtnew), abs(tf - t - dt))
+            dtnew = min(abs(dtnew), abs(tf - (t + dt)))
 
             @inbounds begin # Necessary for interpolation
                 integ.k1 = k1
