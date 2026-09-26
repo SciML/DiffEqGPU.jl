@@ -2,7 +2,7 @@ using Adapt
 using DiffEqGPU
 using KernelAbstractions: CPU
 using OrdinaryDiffEq: Tsit5
-using SciMLBase: EnsembleProblem, ImmutableODEProblem, ODEProblem, SDEProblem, solve
+using SciMLBase: EnsembleProblem, ImmutableODEProblem, ODEProblem, SDEProblem, remake, solve
 using StaticArrays: SVector, @SVector
 using Test
 
