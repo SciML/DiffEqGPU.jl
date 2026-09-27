@@ -97,9 +97,9 @@ end
         tstops = Float32[0.875], abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
     )
     @test all(s -> s.t[end] == tf, sol.u)
-    # Stopping at the tstop goes through the dense-output interpolant, and the
-    # Float32 Verner interpolants carry O(1e-5) rounding error there even for u' = 1.
-    if alg isa Union{GPUVern7, GPUVern9}
+    # Stopping at the tstop goes through the dense output, which for Float32 Vern7
+    # is ~60 ulps off even for u' = 1: https://github.com/SciML/DiffEqGPU.jl/issues/554
+    if alg isa GPUVern7
         @test all(s -> all(isfinite, s.u[end]), sol.u)
     else
         @test all(s -> isapprox(s.u[end], SVector(1.25f0, 1.25f0); rtol = 1.0f-6), sol.u)
@@ -144,9 +144,9 @@ end
         abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
     )
     @test all(s -> s.t[end] == 1.0f0, sol.u)
-    # u0 + (tf - t0) + 10 from the callback; the Verner dense output used at each
-    # stop is only checked for the callback having fired (see the note above).
-    if alg isa Union{GPUVern7, GPUVern9}
+    # u0 + (tf - t0) + 10 from the callback; Vern7 is only checked for
+    # the callback having fired until issue 554 is fixed.
+    if alg isa GPUVern7
         @test all(s -> all(>(11.0f0), s.u[end]), sol.u)
     else
         @test all(s -> isapprox(s.u[end], SVector(11.25f0, 11.25f0); rtol = 1.0f-6), sol.u)
