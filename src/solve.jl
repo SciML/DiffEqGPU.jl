@@ -315,7 +315,7 @@ function batch_solve(
                 ensembleprob.prob_func(ensembleprob.prob, ctx)
             end
         end
-        u0 = reduce(hcat, Array(probs[i].u0) for i in 1:length(I))
+        u0 = _hcat_batch([Array(probs[i].u0) for i in 1:length(I)])
 
         if !all(
                 Base.Fix2(
@@ -329,11 +329,7 @@ function batch_solve(
             @assert all(prob -> isbits(prob.p), probs)
 
             # Remaking the problem to normalize time span values..."
-            p = reduce(
-                hcat,
-                ParamWrapper(probs[i].p, probs[i].tspan)
-                    for i in 1:length(I)
-            )
+            p = _hcat_batch([ParamWrapper(probs[i].p, probs[i].tspan) for i in 1:length(I)])
 
             # Change the tspan of first problem to (0,1)
             orig_prob = probs[1]
@@ -371,11 +367,7 @@ function batch_solve(
                     for i in 1:length(probs)
             ]
         else
-            p = reduce(
-                hcat,
-                probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-                    for i in 1:length(I)
-            )
+            p = pack_ordinary_parameters(probs)
             sol,
                 solus = batch_solve_up(
                 ensembleprob, probs, alg, ensemblealg, I, u0, p;
@@ -499,6 +491,16 @@ function seed_duals(
     ]
 end
 
+# Scalar-per-trajectory packs from `pack_ordinary_parameters` are 1-D. Seed one Dual
+# partial per entry so kernels still receive scalar Dual parameters via `ensemble_param`.
+function seed_duals(
+        x::AbstractVector{V}, ::Type{T},
+        ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk{1}()
+    ) where {V, T, N}
+    seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, V})
+    return [ForwardDiff.Dual{T}(xj, seeds[1]) for xj in x]
+end
+
 function extract_dus(us)
     jsize = size(us[1], 1), ForwardDiff.npartials(us[1][1])
     utype = typeof(ForwardDiff.value(us[1][1]))
@@ -510,6 +512,14 @@ function extract_dus(us)
             end
             du_i
         end
+    end
+end
+
+# Match the packed `p` layout: matrix packs → matrix cotangent; scalar vector packs → vector.
+_batch_param_cotangent(::AbstractMatrix, adj) = Array(VectorOfArray(adj))
+function _batch_param_cotangent(::AbstractVector, adj)
+    return map(adj) do a
+        a isa Number ? a : a[1]
     end
 end
 
@@ -582,7 +592,7 @@ function ChainRulesCore.rrule(
                 J'v
             end
         end
-        return (ntuple(_ -> NoTangent(), 7)..., Array(VectorOfArray(adj)))
+        return (ntuple(_ -> NoTangent(), 7)..., _batch_param_cotangent(p, adj))
     end
     return (sol, solus), batch_solve_up_adjoint
 end

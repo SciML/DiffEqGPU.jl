@@ -1,3 +1,31 @@
+# A single column is returned unchanged. Array columns are concatenated; other columns form a row.
+# Ordinary scalar parameters must not use this helper: keep them as a 1-D vector so kernels can
+# pass `p[i]` (see `ensemble_param` and `pack_ordinary_parameters`).
+function _hcat_batch(cols)
+    length(cols) == 1 && return cols[1]
+    return cols[1] isa AbstractArray ? reduce(hcat, cols) : reshape(cols, 1, :)
+end
+
+"""
+    pack_ordinary_parameters(probs)
+
+Pack per-trajectory `prob.p` values for `EnsembleGPUArray` kernels.
+
+Scalar parameters become a 1-D vector so `ensemble_param` returns `p[i]` as a `Number`.
+Array parameters (including a singleton trajectory or a length-1 vector) become an
+`nparam × ntraj` matrix so `ensemble_param` returns the full column `p[:, i]`.
+"""
+function pack_ordinary_parameters(probs)
+    cols = [prob.p isa AbstractArray ? Array(prob.p) : prob.p for prob in probs]
+    if cols[1] isa AbstractArray
+        # Always a matrix — including n = 1 — so singleton array packs are not mistaken
+        # for scalar batches by `ensemble_param`'s 1-D branch.
+        return length(cols) == 1 ? hcat(cols[1]) : reduce(hcat, cols)
+    else
+        return cols
+    end
+end
+
 function generate_problem(
         prob::SciMLBase.AbstractODEProblem,
         u0,

@@ -14,6 +14,25 @@ function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where
     return T(1 / 5), zero(T), T(5), T(1 / 5), T(9 / 10), T(1.0e-4), T(1.0e-4)
 end
 
+# Whether a pending tstop before `tf` falls inside the step just accepted from `integ.t`.
+@inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
+    tstops = integ.tstops
+    (tstops === nothing || integ.tstops_idx > length(tstops)) && return false
+    stop = @inbounds tstops[integ.tstops_idx]
+    return stop < tf && stop - integ.t - integ.dt - T(100) * eps(T) < T(0)
+end
+
+# The next time the adaptive integrator has to land on exactly: the next pending
+# tstop after `integ.t` and before `tf`, otherwise `tf`.
+@inline function _next_stop(integ, tf)
+    tstops = integ.tstops
+    if tstops !== nothing && integ.tstops_idx <= length(tstops)
+        stop = @inbounds tstops[integ.tstops_idx]
+        integ.t < stop < tf && return stop
+    end
+    return tf
+end
+
 @inline function savevalues!(
         integrator::SciMLBase.AbstractODEIntegrator{
             AlgType,
