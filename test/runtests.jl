@@ -97,6 +97,9 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     @time @safetestset "EnsembleGPUArray Input Types" begin
         include("ensemblegpuarray_inputtypes.jl")
     end
+    @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
+        include("ensemblegpuarray_scalar_batch.jl")
+    end
     @time @safetestset "Reduction" begin
         include("reduction.jl")
     end
@@ -120,6 +123,12 @@ end
 if GROUP == "CPU"
     @time @safetestset "Public generic interfaces" begin
         include("public_interface.jl")
+    end
+    @time @safetestset "EnsembleGPUArray host concatenation" begin
+        include("ensemblegpuarray_hcat.jl")
+    end
+    @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
+        include("ensemblegpuarray_scalar_batch.jl")
     end
     @time @safetestset "Adaptive endpoint termination" begin
         include("gpu_kernel_de/adaptive_endpoint.jl")
