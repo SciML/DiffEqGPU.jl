@@ -97,6 +97,9 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     @time @safetestset "EnsembleGPUArray Input Types" begin
         include("ensemblegpuarray_inputtypes.jl")
     end
+    @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
+        include("ensemblegpuarray_scalar_batch.jl")
+    end
     @time @safetestset "Reduction" begin
         include("reduction.jl")
     end
@@ -123,6 +126,9 @@ if GROUP == "CPU"
     end
     @time @safetestset "EnsembleGPUArray host concatenation" begin
         include("ensemblegpuarray_hcat.jl")
+    end
+    @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
+        include("ensemblegpuarray_scalar_batch.jl")
     end
 end
 
