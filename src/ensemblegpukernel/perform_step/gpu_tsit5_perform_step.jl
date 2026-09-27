@@ -134,7 +134,6 @@ end
             q = max(inv(qmax), min(inv(qmin), q / gamma))
             qold = max(EEst, qoldinit)
             dtnew = dt / q #dtnew
-            dtnew = min(abs(dtnew), abs(tf - t - dt))
 
             @inbounds begin # Necessary for interpolation
                 integ.k1 = k1
@@ -147,26 +146,24 @@ end
             end
 
             integ.dt = dt
-            integ.dtnew = dtnew
             integ.qold = qold
             integ.tprev = t
             integ.u = u
 
-            if (tf - t - dt) < T(1.0e-14)
+            if _tstop_in_step(integ, tf, T)
+                integ.t = integ.tstops[integ.tstops_idx]
+                if abs(integ.t - (t + dt)) > eps(integ.t)
+                    integ.u = integ(integ.t)
+                end
+                dt = integ.t - integ.tprev
+                integ.tstops_idx += 1
+            elseif (tf - t - dt) < T(1.0e-14)
                 integ.t = tf
             else
-                if integ.tstops !== nothing && integ.tstops_idx <= length(integ.tstops) &&
-                        integ.tstops[integ.tstops_idx] - integ.t - integ.dt -
-                        T(100) * eps(T) < T(0)
-                    integ.t = integ.tstops[integ.tstops_idx]
-                    integ.u = integ(integ.t)
-                    dt = integ.t - integ.tprev
-                    integ.tstops_idx += 1
-                else
-                    ##Advance the integrator
-                    integ.t += dt
-                end
+                ##Advance the integrator
+                integ.t += dt
             end
+            integ.dtnew = min(abs(dtnew), abs(_next_stop(integ, tf) - integ.t))
         end
     end
     _, saved_in_cb = handle_callbacks!(integ, ts, us)
