@@ -97,11 +97,58 @@ end
         tstops = Float32[0.875], abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
     )
     @test all(s -> s.t[end] == tf, sol.u)
-    # Stopping at the tstop goes through the dense-output interpolant, and the
-    # Float32 Verner interpolants carry O(1e-5) rounding error there even for u' = 1.
-    if alg isa Union{GPUVern7, GPUVern9}
+    # Stopping at the tstop goes through the dense output, which for Float32 Vern7
+    # is ~60 ulps off even for u' = 1: https://github.com/SciML/DiffEqGPU.jl/issues/554
+    if alg isa GPUVern7
         @test all(s -> all(isfinite, s.u[end]), sol.u)
     else
         @test all(s -> isapprox(s.u[end], SVector(1.25f0, 1.25f0); rtol = 1.0f-6), sol.u)
+    end
+end
+
+# After landing on the first stop, the next proposed step reaches `tf`; the
+# remaining stops must still be visited in order rather than snapped over.
+@testset "Adaptive multiple tstops visited in order ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    t0, tf = 0.75f0, 1.0f0
+    stops = Float32[0.8125, 0.875, 0.9375]
+    f = ODEFunction{false}((u, p, t) -> SVector(1.0f0, 1.0f0))
+    integ = DiffEqGPU.init(
+        alg, f, false, SVector(1.0f0, 1.0f0), t0, tf, prevfloat(tf - t0), SVector(0.0f0),
+        1.0f-9, 1.0f-6, DiffEqGPU.DiffEqBase.ODE_DEFAULT_NORM, stops,
+        CallbackSet(nothing), nothing
+    )
+    ts, us = zeros(Float32, 2), zeros(SVector{2, Float32}, 2)
+    times = Float32[]
+    while integ.t < tf && length(times) < 100
+        DiffEqGPU.step!(integ, ts, us)
+        push!(times, integ.t)
+    end
+    @test filter(in(stops), times) == stops
+    @test issorted(times)
+    @test integ.t == tf
+end
+
+@testset "Adaptive callback at intermediate tstop, public solve ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    condition(u, t, integrator) = t == 0.875f0
+    affect!(integrator) = (integrator.u += SVector(10.0f0, 10.0f0))
+    cb = DiscreteCallback(condition, affect!; save_positions = (false, false))
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(1.0f0, 1.0f0), SVector(1.0f0, 1.0f0), (0.75f0, 1.0f0)
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = prevfloat(0.25f0),
+        tstops = Float32[0.8125, 0.875, 0.9375], callback = cb, merge_callbacks = true,
+        abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
+    )
+    @test all(s -> s.t[end] == 1.0f0, sol.u)
+    # u0 + (tf - t0) + 10 from the callback; Vern7 is only checked for
+    # the callback having fired until issue 554 is fixed.
+    if alg isa GPUVern7
+        @test all(s -> all(>(11.0f0), s.u[end]), sol.u)
+    else
+        @test all(s -> isapprox(s.u[end], SVector(11.25f0, 11.25f0); rtol = 1.0f-6), sol.u)
     end
 end
