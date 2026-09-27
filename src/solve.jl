@@ -493,12 +493,9 @@ end
 
 # Scalar-per-trajectory packs from `pack_ordinary_parameters` are 1-D. Seed one Dual
 # partial per entry so kernels still receive scalar Dual parameters via `ensemble_param`.
-function seed_duals(
-        x::AbstractVector{V}, ::Type{T},
-        ::ForwardDiff.Chunk{N} = ForwardDiff.Chunk{1}()
-    ) where {V, T, N}
-    seeds = ForwardDiff.construct_seeds(ForwardDiff.Partials{N, V})
-    return [ForwardDiff.Dual{T}(xj, seeds[1]) for xj in x]
+# Use the public Dual constructor with a unit partial (not ForwardDiff.construct_seeds).
+function seed_duals(x::AbstractVector{V}, ::Type{T}) where {V, T}
+    return [ForwardDiff.Dual{T}(xj, one(V)) for xj in x]
 end
 
 function extract_dus(us)
