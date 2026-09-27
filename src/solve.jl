@@ -231,7 +231,7 @@ function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func,
     return probs, adapted_probs
 end
 
-function _kernel_solution(prob, alg, ts, us, i)
+@inline function _kernel_solution(prob, alg, ts, us, i)
     times = @view ts[:, i]
     states = @view us[:, i]
     sol_idx = findlast(x -> x != prob.tspan[1], times)
