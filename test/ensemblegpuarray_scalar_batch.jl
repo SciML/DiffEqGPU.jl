@@ -101,3 +101,59 @@ end
     @test size(sol.u[end]) == (1, 1)
     @test sol.u[end][1] ≈ exp(-3.0) atol = atol rtol = rtol
 end
+
+@testset "batch_solve_up rrule scalar p (vector pack)" begin
+    # Loss = sum of final states; du(T)/dp = exp(p) with p = -1 ⇒ exp(-1) per trajectory.
+    f(u, p, t) = SVector(p * u[1])
+    prob = ODEProblem{false}(f, SVector(1.0), (0.0, 1.0), -1.0)
+    probs = [prob, prob]
+    ens = EnsembleProblem(prob; safetycopy = false)
+    p = DiffEqGPU.pack_ordinary_parameters(probs)
+    @test p isa AbstractVector
+    _, pb = DiffEqGPU.ChainRulesCore.rrule(
+        DiffEqGPU.batch_solve_up, ens, probs, Tsit5(),
+        EnsembleGPUArray(backend, 0.0), 1:2, ones(1, 2), p;
+        dt = 1 / 64, adaptive = false, save_everystep = false, save_start = false
+    )
+    grad = pb((nothing, [[ones(1)], [ones(1)]]))[end]
+    @test grad isa AbstractVector
+    @test length(grad) == 2
+    @test grad ≈ fill(exp(-1.0), 2) atol = 1.0e-8 rtol = 1.0e-8
+end
+
+@testset "batch_solve_up rrule scalar p singleton" begin
+    f(u, p, t) = SVector(p * u[1])
+    prob = ODEProblem{false}(f, SVector(1.0), (0.0, 1.0), -1.0)
+    probs = [prob]
+    ens = EnsembleProblem(prob; safetycopy = false)
+    p = DiffEqGPU.pack_ordinary_parameters(probs)
+    @test p isa AbstractVector && length(p) == 1
+    _, pb = DiffEqGPU.ChainRulesCore.rrule(
+        DiffEqGPU.batch_solve_up, ens, probs, Tsit5(),
+        EnsembleGPUArray(backend, 0.0), 1:1, ones(1, 1), p;
+        dt = 1 / 64, adaptive = false, save_everystep = false, save_start = false
+    )
+    grad = pb((nothing, [[ones(1)]]))[end]
+    @test grad isa AbstractVector
+    @test length(grad) == 1
+    @test only(grad) ≈ exp(-1.0) atol = 1.0e-8 rtol = 1.0e-8
+end
+
+@testset "batch_solve_up rrule array p (matrix pack)" begin
+    # p = [-1, -2] ⇒ λ = -3, u(T) = exp(-3), ∂u/∂p₁ = ∂u/∂p₂ = T*exp(λT) = exp(-3).
+    f(u, p::AbstractVector, t) = SVector(sum(p) * u[1])
+    prob = ODEProblem{false}(f, SVector(1.0), (0.0, 1.0), [-1.0, -2.0])
+    probs = [prob, remake(prob; p = [-1.0, -2.0])]
+    ens = EnsembleProblem(prob; safetycopy = false)
+    p = DiffEqGPU.pack_ordinary_parameters(probs)
+    @test p isa AbstractMatrix && size(p) == (2, 2)
+    _, pb = DiffEqGPU.ChainRulesCore.rrule(
+        DiffEqGPU.batch_solve_up, ens, probs, Tsit5(),
+        EnsembleGPUArray(backend, 0.0), 1:2, ones(1, 2), p;
+        dt = 1 / 64, adaptive = false, save_everystep = false, save_start = false
+    )
+    grad = pb((nothing, [[ones(1)], [ones(1)]]))[end]
+    @test grad isa AbstractMatrix
+    @test size(grad) == (2, 2)
+    @test grad ≈ fill(exp(-3.0), 2, 2) atol = 1.0e-7 rtol = 1.0e-7
+end
