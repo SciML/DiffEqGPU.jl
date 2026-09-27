@@ -195,7 +195,8 @@ end
 
 @noinline function _make_kernel_problem(ensembleprob, i, sim_seeds, rng_func, master_rng)
     ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
-    prob = ensembleprob.safetycopy ? deepcopy(ensembleprob.prob) : ensembleprob.prob
+    needs_copy = ensembleprob.safetycopy && !isbits(ensembleprob.prob)
+    prob = needs_copy ? deepcopy(ensembleprob.prob) : ensembleprob.prob
     return make_prob_compatible(ensembleprob.prob_func(prob, ctx))
 end
 
@@ -206,6 +207,15 @@ end
 
 function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func, master_rng)
     first_prob = _make_kernel_problem(ensembleprob, first(I), sim_seeds, rng_func, master_rng)
+    # CPU kernels can consume isbits problems directly; Enzyme needs its record path.
+    if backend isa CPU && !within_autodiff() && isbits(first_prob)
+        probs = Vector{typeof(first_prob)}(undef, length(I))
+        probs[1] = first_prob
+        for j in 2:length(I)
+            probs[j] = _make_kernel_problem(ensembleprob, I[j], sim_seeds, rng_func, master_rng)
+        end
+        return probs, probs
+    end
     first_adapted = _kernel_record(adapt(backend, first_prob))
     first_ref = _wrap_kernel_host(first_prob)
     probs = Vector{typeof(first_ref)}(undef, length(I))
@@ -219,6 +229,42 @@ function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func,
         adapted_probs[j] = _kernel_record(adapt(backend, prob))
     end
     return probs, adapted_probs
+end
+
+function _kernel_solution(prob, alg, ts, us, i)
+    times = @view ts[:, i]
+    states = @view us[:, i]
+    sol_idx = findlast(x -> x != prob.tspan[1], times)
+    if sol_idx === nothing
+        @error "No solution found" tspan = prob.tspan[1] times
+        error("Batch solve failed")
+    end
+    return SciMLBase.build_solution(
+        prob, alg, @view(times[1:sol_idx]), @view(states[1:sol_idx]);
+        k = nothing, stats = nothing, calculate_error = false,
+        retcode = sol_idx != length(times) ? ReturnCode.Terminated : ReturnCode.Success
+    )
+end
+
+struct KernelSolutionVector{S, P, T, U, A} <: AbstractVector{S}
+    first_solution::S
+    probs::P
+    ts::T
+    us::U
+    alg::A
+end
+
+Base.size(sols::KernelSolutionVector) = (length(sols.probs),)
+Base.IndexStyle(::Type{<:KernelSolutionVector}) = IndexLinear()
+function Base.getindex(sols::KernelSolutionVector, i::Int)
+    @boundscheck checkbounds(sols, i)
+    return i == 1 ? sols.first_solution :
+        _kernel_solution(sols.probs[i], sols.alg, sols.ts, sols.us, i)
+end
+
+function KernelSolutionVector(probs, ts, us, alg)
+    first_solution = _kernel_solution(_unwrap_kernel_host(probs[1]), alg, ts, us, 1)
+    return KernelSolutionVector(first_solution, probs, ts, us, alg)
 end
 
 function batch_solve(
@@ -277,26 +323,15 @@ function batch_solve(
             ensembleprob, kernel_probs, adapted_kernel_probs, alg, ensemblealg, I,
             adaptive; saveat, kwargs...
         )
+        if ensembleprob.output_func === SciMLBase.DEFAULT_OUTPUT_FUNC &&
+                ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION && !within_autodiff()
+            return KernelSolutionVector(kernel_probs, solts, kernel_solus, alg)
+        end
         [
             begin
-                ts = @view solts[:, i]
-                us = @view kernel_solus[:, i]
-                sol_idx = findlast(x -> x != _unwrap_kernel_host(kernel_probs[i]).tspan[1], ts)
-                if sol_idx === nothing
-                    @error "No solution found" tspan = _unwrap_kernel_host(kernel_probs[i]).tspan[1] ts
-                    error("Batch solve failed")
-                end
-                @views ensembleprob.output_func(
-                    SciMLBase.build_solution(
-                        _unwrap_kernel_host(kernel_probs[i]),
-                        alg,
-                        ts[1:sol_idx],
-                        us[1:sol_idx],
-                        k = nothing,
-                        stats = nothing,
-                        calculate_error = false,
-                        retcode = sol_idx != length(ts) ? ReturnCode.Terminated :
-                            ReturnCode.Success
+                ensembleprob.output_func(
+                    _kernel_solution(
+                        _unwrap_kernel_host(kernel_probs[i]), alg, solts, kernel_solus, i
                     ),
                     _make_ensemble_context(I[i], sim_seeds, rng_func, master_rng)
                 )[1]
