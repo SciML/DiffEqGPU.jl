@@ -10,6 +10,27 @@ function Adapt.adapt_structure(to, ps::ParamWrapper{P, T}) where {P, T}
     )
 end
 
+"""
+    ensemble_param(p, i)
+
+Per-trajectory parameter argument for `EnsembleGPUArray` kernels.
+
+Scalar parameters are packed as a 1-D `AbstractVector{<:Number}` and returned as the
+scalar `p[i]`. Vector-valued parameters are packed as a matrix and returned as the
+column `p[:, i]`. A bare `Number` covers a singleton scalar batch. Length-1 array
+parameters remain arrays — scalar vs array is decided by packing, not by column length.
+Non-numeric containers use `p[i]`.
+"""
+@inline ensemble_param(p::Number, ::Integer) = p
+@inline function ensemble_param(p::AbstractArray{<:Number}, i::Integer)
+    if ndims(p) == 1
+        return @inbounds p[i]
+    else
+        return @view p[:, i]
+    end
+end
+@inline ensemble_param(p::AbstractArray, i::Integer) = @inbounds p[i]
+
 # The reparameterization is adapted from:https://github.com/rtqichen/torchdiffeq/issues/122#issuecomment-738978844
 @kernel function gpu_kernel(
         f, du, @Const(u),
@@ -45,20 +66,12 @@ end
 
 @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
-    if eltype(p) <: Number
-        @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
-    else
-        @views @inbounds f(du[:, i], u[:, i], p[i], t)
-    end
+    @views @inbounds f(du[:, i], u[:, i], ensemble_param(p, i), t)
 end
 
 @kernel function gpu_kernel_oop(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
-    if eltype(p) <: Number
-        @views @inbounds x = f(u[:, i], p[:, i], t)
-    else
-        @views @inbounds x = f(u[:, i], p[i], t)
-    end
+    @views @inbounds x = f(u[:, i], ensemble_param(p, i), t)
     @inbounds for j in 1:size(du, 1)
         du[j, i] = x[j]
     end
@@ -109,21 +122,13 @@ end
 @kernel function jac_kernel(f, J, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
-    if eltype(p) <: Number
-        @views @inbounds f(J[section, section], u[:, i + 1], p[:, i + 1], t)
-    else
-        @views @inbounds f(J[section, section], u[:, i + 1], p[i + 1], t)
-    end
+    @views @inbounds f(J[section, section], u[:, i + 1], ensemble_param(p, i + 1), t)
 end
 
 @kernel function jac_kernel_oop(f, J, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
-    if eltype(p) <: Number
-        @views @inbounds x = f(u[:, i + 1], p[:, i + 1], t)
-    else
-        @views @inbounds x = f(u[:, i + 1], p[i + 1], t)
-    end
+    @views @inbounds x = f(u[:, i + 1], ensemble_param(p, i + 1), t)
     @inbounds for j in section, k in section
 
         J[k, j] = x[k, j]
@@ -132,12 +137,15 @@ end
 
 @kernel function discrete_condition_kernel(condition, cur, @Const(u), @Const(t), @Const(p))
     i = @index(Global, Linear)
-    @views @inbounds cur[i] = condition(u[:, i], t, FakeIntegrator(u[:, i], t, p[:, i]))
+    @views @inbounds cur[i] = condition(
+        u[:, i], t, FakeIntegrator(u[:, i], t, ensemble_param(p, i))
+    )
 end
 
 @kernel function discrete_affect!_kernel(affect!, cur, u, t, p)
     i = @index(Global, Linear)
-    @views @inbounds cur[i] && affect!(FakeIntegrator(u[:, i], t, p[:, i]))
+    @views @inbounds cur[i] &&
+        affect!(FakeIntegrator(u[:, i], t, ensemble_param(p, i)))
 end
 
 @kernel function continuous_condition_kernel(
@@ -145,7 +153,9 @@ end
         @Const(p)
     )
     i = @index(Global, Linear)
-    @views @inbounds out[i] = condition(u[:, i], t, FakeIntegrator(u[:, i], t, p[:, i]))
+    @views @inbounds out[i] = condition(
+        u[:, i], t, FakeIntegrator(u[:, i], t, ensemble_param(p, i))
+    )
 end
 
 @kernel function continuous_affect!_kernel(
@@ -154,9 +164,9 @@ end
     i = @index(Global, Linear)
     @inbounds event_direction = simultaneous_events[i]
     if event_direction == Int8(1)
-        @views @inbounds affect!(FakeIntegrator(u[:, i], t, p[:, i]))
+        @views @inbounds affect!(FakeIntegrator(u[:, i], t, ensemble_param(p, i)))
     elseif event_direction == Int8(-1)
-        @views @inbounds affect_neg!(FakeIntegrator(u[:, i], t, p[:, i]))
+        @views @inbounds affect_neg!(FakeIntegrator(u[:, i], t, ensemble_param(p, i)))
     end
 end
 
@@ -243,7 +253,7 @@ end
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @views @inbounds jac(_W, u[:, i], ensemble_param(p, i), t)
     @inbounds for i in eachindex(_W)
         _W[i] = gamma * _W[i]
     end
@@ -287,7 +297,7 @@ end
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds x = jac(u[:, i], p[:, i], t)
+    @views @inbounds x = jac(u[:, i], ensemble_param(p, i), t)
     @inbounds for j in 1:length(_W)
         _W[j] = x[j]
     end
@@ -346,7 +356,7 @@ end
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds jac(_W, u[:, i], p[:, i], t)
+    @views @inbounds jac(_W, u[:, i], ensemble_param(p, i), t)
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i]
     end
@@ -356,7 +366,7 @@ end
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds x = jac(u[:, i], p[:, i], t)
+    @views @inbounds x = jac(u[:, i], ensemble_param(p, i), t)
     @inbounds for j in 1:length(_W)
         _W[j] = x[j]
     end
@@ -371,11 +381,7 @@ end
     ) where {T}
     i = @index(Global, Linear)
     @inbounds f = f[i].tgrad
-    if eltype(p) <: Number
-        @views @inbounds f(du[:, i], u[:, i], p[:, i], t)
-    else
-        @views @inbounds f(du[:, i], u[:, i], p[i], t)
-    end
+    @views @inbounds f(du[:, i], u[:, i], ensemble_param(p, i), t)
 end
 @kernel function gpu_kernel_oop_tgrad(
         f::AbstractArray{T}, du, @Const(u), @Const(p),
@@ -383,11 +389,7 @@ end
     ) where {T}
     i = @index(Global, Linear)
     @inbounds f = f[i].tgrad
-    if eltype(p) <: Number
-        @views @inbounds x = f(u[:, i], p[:, i], t)
-    else
-        @views @inbounds x = f(u[:, i], p[i], t)
-    end
+    @views @inbounds x = f(u[:, i], ensemble_param(p, i), t)
     @inbounds for j in 1:size(du, 1)
         du[j, i] = x[j]
     end

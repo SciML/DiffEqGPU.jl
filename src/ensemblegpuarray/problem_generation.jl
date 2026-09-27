@@ -1,3 +1,11 @@
+# A single column is returned unchanged. Array columns are concatenated; other columns form a row.
+# Ordinary scalar parameters must not use this helper: keep them as a 1-D vector so kernels can
+# pass `p[i]` (see `ensemble_param` and the ordinary-`p` call site in `batch_solve`).
+function _hcat_batch(cols)
+    length(cols) == 1 && return cols[1]
+    return cols[1] isa AbstractArray ? reduce(hcat, cols) : reshape(cols, 1, :)
+end
+
 function generate_problem(
         prob::SciMLBase.AbstractODEProblem,
         u0,

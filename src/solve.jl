@@ -221,12 +221,6 @@ function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func,
     return probs, adapted_probs
 end
 
-# A single column is returned unchanged. Array columns are concatenated; other columns form a row.
-function _hcat_batch(cols)
-    length(cols) == 1 && return cols[1]
-    return cols[1] isa AbstractArray ? reduce(hcat, cols) : reshape(cols, 1, :)
-end
-
 function batch_solve(
         ensembleprob, alg,
         ensemblealg::Union{EnsembleArrayAlgorithm, EnsembleKernelAlgorithm}, I,
@@ -373,12 +367,14 @@ function batch_solve(
                     for i in 1:length(probs)
             ]
         else
-            p = _hcat_batch(
-                [
-                    probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-                        for i in 1:length(I)
-                ]
-            )
+            # Scalars stay a 1-D vector (including n = 1) so kernels pass `p[i]`; array
+            # parameters use `_hcat_batch` (matrix / single column). Length-1 arrays are
+            # still arrays — do not treat them as scalars.
+            p_cols = [
+                probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
+                    for i in 1:length(I)
+            ]
+            p = p_cols[1] isa AbstractArray ? _hcat_batch(p_cols) : p_cols
             sol,
                 solus = batch_solve_up(
                 ensembleprob, probs, alg, ensemblealg, I, u0, p;
