@@ -11,6 +11,8 @@ function Adapt.adapt_structure(to, ps::ParamWrapper{P, T}) where {P, T}
 end
 
 # The reparameterization is adapted from:https://github.com/rtqichen/torchdiffeq/issues/122#issuecomment-738978844
+# Map normalized time t∈[0,1] to each trajectory's physical tspan via a separate
+# local `t_phys`. Reassigning the kernel argument `t` leaks across CPU workgroup lanes.
 @kernel function gpu_kernel(
         f, du, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
@@ -20,7 +22,6 @@ end
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
     # reparameterization t->(t_0, t_f) from t->(0, 1).
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
     @views @inbounds f(du[:, i], u[:, i], p, t_phys)
     @inbounds for j in 1:size(du, 1)
@@ -37,7 +38,6 @@ end
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
     # reparameterization
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
     @views @inbounds x = f(u[:, i], p, t_phys)
     @inbounds for j in 1:size(du, 1)
@@ -77,7 +77,6 @@ end
     @inbounds tspan = params[i + 1].data
 
     # reparameterization
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     @views @inbounds f(J[section, section], u[:, i + 1], p, t_phys)
@@ -99,7 +98,6 @@ end
     @inbounds tspan = params[i + 1].data
 
     # reparameterization
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     @views @inbounds x = f(u[:, i + 1], p, t_phys)
@@ -230,7 +228,6 @@ end
     @inbounds tspan = params[i].data
 
     # reparameterization
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     @views @inbounds jac(_W, u[:, i], p, t_phys)
@@ -273,7 +270,6 @@ end
     _W = @inbounds @view(W[:, :, i])
 
     # reparameterization
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     @views @inbounds x = jac(u[:, i], p, t_phys)
@@ -316,7 +312,6 @@ end
     @inbounds tspan = params[i].data
 
     # reparameterization
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     _W = @inbounds @view(W[:, :, i])
@@ -337,7 +332,6 @@ end
     @inbounds tspan = params[i].data
 
     # reparameterization
-    # Keep physical time in a separate local: reassigning `t` leaks across CPU lanes.
     t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     _W = @inbounds @view(W[:, :, i])

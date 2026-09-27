@@ -79,33 +79,42 @@ end
     @test all(sol -> sol.u[1] == @SVector([1.0f0]), sol.u)
 end
 
-# Analytic regression for Issue #551: EnsembleGPUArray CPU workgroups must not
-# leak the tspan-reparameterized time from one lane into the next.
+# EnsembleGPUArray CPU workgroups must not leak tspan-reparameterized time across lanes.
 @testset "EnsembleGPUArray per-trajectory tspan (CPU)" begin
-    f_poly(u, p, t) = SVector(p[1] + t)
-    poly_prob = ODEProblem{false}(f_poly, SVector(1.0), (0.0, 1.0), SVector(1.0))
-    ens = EnsembleProblem(
-        poly_prob;
-        safetycopy = false,
-        prob_func = (prob, ctx) -> begin
-            i = ctx.sim_id
-            remake(
-                prob;
-                u0 = SVector(Float64(i)),
-                p = SVector(Float64(i)),
-                tspan = (i / 8, i / 8 + 1 / 2)
+    f_oop(u, p, t) = SVector(p[1] + t)
+    f_iip(du, u, p, t) = (du[1] = p[1] + t; nothing)
+    for iip in (false, true), equal_span in (true, false)
+        @testset "iip=$iip equal_span=$equal_span" begin
+            f = iip ? f_iip : f_oop
+            u0 = iip ? [1.0] : SVector(1.0)
+            poly_prob = ODEProblem{iip}(f, u0, (0.0, 1.0), SVector(1.0))
+            ens = EnsembleProblem(
+                poly_prob;
+                safetycopy = false,
+                prob_func = (prob, ctx) -> begin
+                    i = ctx.sim_id
+                    a = i / 8
+                    b = equal_span ? a + 1 / 2 : a + (i % 3 + 1) / 4
+                    remake(
+                        prob;
+                        u0 = iip ? [Float64(i)] : SVector(Float64(i)),
+                        p = SVector(Float64(i)),
+                        tspan = (a, b)
+                    )
+                end
             )
+            sol = solve(
+                ens, Tsit5(), EnsembleGPUArray(CPU(), 0.0);
+                trajectories = 4, batch_size = 4, dt = 1 / 16, adaptive = false,
+                save_everystep = false
+            )
+            for i in 1:4
+                a = i / 8
+                b = equal_span ? a + 1 / 2 : a + (i % 3 + 1) / 4
+                # Exact for u' = i + t, u(a) = i: u(b) = i + i*(b-a) + (b^2-a^2)/2
+                exact = i + i * (b - a) + (b^2 - a^2) / 2
+                @test sol.u[i].u[end][1] ≈ exact atol = 1.0e-12
+            end
         end
-    )
-    sol = solve(
-        ens, Tsit5(), EnsembleGPUArray(CPU(), 0.0);
-        trajectories = 4, batch_size = 4, dt = 1 / 16, adaptive = false,
-        save_everystep = false
-    )
-    for i in 1:4
-        a, b = i / 8, i / 8 + 1 / 2
-        # Exact for u' = i + t, u(a) = i: u(b) = i + i*(b-a) + (b^2-a^2)/2
-        exact = i + i * (b - a) + (b^2 - a^2) / 2
-        @test sol.u[i].u[end][1] ≈ exact atol = 1e-12
     end
 end
