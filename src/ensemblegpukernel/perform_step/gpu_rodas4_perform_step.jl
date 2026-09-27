@@ -253,7 +253,7 @@ end
 
             if _tstop_in_step(integ, tf, T)
                 integ.t = integ.tstops[integ.tstops_idx]
-                if abs(integ.t - (t + dt)) > eps(integ.t)
+                if integ.t - t != dt
                     integ.u = integ(integ.t)
                 end
                 dt = integ.t - integ.tprev
@@ -264,7 +264,7 @@ end
                 ##Advance the integrator
                 integ.t += dt
             end
-            integ.dtnew = min(abs(dtnew), abs(_next_stop(integ, tf) - integ.t))
+            integ.dtnew = min(abs(dtnew), abs(_next_stop(integ, tf, T) - integ.t))
         end
     end
 

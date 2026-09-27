@@ -14,21 +14,25 @@ function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where
     return T(1 / 5), zero(T), T(5), T(1 / 5), T(9 / 10), T(1.0e-4), T(1.0e-4)
 end
 
-# Whether a pending tstop before `tf` falls inside the step just accepted from `integ.t`.
+# Whether a pending tstop falls inside the step just accepted from `integ.t`. Stops
+# within the endpoint-snap threshold of `tf` are left to the snap, since landing on
+# them would leave a remaining interval below the minimum step size.
 @inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     (tstops === nothing || integ.tstops_idx > length(tstops)) && return false
     stop = @inbounds tstops[integ.tstops_idx]
-    return stop < tf && stop - integ.t - integ.dt - T(100) * eps(T) < T(0)
+    return tf - stop >= T(1.0e-14) && stop - integ.t - integ.dt - T(100) * eps(T) < T(0)
 end
 
 # The next time the adaptive integrator has to land on exactly: the next pending
-# tstop after `integ.t` and before `tf`, otherwise `tf`.
-@inline function _next_stop(integ, tf)
+# tstop before `tf`, otherwise `tf`. A stop closer than the minimum step size is
+# not a clamp target (it would force `dt < dtmin`); the following step's tstop
+# branch lands on it instead.
+@inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
         stop = @inbounds tstops[integ.tstops_idx]
-        integ.t < stop < tf && return stop
+        tf - stop >= T(1.0e-14) && stop - integ.t >= T(1.0e-14) && return stop
     end
     return tf
 end

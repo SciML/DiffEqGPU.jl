@@ -152,3 +152,43 @@ end
         @test all(s -> isapprox(s.u[end], SVector(11.25f0, 11.25f0); rtol = 1.0f-6), sol.u)
     end
 end
+
+# At t ≈ 2^26 a Float32 ulp is 8: the first step (32) ends one ulp past the stop in
+# time but has integrated 8 time units beyond it, so the state at the stop has to
+# come from the dense output. `tf` is chosen so every later step is a whole number of
+# ulps; otherwise `t + dt` rounding would decouple time from the integrated length.
+@testset "Adaptive tstop inside a coarse step, public solve ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    t0 = Float32(2^26)
+    tf = t0 + 32.0f0
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(1.0f0, 1.0f0), SVector(0.0f0, 0.0f0), (t0, tf)
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = 32.0f0, tstops = Float32[t0 + 24.0f0],
+        abstol = 1.0f-6, reltol = 1.0f-3, save_everystep = false
+    )
+    @test all(s -> s.t[end] == tf, sol.u)
+    @test all(s -> s.u[end] ≈ SVector(32.0f0, 32.0f0), sol.u)
+end
+
+# Stops closer together than the minimum step size must both be visited without
+# clamping the next step below `dtmin`.
+@testset "Adaptive adjacent tstops with callbacks, public solve ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    stops = [0.8125, nextfloat(0.8125)]
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t in stops,
+        integrator -> (integrator.u += SVector(10.0, 10.0));
+        save_positions = (false, false)
+    )
+    prob = ODEProblem{false}((u, p, t) -> SVector(1.0, 1.0), SVector(0.0, 0.0), (0.75, 2.0))
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = 0.0625, tstops = stops, callback = cb,
+        merge_callbacks = true, abstol = 1.0e-9, reltol = 1.0e-6, save_everystep = false
+    )
+    @test all(s -> s.t[end] == 2.0, sol.u)
+    @test all(s -> s.u[end] ≈ SVector(21.25, 21.25), sol.u)
+end
