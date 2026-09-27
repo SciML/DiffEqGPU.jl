@@ -51,12 +51,9 @@ function vectorized_map_solve(
         kwargs...
     )
 
-    u0 = _hcat_batch([Array(probs[i].u0) for i in 1:length(I)])
-    p_cols = [
-        probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-            for i in 1:length(I)
-    ]
-    p = p_cols[1] isa AbstractArray ? _hcat_batch(p_cols) : p_cols
+    # Keep an n×1 matrix for singleton state batches (lower-level API contract).
+    u0 = hcat([Array(probs[i].u0) for i in 1:length(I)]...)
+    p = pack_ordinary_parameters([probs[i] for i in 1:length(I)])
 
     prob = probs[1]
     return sol = vectorized_map_solve_up(

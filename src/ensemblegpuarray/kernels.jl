@@ -15,11 +15,10 @@ end
 
 Per-trajectory parameter argument for `EnsembleGPUArray` kernels.
 
-Scalar parameters are packed as a 1-D `AbstractVector{<:Number}` and returned as the
-scalar `p[i]`. Vector-valued parameters are packed as a matrix and returned as the
-column `p[:, i]`. A bare `Number` covers a singleton scalar batch. Length-1 array
-parameters remain arrays — scalar vs array is decided by packing, not by column length.
-Non-numeric containers use `p[i]`.
+`pack_ordinary_parameters` distinguishes layouts: a 1-D `AbstractVector{<:Number}` is a
+batch of scalars and yields `p[i]::Number`; an `nparam × ntraj` matrix (including
+`ntraj = 1`) yields the column view `p[:, i]`. A bare `Number` covers a singleton
+scalar left as a scalar. Non-numeric containers use `p[i]`.
 """
 @inline ensemble_param(p::Number, ::Integer) = p
 @inline function ensemble_param(p::AbstractArray{<:Number}, i::Integer)

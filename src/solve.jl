@@ -367,14 +367,7 @@ function batch_solve(
                     for i in 1:length(probs)
             ]
         else
-            # Scalars stay a 1-D vector (including n = 1) so kernels pass `p[i]`; array
-            # parameters use `_hcat_batch` (matrix / single column). Length-1 arrays are
-            # still arrays — do not treat them as scalars.
-            p_cols = [
-                probs[i].p isa AbstractArray ? Array(probs[i].p) : probs[i].p
-                    for i in 1:length(I)
-            ]
-            p = p_cols[1] isa AbstractArray ? _hcat_batch(p_cols) : p_cols
+            p = pack_ordinary_parameters(probs)
             sol,
                 solus = batch_solve_up(
                 ensembleprob, probs, alg, ensemblealg, I, u0, p;
