@@ -1,43 +1,87 @@
-using DiffEqGPU, SciMLBase, KernelAbstractions, StaticArrays
+using DiffEqGPU, SciMLBase, KernelAbstractions, StaticArrays, Statistics
+using SciMLBase.EnsembleAnalysis
+
 const backend = CPU()
-const f = (u, p, t) -> SVector(p[1] * u[1])
-const prob = ODEProblem{false}(f, SVector(1.0f0), (0.0f0, 1.0f0), SVector(0.2f0))
-const ens = EnsembleProblem(prob; prob_func = (prob, ctx) -> remake(prob; p = SVector(0.2f0 + Float32(ctx.sim_id % 4) / 10)), safetycopy = false)
+function lorenz(u, p, t)
+    σ, ρ, β = p
+    return SVector(σ * (u[2] - u[1]), u[1] * (ρ - u[3]) - u[2], u[1] * u[2] - β * u[3])
+end
+const u0 = @SVector [1.0f0, 0.0f0, 0.0f0]
+const p0 = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
+const prob = ODEProblem{false}(lorenz, u0, (0.0f0, 1.0f0), p0)
+const prob_func = (prob, ctx) -> remake(prob; p = p0 .* (1 + Float32(ctx.sim_id % 97) / 1000))
+const ens = EnsembleProblem(prob; prob_func, safetycopy = false)
 const alg = GPUTsit5()
 const ealg = EnsembleGPUKernel(backend, 0.0)
-function time_prep(n)
-    GC.gc()
-    t = @timed DiffEqGPU._prepare_kernel_problems(ens, backend, 1:n, nothing, SciMLBase.default_rng_func, nothing)
-    return (t.time, t.bytes, t.gctime)
+const saveat = 0.0f0:0.01f0:1.0f0
+const REPS = 5
+
+function solve_endpoints(n)
+    return solve(
+        ens, alg, ealg;
+        trajectories = n, adaptive = true, dt = 0.1f0, save_everystep = false
+    )
 end
-function time_kernel(n)
-    probs, adapted = DiffEqGPU._prepare_kernel_problems(ens, backend, 1:n, nothing, SciMLBase.default_rng_func, nothing)
-    GC.gc()
-    t = @timed DiffEqGPU.vectorized_asolve(adapted, prob, alg; dt = 0.2f0, save_everystep = false)
-    return (t.time, t.bytes, t.gctime)
+
+function solve_saveat(n)
+    return solve(
+        ens, alg, ealg;
+        trajectories = n, adaptive = true, dt = 0.1f0, saveat
+    )
 end
-function run_one(n)
-    prep = time_prep(n)
-    kernel = time_kernel(n)
-    GC.gc()
-    full = @timed solve(ens, alg, ealg; trajectories = n, adaptive = true, dt = 0.2f0, save_everystep = false)
-    sol = full.value
-    vals = (sol.u[1].u[end][1], sol.u[end].u[end][1])
-    checksum = sum(s -> Float64(s.u[end][1]), sol.u)
+
+function endpoint_pass(sol)
+    s = 0.0
+    @inbounds for x in sol.u
+        s += Float64(x.u[end][1])
+    end
+    return s
+end
+
+function median_elapsed(f, reps = REPS)
+    ts = Vector{Float64}(undef, reps)
+    for i in 1:reps
+        GC.gc()
+        ts[i] = @elapsed f()
+    end
+    return median(ts)
+end
+
+# Warmup
+solve_endpoints(16)
+endpoint_pass(solve_endpoints(16))
+timeseries_steps_meanvar(solve_saveat(16))
+
+println("tree=branch backend=CPU threads=$(Threads.nthreads()) reps=$REPS")
+println("metric=median wall seconds; checksum=sum of endpoint u[1]; analysis=timeseries_steps_meanvar")
+flush(stdout)
+
+for p in 14:20
+    n = 2^p
+    local_sol = Ref{Any}()
+    solve_t = median_elapsed() do
+        local_sol[] = solve_endpoints(n)
+    end
+    sol = local_sol[]
+    @assert sol.u isa Vector
+    loop_t = median_elapsed(() -> endpoint_pass(sol))
+    checksum = endpoint_pass(sol)
+    analysis_sol = Ref{Any}()
+    saveat_solve_t = median_elapsed() do
+        analysis_sol[] = solve_saveat(n)
+    end
+    analysis_t = median_elapsed(() -> timeseries_steps_meanvar(analysis_sol[]))
     println(
-        "N=$n prep_s=$(round(prep[1], digits = 4))",
-        " prep_mb=$(round(prep[2] / 2^20, digits = 1))",
-        " prep_gc=$(round(prep[3], digits = 4))",
-        " kernel_s=$(round(kernel[1], digits = 4))",
-        " total_s=$(round(full.time, digits = 4))",
-        " total_mb=$(round(full.bytes / 2^20, digits = 1))",
-        " total_gc=$(round(full.gctime, digits = 4))",
-        " endpoints=$vals checksum=$checksum"
+        "N=$n",
+        " solve_s=$(round(solve_t; digits = 4))",
+        " endpoint_loop_s=$(round(loop_t; digits = 4))",
+        " saveat_solve_s=$(round(saveat_solve_t; digits = 4))",
+        " timeseries_steps_meanvar_s=$(round(analysis_t; digits = 4))",
+        " checksum=$checksum",
+        " utype=$(typeof(sol.u))"
     )
     flush(stdout)
-    return nothing
-end
-run_one(16)
-for p in 14:20
-    run_one(2^p)
+    local_sol[] = nothing
+    analysis_sol[] = nothing
+    sol = nothing
 end

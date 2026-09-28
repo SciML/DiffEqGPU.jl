@@ -193,10 +193,30 @@ _kernel_record(prob) = prob
     return KernelODEProblem{U, T, IIP, P, F, K, PT}(prob.p, prob.u0, prob.tspan, prob.f, prob.kwargs, prob.problem_type)
 end
 
+@inline function _ensemble_problem_fields_isbits(prob)
+    @inbounds for i in 1:nfields(prob)
+        isbits(getfield(prob, i)) || return false
+    end
+    return true
+end
+
+# Mutable ODEProblem wrappers are never `isbits`, but their fields often are. Reconstructing
+# the wrapper shares those fields and still isolates `prob_func` field reassignment.
+function _shallow_reconstruct_problem(prob::ODEProblem{uType, tType, iip}) where {uType, tType, iip}
+    return ODEProblem{iip}(prob.f, prob.u0, prob.tspan, prob.p, prob.problem_type; prob.kwargs...)
+end
+_shallow_reconstruct_problem(prob) = deepcopy(prob)
+
+@inline function _safety_copy_ensemble_prob(prob)
+    isbits(prob) && return prob
+    return _ensemble_problem_fields_isbits(prob) ? _shallow_reconstruct_problem(prob) :
+        deepcopy(prob)
+end
+
 @noinline function _make_kernel_problem(ensembleprob, i, sim_seeds, rng_func, master_rng)
     ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
-    needs_copy = ensembleprob.safetycopy && !isbits(ensembleprob.prob)
-    prob = needs_copy ? deepcopy(ensembleprob.prob) : ensembleprob.prob
+    prob = ensembleprob.safetycopy ? _safety_copy_ensemble_prob(ensembleprob.prob) :
+        ensembleprob.prob
     return make_prob_compatible(ensembleprob.prob_func(prob, ctx))
 end
 
@@ -244,27 +264,6 @@ end
         k = nothing, stats = nothing, calculate_error = false,
         retcode = sol_idx != length(times) ? ReturnCode.Terminated : ReturnCode.Success
     )
-end
-
-struct KernelSolutionVector{S, P, T, U, A} <: AbstractVector{S}
-    first_solution::S
-    probs::P
-    ts::T
-    us::U
-    alg::A
-end
-
-Base.size(sols::KernelSolutionVector) = (length(sols.probs),)
-Base.IndexStyle(::Type{<:KernelSolutionVector}) = IndexLinear()
-function Base.getindex(sols::KernelSolutionVector, i::Int)
-    @boundscheck checkbounds(sols, i)
-    return i == 1 ? sols.first_solution :
-        _kernel_solution(sols.probs[i], sols.alg, sols.ts, sols.us, i)
-end
-
-function KernelSolutionVector(probs, ts, us, alg)
-    first_solution = _kernel_solution(_unwrap_kernel_host(probs[1]), alg, ts, us, 1)
-    return KernelSolutionVector(first_solution, probs, ts, us, alg)
 end
 
 function batch_solve(
@@ -323,10 +322,6 @@ function batch_solve(
             ensembleprob, kernel_probs, adapted_kernel_probs, alg, ensemblealg, I,
             adaptive; saveat, kwargs...
         )
-        if ensembleprob.output_func === SciMLBase.DEFAULT_OUTPUT_FUNC &&
-                ensembleprob.reduction === SciMLBase.DEFAULT_REDUCTION && !within_autodiff()
-            return KernelSolutionVector(kernel_probs, solts, kernel_solus, alg)
-        end
         [
             begin
                 ensembleprob.output_func(
