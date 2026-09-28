@@ -99,7 +99,7 @@ end
         dt = dt, save_everystep = false
     )
     @test size(sol.u[end]) == (1, 1)
-    @test sol.u[end][1] ≈ exp(-3.0) atol = atol rtol = rtol
+    @test Array(sol.u[end])[1] ≈ exp(-3.0) atol = atol rtol = rtol
 end
 
 @testset "batch_solve_up rrule scalar p (vector pack)" begin

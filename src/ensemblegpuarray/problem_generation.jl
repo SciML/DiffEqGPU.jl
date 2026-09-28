@@ -6,15 +6,11 @@ function _hcat_batch(cols)
     return cols[1] isa AbstractArray ? reduce(hcat, cols) : reshape(cols, 1, :)
 end
 
-"""
-    pack_ordinary_parameters(probs)
-
-Pack per-trajectory `prob.p` values for `EnsembleGPUArray` kernels.
-
-Scalar parameters become a 1-D vector so `ensemble_param` returns `p[i]` as a `Number`.
-Array parameters (including a singleton trajectory or a length-1 vector) become an
-`nparam × ntraj` matrix so `ensemble_param` returns the full column `p[:, i]`.
-"""
+# Pack per-trajectory `prob.p` values for `EnsembleGPUArray` kernels.
+#
+# Scalar parameters become a 1-D vector so `ensemble_param` returns `p[i]` as a `Number`.
+# Array parameters (including a singleton trajectory or a length-1 vector) become an
+# `nparam × ntraj` matrix so `ensemble_param` returns the full column `p[:, i]`.
 function pack_ordinary_parameters(probs)
     cols = [prob.p isa AbstractArray ? Array(prob.p) : prob.p for prob in probs]
     if cols[1] isa AbstractArray
