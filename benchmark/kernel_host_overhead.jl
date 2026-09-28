@@ -52,7 +52,8 @@ solve_endpoints(16)
 endpoint_pass(solve_endpoints(16))
 timeseries_steps_meanvar(solve_saveat(16))
 
-println("tree=branch backend=CPU threads=$(Threads.nthreads()) reps=$REPS")
+const TREE = isempty(ARGS) ? "branch" : ARGS[1]
+println("tree=$TREE backend=CPU threads=$(Threads.nthreads()) reps=$REPS")
 println("metric=median wall seconds; checksum=sum of endpoint u[1]; analysis=timeseries_steps_meanvar")
 flush(stdout)
 
