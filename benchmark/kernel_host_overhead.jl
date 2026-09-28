@@ -79,7 +79,7 @@ for p in 14:20
         " saveat_solve_s=$(round(saveat_solve_t; digits = 4))",
         " timeseries_steps_meanvar_s=$(round(analysis_t; digits = 4))",
         " checksum=$checksum",
-        " utype=$(typeof(sol.u))"
+        " utype=$(nameof(typeof(sol.u)))"
     )
     flush(stdout)
     local_sol[] = nothing
