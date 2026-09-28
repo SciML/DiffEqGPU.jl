@@ -23,7 +23,7 @@
     u0, p_init,
         init_success = if SciMLBase.has_initialization_data(prob.f)
         gpu_initialization_solve(
-            prob, nothing, eltype(prob.u0)(1.0e-6), eltype(prob.u0)(1.0e-6)
+            prob, SimpleTrustRegion(), eltype(prob.u0)(1.0e-6), eltype(prob.u0)(1.0e-6)
         )
     else
         prob.u0, prob.p, true
@@ -91,7 +91,7 @@ end
 
     u0, p_init,
         init_success = if SciMLBase.has_initialization_data(prob.f)
-        gpu_initialization_solve(prob, nothing, abstol, reltol)
+        gpu_initialization_solve(prob, SimpleTrustRegion(), abstol, reltol)
     else
         prob.u0, prob.p, true
     end
