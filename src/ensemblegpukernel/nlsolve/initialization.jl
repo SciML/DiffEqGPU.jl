@@ -40,8 +40,16 @@ end
     return f.f(bounded_u, p)
 end
 
-@inline initialization_algorithm(initprob, nlsolve_alg) =
-    nlsolve_alg === nothing ? SimpleTrustRegion() : nlsolve_alg
+# Hyperparameters typed like `u0`: the Float64 defaults of `SimpleTrustRegion()` put
+# double loads/truncations into the kernel, which fp64-less devices (oneAPI) reject.
+@inline function initialization_algorithm(initprob, nlsolve_alg)
+    nlsolve_alg === nothing || return nlsolve_alg
+    T = eltype(initprob.u0)
+    return SimpleTrustRegion(;
+        max_trust_radius = zero(T), initial_trust_radius = zero(T),
+        step_threshold = T(1.0e-4), expand_factor = T(2)
+    )
+end
 
 struct InitializationResidual{F, P}
     f::F
