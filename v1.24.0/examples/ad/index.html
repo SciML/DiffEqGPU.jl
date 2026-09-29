@@ -1,0 +1,56 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Using GPU-accelerated Ensembles with Automatic Differentiation · DiffEqGPU.jl</title><script async src="https://www.googletagmanager.com/gtag/js?id=UA-90474609-3"></script><script>  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'UA-90474609-3', {'page_path': location.pathname + location.search + location.hash});
+</script><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://docs.sciml.ai/DiffEqGPU/stable/examples/ad/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="DiffEqGPU.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DiffEqGPU.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li><li><a class="tocitem" href="../../getting_started/">Getting Started with GPU-Accelerated Differential Equations in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox"/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation</a></li><li><a class="tocitem" href="../../tutorials/parallel_callbacks/">Massively Parallel ODE Solving with Event Handling and Callbacks</a></li><li><a class="tocitem" href="../../tutorials/multigpu/">Setting Up Multi-GPU Parallel Parameter Sweeps</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../tutorials/within_method_gpu/">Within-Method GPU Parallelism of Ordinary Differential Equation Solves</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox" checked/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../sde/">GPU Parallel Solving of Stochastic Differential Equations</a></li><li class="is-active"><a class="tocitem" href>Using GPU-accelerated Ensembles with Automatic Differentiation</a></li><li><a class="tocitem" href="../reductions/">Batched Reductions for Lowering Peak Memory Requirements</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../reaction_diffusion/">-</a></li><li><a class="tocitem" href="../bruss/">GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a></li></ul></li></ul></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/ensemblegpukernel/">EnsembleGPUKernel</a></li><li><a class="tocitem" href="../../manual/ensemblegpuarray/">EnsembleGPUArray</a></li><li><a class="tocitem" href="../../manual/optimal_trajectories/">Choosing Optimal Numbers of Trajectories</a></li><li><a class="tocitem" href="../../manual/choosing_ensembler/">Choosing the Ensemble: EnsembleGPUArray vs EnsembleGPUKernel</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li><a class="is-disabled">GPU Ensembles</a></li><li class="is-active"><a href>Using GPU-accelerated Ensembles with Automatic Differentiation</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Using GPU-accelerated Ensembles with Automatic Differentiation</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/SciML/DiffEqGPU.jl/blob/master/docs/src/examples/ad.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="Using-GPU-accelerated-Ensembles-with-Automatic-Differentiation"><a class="docs-heading-anchor" href="#Using-GPU-accelerated-Ensembles-with-Automatic-Differentiation">Using GPU-accelerated Ensembles with Automatic Differentiation</a><a id="Using-GPU-accelerated-Ensembles-with-Automatic-Differentiation-1"></a><a class="docs-heading-anchor-permalink" href="#Using-GPU-accelerated-Ensembles-with-Automatic-Differentiation" title="Permalink"></a></h1><p><code>EnsembleGPUArray</code> comes with derivative overloads for reverse mode automatic differentiation and thus can be thrown into deep learning training loops. The following is an example of this use:</p><pre><code class="language-julia hljs">using OrdinaryDiffEq, DiffEqSensitivity, Flux, DiffEqGPU, CUDA, Test
+CUDA.allowscalar(false)
+
+function modelf(du, u, p, t)
+    du[1] = 1.01 * u[1] * p[1] * p[2]
+end
+
+function model()
+    prob = ODEProblem(modelf, u0, (0.0, 1.0), pa)
+
+    function prob_func(prob, i, repeat)
+        remake(prob, u0 = 0.5 .+ i / 100 .* prob.u0)
+    end
+
+    ensemble_prob = EnsembleProblem(prob, prob_func = prob_func)
+    solve(ensemble_prob, Tsit5(), EnsembleGPUArray(), saveat = 0.1, trajectories = 10)
+end
+
+# loss function
+loss() = sum(abs2, 1.0 .- Array(model()))
+
+data = Iterators.repeated((), 10)
+
+cb = function () # callback function to observe training
+    @show loss()
+end
+
+pa = [1.0, 2.0]
+u0 = [3.0]
+opt = ADAM(0.1)
+println(&quot;Starting to train&quot;)
+
+l1 = loss()
+
+Flux.@epochs 10 Flux.train!(loss, Flux.params([pa]), data, opt; cb = cb)</code></pre><p>Forward-mode automatic differentiation works as well, as demonstrated by its capability to recompile for Dual number arithmatic:</p><pre><code class="language-julia hljs">using OrdinaryDiffEq, DiffEqGPU, ForwardDiff, Test
+
+function lorenz(du, u, p, t)
+    du[1] = p[1] * (u[2] - u[1])
+    du[2] = u[1] * (p[2] - u[3]) - u[2]
+    du[3] = u[1] * u[2] - p[3] * u[3]
+end
+
+u0 = [ForwardDiff.Dual(1.0f0, (1.0, 0.0, 0.0)); ForwardDiff.Dual(0.0f0, (0.0, 1.0, 0.0));
+      ForwardDiff.Dual(0.0f0, (0.0, 0.0, 1.0))]
+tspan = (0.0f0, 100.0f0)
+p = (10.0f0, 28.0f0, 8 / 3.0f0)
+prob = ODEProblem{true, SciMLBase.FullSpecialize}(lorenz, u0, tspan, p)
+prob_func = (prob, i, repeat) -&gt; remake(prob, p = rand(Float32, 3) .* p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func)
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(), trajectories = 10_000,
+                  saveat = 1.0f0)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../sde/">« GPU Parallel Solving of Stochastic Differential Equations</a><a class="docs-footer-nextpage" href="../reductions/">Batched Reductions for Lowering Peak Memory Requirements »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.23 on <span class="colophon-date" title="Wednesday 14 December 2022 20:08">Wednesday 14 December 2022</span>. Using Julia version 1.8.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
