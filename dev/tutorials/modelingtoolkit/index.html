@@ -33,43 +33,43 @@ t: 1498-element Vector{Float32}:
    0.00014131522
    0.00070821616
    0.0022506418
-   0.0054032984
-   0.011556536
-   0.022820365
-   0.04294171
-   0.07692823
-   0.11737434
+   0.005405056
+   0.011435451
+   0.02262732
+   0.046390235
+   0.084757924
+   0.12666751
    ⋮
-  99.505005
-  99.576675
-  99.642845
-  99.72166
-  99.79972
-  99.86805
-  99.933105
-  99.99022
+  99.50507
+  99.57671
+  99.6429
+  99.72173
+  99.79973
+  99.868065
+  99.9331
+  99.99018
  100.0
 u: 1498-element Vector{StaticArraysCore.SVector{4, Float32}}:
  [0.0, 0.0, 1.0, 2.0]
  [9.9860955f-8, 0.0014132521, 1.0002824, 1.9960454]
  [2.5092213f-6, 0.007084652, 1.0014095, 1.9802262]
- [2.537006f-5, 0.022531182, 1.0044309, 1.9375514]
- [0.0001465516, 0.05417118, 1.0104039, 1.852005]
- [0.000672939, 0.11615784, 1.0213017, 1.6916379]
- [0.0026377225, 0.23024164, 1.038805, 1.4212998]
- [0.00937996, 0.43503767, 1.0631571, 1.0161755]
- [0.029963775, 0.7798868, 1.0892379, 0.56920403]
- [0.068470694, 1.1825796, 1.1081138, 0.4366887]
+ [2.537007f-5, 0.022531182, 1.0044309, 1.9375513]
+ [0.00014664693, 0.054188844, 1.0104071, 1.8519579]
+ [0.00065886683, 0.114935346, 1.0210967, 1.6947083]
+ [0.002593098, 0.22828127, 1.0385301, 1.4256747]
+ [0.010948679, 0.470162, 1.0665585, 0.95705515]
+ [0.03627449, 0.8586412, 1.0934504, 0.5095532]
+ [0.07931201, 1.2735757, 1.1122972, 0.46737874]
  ⋮
- [6.380222, 0.22771135, -10.930152, 80.160675]
- [5.7150326, -1.9418658, -4.589691, 93.904305]
- [4.9683547, -2.2139828, 1.643521, 92.4817]
- [3.6729689, 0.26693404, 8.438807, 78.372765]
- [5.360412, 5.2036157, 13.830003, 59.637257]
- [10.916073, 6.850487, 17.324488, 42.0887]
- [14.709508, 2.5671852, 19.334965, 17.774876]
- [12.63868, -1.9967552, 19.496784, -13.401418]
- [11.898012, -2.4069638, 19.336784, -19.326712]</code></pre><p>There are two things to notice here. The first is the <code>split = false</code> argument to <code>mtkcompile</code>. By default MTK builds an <code>MTKParameters</code> object, which stores the parameters in separate buffers grouped by how they are used. That object holds <code>Vector</code>s and is therefore not <code>isbits</code>, so it cannot be placed into a GPU kernel. <code>split = false</code> instead puts every parameter into a single flat buffer.</p><p>The second is that the operating point <code>op</code> is given as a single <a href="https://github.com/JuliaArrays/StaticArrays.jl">StaticArrays.jl</a> vector of pairs, using <code>Float32</code> values. MTK builds <code>u0</code> and <code>p</code> in the same container type it was handed, so a static vector in gives static vectors out:</p><pre><code class="language-julia hljs">typeof(prob.u0), typeof(prob.p)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(StaticArraysCore.SVector{4, Float32}, StaticArraysCore.SVector{10, Float32})</code></pre><p>Both are <code>isbits</code> and thus usable from a GPU kernel.</p><p>Symbolic problem transformations are inherently dynamic, so changes to <code>u0</code> and <code>p</code> should be made on the CPU before the per-trajectory problems are sent to the GPU. This can be done using the <a href="https://docs.sciml.ai/SymbolicIndexingInterface/stable/">SymbolicIndexingInterface.jl</a>. For example, let&#39;s define a problem which randomizes the choice of <code>(σ, ρ, β)</code>. We do this by first constructing the function that will change a <code>prob.p</code> object into the updated form by changing those 3 values by using the <code>setsym_oop</code> as follows:</p><pre><code class="language-julia hljs">using SymbolicIndexingInterface
+ [6.37724, 0.2216483, -10.917931, 80.20832]
+ [5.714264, -1.9439869, -4.5784874, 93.91319]
+ [4.966067, -2.2125754, 1.6559882, 92.46716]
+ [3.6717608, 0.27539745, 8.451286, 78.33633]
+ [5.365833, 5.2091556, 13.835606, 59.614597]
+ [10.92501, 6.8482156, 17.328684, 42.059494]
+ [14.710324, 2.5598185, 19.336369, 17.73799]
+ [12.634807, -1.9993794, 19.496078, -13.433457]
+ [11.890852, -2.410085, 19.335026, -19.382349]</code></pre><p>There are two things to notice here. The first is the <code>split = false</code> argument to <code>mtkcompile</code>. By default MTK builds an <code>MTKParameters</code> object, which stores the parameters in separate buffers grouped by how they are used. That object holds <code>Vector</code>s and is therefore not <code>isbits</code>, so it cannot be placed into a GPU kernel. <code>split = false</code> instead puts every parameter into a single flat buffer.</p><p>The second is that the operating point <code>op</code> is given as a single <a href="https://github.com/JuliaArrays/StaticArrays.jl">StaticArrays.jl</a> vector of pairs, using <code>Float32</code> values. MTK builds <code>u0</code> and <code>p</code> in the same container type it was handed, so a static vector in gives static vectors out:</p><pre><code class="language-julia hljs">typeof(prob.u0), typeof(prob.p)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(StaticArraysCore.SVector{4, Float32}, StaticArraysCore.SVector{10, Float32})</code></pre><p>Both are <code>isbits</code> and thus usable from a GPU kernel.</p><p>Symbolic problem transformations are inherently dynamic, so changes to <code>u0</code> and <code>p</code> should be made on the CPU before the per-trajectory problems are sent to the GPU. This can be done using the <a href="https://docs.sciml.ai/SymbolicIndexingInterface/stable/">SymbolicIndexingInterface.jl</a>. For example, let&#39;s define a problem which randomizes the choice of <code>(σ, ρ, β)</code>. We do this by first constructing the function that will change a <code>prob.p</code> object into the updated form by changing those 3 values by using the <code>setsym_oop</code> as follows:</p><pre><code class="language-julia hljs">using SymbolicIndexingInterface
 sym_setter = setsym_oop(sys, [σ, ρ, β])</code></pre><p>The return <code>sym_setter</code> is our optimized function, let&#39;s see it in action:</p><pre><code class="language-julia hljs">u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">(Float32[0.0, 0.0, 1.0, 2.0], Float32[0.45456356, 0.8650038, 0.41637892, 0.0, 1.0, 0.0, 0.0, 0.0, 2.0, 0.0])</code></pre><p>Notice it takes in the vector of values for <code>[σ, ρ, β]</code> and spits out the new <code>u0, p</code>. So we can build and solve an MTK generated ODE on the GPU using the following:</p><div class="admonition is-info" id="Note-8dfd626819996293"><header class="admonition-header">Note<a class="admonition-anchor" href="#Note-8dfd626819996293" title="Permalink"></a></header><div class="admonition-body"><p><code>EnsembleProblem.prob_func</code> is evaluated on the host for every trajectory before <code>EnsembleGPUKernel</code> launches. The symbolic setter therefore does not need to compile for the device. The problem returned by <code>prob_func</code> is then converted to static, device-compatible storage by <code>make_prob_compatible</code>.</p></div></div><pre><code class="language-julia hljs">using DiffEqGPU, CUDA
 function prob_func2(prob, ctx)
     u0, p = sym_setter(prob, SVector{3}(rand(Float32, 3)))
@@ -120,4 +120,4 @@ function DiffEqGPU.make_static_storage(itp::MyInterpolation)
         DiffEqGPU.make_static_storage(itp.t), DiffEqGPU.make_static_storage(itp.u)
     )
 end</code></pre><p>The stand-in has to be isbits and has to implement whatever the model calls on it.</p><p>The current initialization path has the following restrictions:</p><ul><li>Square, underdetermined, and overdetermined nonlinear least-squares initialization problems are supported. Square systems use <code>SimpleTrustRegion</code>; rectangular systems use the equivalent static normal-equation Gauss-Newton step because rectangular <code>StaticArray</code> factorizations are not device-compatible. Their Jacobian must have the rank required by that step.</li><li>Lower and upper bounds are supported through a smooth transformation to unconstrained variables. A solution exactly on a finite bound is represented by a limiting unconstrained value and can therefore converge less robustly than an interior solution.</li><li>ModelingToolkit&#39;s state and parameter initialization maps are used as generated, so entries computed from the solved initialization system (for example states that are observed variables of the torn initialization system) are supported alongside entries copied straight from the ODE and initialization problems.</li><li>Ordinary nonlinear and linear SCC initialization blocks are supported, including all-linear SCC problems that carry no initial state: missing linear-block states are seeded with zeros, which the exact one-step linear solve does not depend on. SCC initialization containing Modelica homotopy blocks is not supported; compile the system with <code>homotopy = false</code> to remove them (see <a href="#homotopy_gpu">Systems using <code>homotopy</code></a>).</li></ul><p>Structured <code>MTKParameters</code> storage is converted recursively to static storage, so this path does not require <code>split = false</code>.</p><h3 id="homotopy_gpu"><a class="docs-heading-anchor" href="#homotopy_gpu">Systems using <code>homotopy</code></a><a id="homotopy_gpu-1"></a><a class="docs-heading-anchor-permalink" href="#homotopy_gpu" title="Permalink"></a></h3><p>A system whose initialization carries Modelica <code>homotopy(actual, simplified)</code> operators builds a <code>HomotopyProblem</code>, which is solved by continuation. Continuation is a host-side sweep over a solver, so it has no device-compatible lowering and <code>EnsembleGPUKernel</code> rejects it:</p><pre><code class="nohighlight hljs">ArgumentError: SCC nonlinear initialization problems containing homotopy blocks are not
-supported by EnsembleGPUKernel.</code></pre><p>Pass <code>homotopy = false</code> to <code>mtkcompile</code> to compile the system without them:</p><pre><code class="language-julia hljs">pendulum = mtkcompile(pendulum; homotopy = false)</code></pre><p>Every <code>homotopy(actual, simplified)</code> node is replaced by <code>actual</code> before compilation, so the compiled system contains no homotopy nodes, initialization builds a plain nonlinear problem, and the result lowers to the kernel like any other system. This is exact rather than an approximation: <code>actual</code> is what the operator evaluates to numerically anyway, per the Modelica specification. What is given up is only the <code>simplified</code> starting heuristic — the continuation&#39;s easier warm start — so a system that relied on it to converge from a cold start may need better guesses instead.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../parallel_callbacks/">« Massively Parallel ODE Solving with Event Handling and Callbacks</a><a class="docs-footer-nextpage" href="../multigpu/">Setting Up Multi-GPU Parallel Parameter Sweeps »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Monday 28 September 2026 17:26">Monday 28 September 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
+supported by EnsembleGPUKernel.</code></pre><p>Pass <code>homotopy = false</code> to <code>mtkcompile</code> to compile the system without them:</p><pre><code class="language-julia hljs">pendulum = mtkcompile(pendulum; homotopy = false)</code></pre><p>Every <code>homotopy(actual, simplified)</code> node is replaced by <code>actual</code> before compilation, so the compiled system contains no homotopy nodes, initialization builds a plain nonlinear problem, and the result lowers to the kernel like any other system. This is exact rather than an approximation: <code>actual</code> is what the operator evaluates to numerically anyway, per the Modelica specification. What is given up is only the <code>simplified</code> starting heuristic — the continuation&#39;s easier warm start — so a system that relied on it to converge from a cold start may need better guesses instead.</p></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../parallel_callbacks/">« Massively Parallel ODE Solving with Event Handling and Callbacks</a><a class="docs-footer-nextpage" href="../multigpu/">Setting Up Multi-GPU Parallel Parameter Sweeps »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.19.0 on <span class="colophon-date" title="Tuesday 29 September 2026 14:16">Tuesday 29 September 2026</span>. Using Julia version 1.13.1.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
