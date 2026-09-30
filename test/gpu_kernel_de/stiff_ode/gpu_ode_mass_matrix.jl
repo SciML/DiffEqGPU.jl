@@ -67,3 +67,35 @@ sol = solve(
     expected = iszero(initial) ? initial : exp(-1.0f0 / mass.λ)
     @test all(s -> isapprox(s.u[end][1], expected; atol = 2.0f-6), sol.u)
 end
+
+# Analytic check for M * u' = -u with nonsingular M = 2I (issue #530).
+# Expected endpoint is u0 * exp(-t/2); first component is exp(-1/2).
+@testset "Kvaerno nonsingular mass matrix" begin
+    f(u, p, t) = -u
+    jac(u, p, t) = -one(SMatrix{2, 2, Float64})
+    expected = exp(-0.5) * SVector(1.0, 2.0)
+    for alg in (GPUKvaerno3(), GPUKvaerno5()), adaptive in (false, true)
+        prob = ODEProblem(
+            ODEFunction{false}(f; jac, mass_matrix = 2.0I),
+            SVector(1.0, 2.0), (0.0, 1.0)
+        )
+        sol = solve(
+            EnsembleProblem(prob; safetycopy = false), alg,
+            EnsembleGPUKernel(backend, 0.0); trajectories = 2, adaptive,
+            dt = 0.01, abstol = 1.0e-8, reltol = 1.0e-8, save_everystep = false
+        )
+        @test sol.u[1].u[end] ≈ expected rtol = 1.0e-5 atol = 1.0e-8
+    end
+end
+
+@testset "Kvaerno rejects singular mass matrix" begin
+    f = ODEFunction{false}((u, p, t) -> -u; mass_matrix = 0.0I)
+    prob = ODEProblem(f, SVector(0.0), (0.0, 1.0))
+    for alg in (GPUKvaerno3(), GPUKvaerno5())
+        @test_throws ArgumentError solve(
+            EnsembleProblem(prob; safetycopy = false), alg,
+            EnsembleGPUKernel(backend, 0.0); trajectories = 2, adaptive = false,
+            dt = 0.01, save_everystep = false
+        )
+    end
+end
