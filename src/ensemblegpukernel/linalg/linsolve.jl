@@ -106,3 +106,31 @@ end
         LUp.U \ (LUp.L \ $(length(Sb) > 1 ? :(b[LUp.p, :]) : :(b[LUp.p])))
     end
 end
+
+const _KVAERNO_SINGULAR_MASS_MSG = "GPUKvaerno3 and GPUKvaerno5 do not support DAEs (singular mass matrices). Use GPURosenbrock23, GPURodas4, or GPURodas5P instead."
+
+@inline function _check_kvaerno_mass_matrix(alg, mass_matrix)
+    if alg isa Union{GPUKvaerno3, GPUKvaerno5} && _is_singular_mass_matrix(mass_matrix)
+        throw(ArgumentError(_KVAERNO_SINGULAR_MASS_MSG))
+    end
+    return nothing
+end
+
+@inline _is_singular_mass_matrix(::LinearAlgebra.UniformScaling{Bool}) = false
+@inline _is_singular_mass_matrix(M::LinearAlgebra.UniformScaling) = iszero(M.λ)
+@inline _is_singular_mass_matrix(M) = iszero(det(M))
+
+# Explicit first-stage / FSAL derivative for ESDIRK: solve M * du = f(u,p,t).
+@inline function _kvaerno_explicit_du(f, u, p, t)
+    return _mass_matrix_solve_du(f.mass_matrix, f(u, p, t))
+end
+
+@inline _mass_matrix_solve_du(::LinearAlgebra.UniformScaling{Bool}, rhs) = rhs
+@inline function _mass_matrix_solve_du(M::LinearAlgebra.UniformScaling, rhs)
+    iszero(M.λ) && throw(ArgumentError(_KVAERNO_SINGULAR_MASS_MSG))
+    return rhs / M.λ
+end
+@inline function _mass_matrix_solve_du(M::StaticMatrix, rhs)
+    iszero(det(M)) && throw(ArgumentError(_KVAERNO_SINGULAR_MASS_MSG))
+    return linear_solve(M, rhs)
+end

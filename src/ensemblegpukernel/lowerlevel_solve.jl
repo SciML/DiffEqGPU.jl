@@ -88,6 +88,8 @@ function vectorized_solve(
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
 
+    _check_kvaerno_mass_matrix(alg, prob.f.mass_matrix)
+
     prob = convert(ImmutableODEProblem, prob)
     dt = convert(eltype(prob.tspan), dt)
     saveat_converted = nothing
@@ -276,6 +278,8 @@ function vectorized_asolve(
 
     backend = get_backend(probs)
     backend = maybe_prefer_blocks(backend)
+
+    _check_kvaerno_mass_matrix(alg, prob.f.mass_matrix)
 
     # Get the time type from the problem
     Tt = eltype(prob.tspan)
