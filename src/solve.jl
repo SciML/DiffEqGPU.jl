@@ -406,6 +406,8 @@ function batch_solve_up_kernel(
         )...
     )
 
+    _check_kvaerno_mass_matrix(alg, ensembleprob.prob.f.mass_matrix)
+
     dev = ensemblealg.dev
     probs = _kernel_transfer(dev, adapted_probs)
 
@@ -422,6 +424,7 @@ function batch_solve_up_kernel(
             kwargs..., callback = _callback
         )
     end
+
     solus = _kernel_transfer(CPU(), us)
     solts = _kernel_transfer(CPU(), ts)
     return (solts, solus)
