@@ -142,10 +142,9 @@ end
     @test all(s -> isapprox(s.u[end], SVector(11.25f0, 11.25f0); rtol = 1.0f-6), sol.u)
 end
 
-# At t ≈ 2^26 a Float32 ulp is 8: the first step (32) ends one ulp past the stop in
-# time but has integrated 8 time units beyond it, so the state at the stop has to
-# come from the dense output. `tf` is chosen so every later step is a whole number of
-# ulps; otherwise `t + dt` rounding would decouple time from the integrated length.
+# At t ≈ 2^26 a Float32 ulp is 8, so the initial step (32) would end one ulp past the
+# stop in time while having integrated 8 time units beyond it. `tf` keeps every step
+# a whole number of ulps (see https://github.com/SciML/DiffEqGPU.jl/issues/567).
 @testset "Adaptive tstop inside a coarse step, public solve ($(nameof(typeof(alg))))" for
     alg in ADAPTIVE_ALGS
     t0 = Float32(2^26)
