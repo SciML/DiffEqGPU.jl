@@ -288,3 +288,34 @@ end
         )
     end
 end
+
+# Property: whatever the interval length, stiffness, initial step and stops near the
+# end, an adaptive solve either fails with `dt<dtmin` or reaches the analytic endpoint.
+# Integrating only part of the final interval and reporting success shows up as an
+# error far above the bound: across this grid every method's global error stays below
+# 2000 * reltol (Rosenbrock23, second order, is the largest at about 900 * reltol).
+@testset "Adaptive endpoint property grid ($(nameof(typeof(alg))))" for alg in ADAPTIVE_ALGS
+    decay(u, p, t) = -p[1] * u
+    failures = []
+    for reltol in (1.0e-6, 1.0e-9), L in (1.0e-13, 1.0e-3, 1.0), λL in (0.1, 1.0, 4.0),
+            dtfrac in (0.5, 0.999, 1.0),
+            stops in ([], [L / 4], [L * (1 - 1.0e-2)], [prevfloat(L)], [L - 5.0e-15])
+
+        stops = Float64[s for s in stops if 0 < s < L]
+        prob = ODEProblem{false}(decay, SVector(1.0, 1.0), (0.0, L), SVector(λL / L))
+        endpoint = try
+            sol = solve(
+                EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+                trajectories = 2, adaptive = true, dt = dtfrac * L, tstops = stops,
+                abstol = reltol / 1000, reltol, save_everystep = false
+            )
+            sol.u[1].u[end][1]
+        catch err
+            err isa ErrorException && occursin("dt<dtmin", err.msg) && continue
+            rethrow()
+        end
+        abs(endpoint - exp(-λL)) <= 2000 * reltol * exp(-λL) ||
+            push!(failures, (; reltol, L, λL, dtfrac, stops, endpoint))
+    end
+    @test isempty(failures)
+end

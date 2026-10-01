@@ -14,18 +14,24 @@ function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where
     return T(1 / 5), zero(T), T(5), T(1 / 5), T(9 / 10), T(1.0e-4), T(1.0e-4)
 end
 
-# Whether a pending tstop before `tf` falls inside the step just accepted from `integ.t`.
+# Adaptive steps land on pending tstops and on `tf` by construction: `_bounded_step`
+# makes a trial step that would reach (or nearly reach) the next landing target exactly
+# the remaining distance, and the accept branch only marks `t = tf` for such a step.
+# There is no tolerance-based endpoint snap, so completion always means the interval
+# was integrated.
+
+# Whether a pending tstop before `tf` lies inside the step just accepted from `integ.t`.
 @inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     (tstops === nothing || integ.tstops_idx > length(tstops)) && return false
     stop = @inbounds tstops[integ.tstops_idx]
-    return stop < tf && stop - integ.t - integ.dt - T(100) * eps(T) < T(0)
+    return stop < tf && stop - integ.t <= integ.dt
 end
 
 # The next time the adaptive integrator has to land on exactly: the next pending
-# tstop before `tf`, otherwise `tf`. A stop closer than the minimum step size is
-# not a target (stepping to it would force `dt < dtmin`); the following step's
-# tstop branch lands on it by interpolation instead.
+# tstop before `tf`, otherwise `tf`. A stop closer than the minimum step size is not
+# a target (stepping to it would force `dt < dtmin`); the step that covers it lands on
+# it by interpolation instead.
 @inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
@@ -35,11 +41,13 @@ end
     return tf
 end
 
-# Shorten a trial step so that it ends exactly on the next pending tstop. The step's
-# own end state is then the state at the stop, and its dense output stays intact.
-@inline function _clamp_to_next_tstop(integ, dt, tf, ::Type{T}) where {T}
-    stop = _next_stop(integ, tf, T)
-    return stop < tf ? min(dt, stop - integ.t) : dt
+# Trial step from `integ.t`: never past the next landing target, and exactly the
+# remaining distance when the proposal reaches it or would leave less than 1% of a
+# step before it.
+@inline function _bounded_step(integ, dt, tf, ::Type{T}) where {T}
+    target = _next_stop(integ, tf, T)
+    remaining = target - integ.t
+    return remaining <= dt + dt / 100 || integ.t + dt >= target ? remaining : dt
 end
 
 @inline function savevalues!(

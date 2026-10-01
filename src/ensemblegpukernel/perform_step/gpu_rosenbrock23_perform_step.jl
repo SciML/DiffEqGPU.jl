@@ -81,7 +81,7 @@ end
     t = integ.t
     p = integ.p
     tf = integ.tf
-    dt = _clamp_to_next_tstop(integ, dt, tf, T)
+    dt = _bounded_step(integ, dt, tf, T)
 
     tmp = integ.tmp
     f = integ.f
@@ -105,7 +105,7 @@ end
     mass_matrix = integ.f.mass_matrix
 
     while EEst > convert(T, 1.0)
-        dt < convert(T, 1.0f-14) && dt != tf - t && error("dt<dtmin")
+        (dt < convert(T, 1.0f-14) || t + dt == t) && dt != tf - t && error("dt<dtmin")
 
         γ = dt * d
 
@@ -184,7 +184,7 @@ end
                 end
                 dt = integ.t - integ.tprev
                 integ.tstops_idx += 1
-            elseif (tf - t - dt) < convert(T, 1.0f-14)
+            elseif dt == tf - t
                 integ.t = tf
             else
                 ##Advance the integrator
