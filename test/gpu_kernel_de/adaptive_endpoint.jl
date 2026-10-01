@@ -244,3 +244,47 @@ end
     )
     @test all(s -> s.u[2] ≈ SVector(T(8), T(8)), sol.u)
 end
+
+# A final interval shorter than `dtmin` is only exempt from the `dtmin` check as a
+# whole. If error control rejects it, the solve must either fail with `dt<dtmin` or
+# integrate the full interval; it must never snap to `tf` after a partial step.
+function final_interval_outcome(solve_thunk, exact)
+    sol = try
+        solve_thunk()
+    catch err
+        return err isa ErrorException && occursin("dt<dtmin", err.msg)
+    end
+    return all(s -> isapprox(s.u[end][end], exact; rtol = 1.0e-5, atol = 1.0e-9), sol.u)
+end
+
+@testset "Adaptive rejected sub-dtmin final interval ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    prob = ODEProblem{false}((u, p, t) -> -1.0e15 * u, SVector(1.0, 1.0), (0.0, 4.0e-15))
+    @test final_interval_outcome(exp(-4.0)) do
+        solve(
+            EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+            trajectories = 2, adaptive = true, dt = 4.0e-15, abstol = 1.0e-9,
+            reltol = 1.0e-6, save_everystep = false
+        )
+    end
+end
+
+@testset "Adaptive stiff dynamics switched on just before tf ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    stop, tf = 1.0 - 4.0e-15, 1.0
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == stop,
+        integrator -> (integrator.u = SVector(1.0e15, 1.0));
+        save_positions = (false, false)
+    )
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(0.0, -u[1] * u[2]), SVector(0.0, 1.0), (0.0, tf)
+    )
+    @test final_interval_outcome(exp(-1.0e15 * (tf - stop))) do
+        solve(
+            EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+            trajectories = 2, adaptive = true, dt = 0.5, tstops = [stop], callback = cb,
+            merge_callbacks = true, abstol = 1.0e-9, reltol = 1.0e-6, save_everystep = false
+        )
+    end
+end

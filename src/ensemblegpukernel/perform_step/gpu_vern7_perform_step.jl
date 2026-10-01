@@ -113,7 +113,7 @@ end
     EEst = convert(T, Inf)
 
     while EEst > convert(T, 1.0)
-        dt < convert(T, 1.0f-14) && tf - t >= T(1.0e-14) && error("dt<dtmin")
+        dt < convert(T, 1.0f-14) && dt != tf - t && error("dt<dtmin")
 
         k1 = f(uprev, p, t)
         a = dt * a021
