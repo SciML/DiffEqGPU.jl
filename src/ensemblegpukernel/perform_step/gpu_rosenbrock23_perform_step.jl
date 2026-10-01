@@ -81,6 +81,7 @@ end
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dt = _clamp_to_next_tstop(integ, dt, tf, T)
 
     tmp = integ.tmp
     f = integ.f
@@ -104,7 +105,7 @@ end
     mass_matrix = integ.f.mass_matrix
 
     while EEst > convert(T, 1.0)
-        dt < convert(T, 1.0f-14) && error("dt<dtmin")
+        dt < convert(T, 1.0f-14) && tf - t >= T(1.0e-14) && error("dt<dtmin")
 
         γ = dt * d
 

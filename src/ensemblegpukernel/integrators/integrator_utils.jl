@@ -14,27 +14,32 @@ function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where
     return T(1 / 5), zero(T), T(5), T(1 / 5), T(9 / 10), T(1.0e-4), T(1.0e-4)
 end
 
-# Whether a pending tstop falls inside the step just accepted from `integ.t`. Stops
-# within the endpoint-snap threshold of `tf` are left to the snap, since landing on
-# them would leave a remaining interval below the minimum step size.
+# Whether a pending tstop before `tf` falls inside the step just accepted from `integ.t`.
 @inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     (tstops === nothing || integ.tstops_idx > length(tstops)) && return false
     stop = @inbounds tstops[integ.tstops_idx]
-    return tf - stop >= T(1.0e-14) && stop - integ.t - integ.dt - T(100) * eps(T) < T(0)
+    return stop < tf && stop - integ.t - integ.dt - T(100) * eps(T) < T(0)
 end
 
 # The next time the adaptive integrator has to land on exactly: the next pending
 # tstop before `tf`, otherwise `tf`. A stop closer than the minimum step size is
-# not a clamp target (it would force `dt < dtmin`); the following step's tstop
-# branch lands on it instead.
+# not a target (stepping to it would force `dt < dtmin`); the following step's
+# tstop branch lands on it by interpolation instead.
 @inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
         stop = @inbounds tstops[integ.tstops_idx]
-        tf - stop >= T(1.0e-14) && stop - integ.t >= T(1.0e-14) && return stop
+        stop < tf && stop - integ.t >= T(1.0e-14) && return stop
     end
     return tf
+end
+
+# Shorten a trial step so that it ends exactly on the next pending tstop. The step's
+# own end state is then the state at the stop, and its dense output stays intact.
+@inline function _clamp_to_next_tstop(integ, dt, tf, ::Type{T}) where {T}
+    stop = _next_stop(integ, tf, T)
+    return stop < tf ? min(dt, stop - integ.t) : dt
 end
 
 @inline function savevalues!(

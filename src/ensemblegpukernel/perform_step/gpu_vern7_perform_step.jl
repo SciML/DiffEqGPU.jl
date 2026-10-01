@@ -86,6 +86,7 @@ end
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dt = _clamp_to_next_tstop(integ, dt, tf, T)
 
     @unpack c2, c3, c4, c5, c6, c7, c8, a021, a031, a032, a041, a043, a051, a053, a054,
         a061, a063, a064, a065, a071, a073, a074, a075, a076, a081, a083, a084,
@@ -112,7 +113,7 @@ end
     EEst = convert(T, Inf)
 
     while EEst > convert(T, 1.0)
-        dt < convert(T, 1.0f-14) && error("dt<dtmin")
+        dt < convert(T, 1.0f-14) && tf - t >= T(1.0e-14) && error("dt<dtmin")
 
         k1 = f(uprev, p, t)
         a = dt * a021

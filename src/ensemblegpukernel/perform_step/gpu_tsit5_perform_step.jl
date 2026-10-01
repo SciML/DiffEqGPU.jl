@@ -76,6 +76,7 @@ end
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dt = _clamp_to_next_tstop(integ, dt, tf, T)
     a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
         a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
     btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.btildes
@@ -99,7 +100,7 @@ end
     EEst = convert(T, Inf)
 
     while EEst > T(1.0)
-        dt < T(1.0e-14) && error("dt<dtmin")
+        dt < T(1.0e-14) && tf - t >= T(1.0e-14) && error("dt<dtmin")
 
         tmp = uprev + dt * a21 * k1
         k2 = f(tmp, p, t + c1 * dt)

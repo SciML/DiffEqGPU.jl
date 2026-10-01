@@ -97,13 +97,7 @@ end
         tstops = Float32[0.875], abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
     )
     @test all(s -> s.t[end] == tf, sol.u)
-    # Stopping at the tstop goes through the dense output, which for Float32 Vern7
-    # is ~60 ulps off even for u' = 1: https://github.com/SciML/DiffEqGPU.jl/issues/554
-    if alg isa GPUVern7
-        @test all(s -> all(isfinite, s.u[end]), sol.u)
-    else
-        @test all(s -> isapprox(s.u[end], SVector(1.25f0, 1.25f0); rtol = 1.0f-6), sol.u)
-    end
+    @test all(s -> isapprox(s.u[end], SVector(1.25f0, 1.25f0); rtol = 1.0f-6), sol.u)
 end
 
 # After landing on the first stop, the next proposed step reaches `tf`; the
@@ -144,13 +138,8 @@ end
         abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
     )
     @test all(s -> s.t[end] == 1.0f0, sol.u)
-    # u0 + (tf - t0) + 10 from the callback; Vern7 is only checked for
-    # the callback having fired until issue 554 is fixed.
-    if alg isa GPUVern7
-        @test all(s -> all(>(11.0f0), s.u[end]), sol.u)
-    else
-        @test all(s -> isapprox(s.u[end], SVector(11.25f0, 11.25f0); rtol = 1.0f-6), sol.u)
-    end
+    # u0 + (tf - t0) + 10 from the callback
+    @test all(s -> isapprox(s.u[end], SVector(11.25f0, 11.25f0); rtol = 1.0f-6), sol.u)
 end
 
 # At t ≈ 2^26 a Float32 ulp is 8: the first step (32) ends one ulp past the stop in
@@ -191,4 +180,68 @@ end
     )
     @test all(s -> s.t[end] == 2.0, sol.u)
     @test all(s -> s.u[end] ≈ SVector(21.25, 21.25), sol.u)
+end
+
+# Stops at or within the minimum step size of `tf` must still be visited and their
+# callbacks run; only the forced final interval to `tf` may be shorter than `dtmin`.
+@testset "Adaptive tstops at the endpoint ($(nameof(typeof(alg))), $label)" for
+    alg in ADAPTIVE_ALGS,
+        (label, stops) in (
+            ("at tf", [2.0]), ("one ulp before tf", [prevfloat(2.0)]),
+            ("pair within dtmin of tf", [2.0 - 1.5e-14, 2.0 - 5.0e-15]),
+            ("one ulp before and at tf", [prevfloat(2.0), 2.0]),
+        )
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t in stops,
+        integrator -> (integrator.u += SVector(10.0, 10.0));
+        save_positions = (false, false)
+    )
+    prob = ODEProblem{false}((u, p, t) -> SVector(1.0, 1.0), SVector(0.0, 0.0), (0.75, 2.0))
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = 0.0625, tstops = stops, callback = cb,
+        merge_callbacks = true, abstol = 1.0e-9, reltol = 1.0e-6, save_everystep = false
+    )
+    expected = 1.25 + 10 * length(stops)
+    @test all(s -> s.t[end] == 2.0, sol.u)
+    @test all(s -> isapprox(s.u[end], SVector(expected, expected); rtol = 1.0e-6), sol.u)
+end
+
+@testset "Adaptive terminating callback one ulp before tf ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    stop = prevfloat(2.0)
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == stop,
+        integrator -> (integrator.u += SVector(10.0, 10.0); terminate!(integrator));
+        save_positions = (false, false)
+    )
+    prob = ODEProblem{false}((u, p, t) -> SVector(1.0, 1.0), SVector(0.0, 0.0), (0.75, 2.0))
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = 1.25 - 2.0e-14, tstops = [stop],
+        callback = cb, merge_callbacks = true, abstol = 1.0e-9, reltol = 1.0e-6,
+        save_everystep = false
+    )
+    expected = stop - 0.75 + 10
+    @test all(s -> s.t[end] == stop, sol.u)
+    @test all(s -> isapprox(s.u[end], SVector(expected, expected); rtol = 1.0e-6), sol.u)
+end
+
+# The step that reaches a stop must keep its dense output intact for the saveat
+# points it covers: one ulp at these times is 8, so a step that overshoots the stop
+# and is then overwritten with the stop's state would corrupt the sample at t0 + 8.
+@testset "Adaptive saveat inside a step that reaches a tstop ($(nameof(typeof(alg))), $T)" for
+    alg in ADAPTIVE_ALGS, T in (Float32, Float64)
+    t0 = T(T === Float32 ? 2^26 : 2^55)
+    @assert eps(t0) == T(8)
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(one(T), one(T)), SVector(zero(T), zero(T)), (t0, t0 + T(32))
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = T(32), tstops = T[t0 + T(24)],
+        saveat = T[t0, t0 + T(8)], abstol = T(1.0e-6), reltol = T(1.0e-3),
+        save_everystep = false
+    )
+    @test all(s -> s.u[2] ≈ SVector(T(8), T(8)), sol.u)
 end
