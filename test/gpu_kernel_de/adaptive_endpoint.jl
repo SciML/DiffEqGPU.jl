@@ -357,9 +357,8 @@ end
     @test all(s -> s.t[end] == stop && abs(s.u[end][1] - exact) <= 64eps(Float32), sol.u)
 end
 
-# A landing step far below `dtmin` must stay accurate for every method family. For the
-# Rosenbrock methods W = I/(γ dt) - J then has entries near 1/dt, which overflowed the
-# unscaled Cramer solve and silently zeroed (or NaN'd) the increment.
+# Landing on a stop far below `dtmin` keeps the state accurate for every method family,
+# including Rosenbrock methods whose W = I/(γ dt) - J then has entries near 1/dt.
 @testset "Adaptive tiny landing step ($(nameof(typeof(alg))), rate $rate)" for
     alg in ADAPTIVE_ALGS, rate in (1.0f14, 1.0f20)
     stop = 1.0f-20
@@ -380,4 +379,31 @@ end
             all(x -> isapprox(Float64(x), exact; rtol = 64eps(Float32)), s.u[end]),
         sol.u
     )
+end
+
+# Stops below `_landing_floor` (where Rosenbrock `C/dt` stage terms overflow) are reached
+# by interpolating the covering step: the result is finite and accurate, never NaN. Vern7's
+# dense output is checked only for finiteness: https://github.com/SciML/DiffEqGPU.jl/issues/554
+@testset "Adaptive stop below the landing floor ($(nameof(typeof(alg))), $T)" for
+    alg in ADAPTIVE_ALGS, T in (Float32, Float64)
+    stop = T === Float32 ? 5.0f-38 : 1.0e-307
+    rate = T(1.0e14)
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == stop, terminate!; save_positions = (false, false)
+    )
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(rate, rate), SVector(zero(T), zero(T)), (zero(T), T(2.0e-14))
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = T(1.0e-14), tstops = [stop], callback = cb,
+        merge_callbacks = true, save_everystep = false, abstol = T(1.0e-12), reltol = T(1.0e-3)
+    )
+    exact = Float64(BigFloat(rate) * BigFloat(stop))
+    @test all(s -> s.t[end] == stop && all(isfinite, s.u[end]), sol.u)
+    if !(alg isa GPUVern7)
+        @test all(
+            s -> all(x -> isapprox(Float64(x), exact; rtol = 128eps(T)), s.u[end]), sol.u
+        )
+    end
 end

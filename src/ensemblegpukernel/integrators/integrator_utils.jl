@@ -29,15 +29,18 @@ end
     return stop < tf && stop - integ.t <= integ.dt
 end
 
+# Shortest step taken to land on a stop or `tf`. Below it, the `C/dt` terms of the
+# Rosenbrock stage formulas (|C| ≤ 166 for Rodas5P) can overflow, so closer stops are
+# reached by interpolating the covering step and a shorter final interval fails `dtmin`.
+@inline _landing_floor(::Type{T}) where {T} = T(1024) / floatmax(T)
+
 # The next time the adaptive integrator has to land on exactly: the next pending
-# tstop after `integ.t` and before `tf`, otherwise `tf`. Steps end on it with an
-# integrated step, never by interpolating back from a longer one; a landing step is
-# exempt from `dtmin`.
+# tstop at least `_landing_floor` after `integ.t` and before `tf`, otherwise `tf`.
 @inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
         stop = convert(typeof(tf), @inbounds tstops[integ.tstops_idx])
-        integ.t < stop < tf && return stop
+        stop < tf && stop - integ.t >= _landing_floor(T) && return stop
     end
     return tf
 end

@@ -158,7 +158,9 @@ end
     EEst = convert(T, Inf)
 
     while EEst > convert(T, 1.0)
-        (dt < convert(T, 1.0f-14) || t + dt == t) && dt != _next_stop(integ, tf, T) - t && error("dt<dtmin")
+        (dt < convert(T, 1.0f-14) || t + dt == t) &&
+            (dt != _next_stop(integ, tf, T) - t || dt < _landing_floor(T)) &&
+            error("dt<dtmin")
 
         ## Steps
 
