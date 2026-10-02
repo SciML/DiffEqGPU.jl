@@ -100,7 +100,7 @@ function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
     end
 
     return sol = solve(
-        prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
-        internalnorm = diffeqgpunorm
+        prob, _alg; internalnorm = TrajectoryNorm(len), kwargs...,
+        callback = _callback, merge_callbacks = false
     )
 end

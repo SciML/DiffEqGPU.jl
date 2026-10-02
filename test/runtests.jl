@@ -100,6 +100,9 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
         include("ensemblegpuarray_scalar_batch.jl")
     end
+    @time @safetestset "EnsembleGPUArray per-trajectory error norm" begin
+        include("ensemblegpuarray_trajectory_norm.jl")
+    end
     @time @safetestset "Reduction" begin
         include("reduction.jl")
     end
@@ -129,6 +132,9 @@ if GROUP == "CPU"
     end
     @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
         include("ensemblegpuarray_scalar_batch.jl")
+    end
+    @time @safetestset "EnsembleGPUArray per-trajectory error norm" begin
+        include("ensemblegpuarray_trajectory_norm.jl")
     end
     @time @safetestset "Adaptive endpoint termination" begin
         include("gpu_kernel_de/adaptive_endpoint.jl")

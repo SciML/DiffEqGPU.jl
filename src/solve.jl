@@ -465,8 +465,8 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
     end
 
     sol = solve(
-        prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
-        internalnorm = diffeqgpunorm
+        prob, _alg; internalnorm = TrajectoryNorm(len), kwargs...,
+        callback = _callback, merge_callbacks = false
     )
 
     us = Array.(sol.u)
@@ -568,8 +568,8 @@ function ChainRulesCore.rrule(
     end
 
     sol = solve(
-        prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
-        internalnorm = diffeqgpunorm
+        prob, _alg; internalnorm = TrajectoryNorm(len), kwargs...,
+        callback = _callback, merge_callbacks = false
     )
 
     us = Array.(sol.u)

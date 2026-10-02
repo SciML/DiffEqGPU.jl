@@ -5,6 +5,32 @@ function diffeqgpunorm(u::AbstractArray{<:ForwardDiff.Dual}, t)
 end
 diffeqgpunorm(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
 
+# Error norm for the batched `EnsembleGPUArray` problem, whose state stacks trajectories of
+# `len` components each as columns (so a vectorized state is trajectory-blocked). The RMS
+# over the whole batch lets one hard trajectory be outvoted by the easy ones and miss its
+# own tolerance; the largest per-trajectory RMS makes the shared step the one the hardest
+# trajectory needs.
+struct TrajectoryNorm
+    len::Int
+end
+
+# OrdinaryDiffEq broadcasts the norm over residual arrays; treat it as a scalar like a function.
+Base.broadcastable(n::TrajectoryNorm) = Ref(n)
+
+_norm_value(x) = x
+_norm_value(x::ForwardDiff.Dual) = ForwardDiff.value(x)
+
+(::TrajectoryNorm)(u::Union{AbstractFloat, Complex}, t) = abs(u)
+(::TrajectoryNorm)(u::ForwardDiff.Dual, t) = abs(ForwardDiff.value(u))
+function (n::TrajectoryNorm)(u::AbstractArray, t)
+    isempty(u) && return zero(real(_norm_value(zero(eltype(u)))))
+    # An array not made of whole trajectories (no state-shaped solver array is) falls back
+    # to the RMS over all entries.
+    length(u) % n.len == 0 || return diffeqgpunorm(u, t)
+    sq = sum(abs2 ∘ _norm_value, reshape(u, n.len, :); dims = 1)
+    return sqrt(maximum(sq) / n.len)
+end
+
 """
     make_prob_compatible(prob)
 
