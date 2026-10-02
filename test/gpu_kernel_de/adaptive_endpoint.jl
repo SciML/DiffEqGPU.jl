@@ -334,3 +334,25 @@ end
     )
     @test all(s -> s.t[end] == 1.0f0 && s.u[end] ≈ SVector(1.25f0, 1.25f0), sol.u)
 end
+
+# A stop less than `dtmin` after `t` must be reached by an integrated step, not by
+# evaluating the dense output of a longer step near Θ = 1 (inaccurate for Float32
+# Verner interpolants). `u' = (1e14, 0)` is integrated exactly by every method.
+@testset "Adaptive tstop closer than dtmin, public solve ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    dt = 1.0f-14
+    stop = prevfloat(dt)
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == stop, terminate!; save_positions = (false, false)
+    )
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(1.0f14, 0.0f0), SVector(0.0f0, 1.0f0), (0.0f0, 2dt)
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt, tstops = [stop], callback = cb,
+        merge_callbacks = true, abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
+    )
+    exact = Float64(BigFloat(1.0f14) * BigFloat(stop))
+    @test all(s -> s.t[end] == stop && abs(s.u[end][1] - exact) <= 64eps(Float32), sol.u)
+end

@@ -130,7 +130,9 @@ end
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dtprop = dt
     dt = _bounded_step(integ, dt, tf, T)
+    shortened_to_land = dt < dtprop
 
     tmp = integ.tmp
     f = integ.f
@@ -156,7 +158,7 @@ end
     EEst = convert(T, Inf)
 
     while EEst > convert(T, 1.0)
-        (dt < convert(T, 1.0f-14) || t + dt == t) && dt != tf - t && error("dt<dtmin")
+        (dt < convert(T, 1.0f-14) || t + dt == t) && dt != _next_stop(integ, tf, T) - t && error("dt<dtmin")
 
         ## Steps
 
@@ -260,10 +262,12 @@ end
 
         if EEst > 1
             dt = dt / min(inv(qmin), q11 / gamma)
+            shortened_to_land = false
         else # EEst <= 1
             q = max(inv(qmax), min(inv(qmin), q / gamma))
             qold = max(EEst, qoldinit)
             dtnew = dt / q #dtnew
+            shortened_to_land && (dtnew = max(dtnew, dtprop))
 
             @inbounds begin # Necessary for interpolation
                 integ.k1 = k1
@@ -288,7 +292,7 @@ end
                 ##Advance the integrator
                 integ.t += dt
             end
-            integ.dtnew = min(abs(dtnew), abs(_next_stop(integ, tf, T) - integ.t))
+            integ.dtnew = dtnew
         end
     end
 

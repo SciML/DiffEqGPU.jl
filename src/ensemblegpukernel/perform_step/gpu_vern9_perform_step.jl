@@ -136,7 +136,9 @@ end
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dtprop = dt
     dt = _bounded_step(integ, dt, tf, T)
+    shortened_to_land = dt < dtprop
 
     @unpack c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, a0201, a0301, a0302,
         a0401, a0403, a0501, a0503, a0504, a0601, a0604, a0605, a0701, a0704, a0705, a0706,
@@ -167,7 +169,7 @@ end
     EEst = convert(T, Inf)
 
     while EEst > convert(T, 1.0)
-        (dt < convert(T, 1.0f-14) || t + dt == t) && dt != tf - t && error("dt<dtmin")
+        (dt < convert(T, 1.0f-14) || t + dt == t) && dt != _next_stop(integ, tf, T) - t && error("dt<dtmin")
 
         k1 = f(uprev, p, t)
         a = dt * a0201
@@ -273,10 +275,12 @@ end
 
         if EEst > 1
             dt = dt / min(inv(qmin), q11 / gamma)
+            shortened_to_land = false
         else # EEst <= 1
             q = max(inv(qmax), min(inv(qmin), q / gamma))
             qold = max(EEst, qoldinit)
             dtnew = dt / q #dtnew
+            shortened_to_land && (dtnew = max(dtnew, dtprop))
 
             @inbounds begin # Necessary for interpolation
                 integ.k1 = k1
@@ -309,7 +313,7 @@ end
                 ##Advance the integrator
                 integ.t += dt
             end
-            integ.dtnew = min(abs(dtnew), abs(_next_stop(integ, tf, T) - integ.t))
+            integ.dtnew = dtnew
         end
     end
     _, saved_in_cb = handle_callbacks!(integ, ts, us)

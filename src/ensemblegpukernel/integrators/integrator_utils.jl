@@ -17,8 +17,9 @@ end
 # Adaptive steps land on pending tstops and on `tf` by construction: `_bounded_step`
 # makes a trial step that would reach (or nearly reach) the next landing target exactly
 # the remaining distance, and the accept branch only marks `t = tf` for such a step.
-# There is no tolerance-based endpoint snap, so completion always means the interval
-# was integrated.
+# There is no tolerance-based endpoint snap. (At large |t| a step shortened by error
+# control can still round onto `tf` in `t += dt`; see
+# https://github.com/SciML/DiffEqGPU.jl/issues/567.)
 
 # Whether a pending tstop before `tf` lies inside the step just accepted from `integ.t`.
 @inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
@@ -29,14 +30,14 @@ end
 end
 
 # The next time the adaptive integrator has to land on exactly: the next pending
-# tstop before `tf`, otherwise `tf`. A stop closer than the minimum step size is not
-# a target (stepping to it would force `dt < dtmin`); the step that covers it lands on
-# it by interpolation instead.
+# tstop after `integ.t` and before `tf`, otherwise `tf`. Steps end on it with an
+# integrated step, never by interpolating back from a longer one; a landing step is
+# exempt from `dtmin`.
 @inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
         stop = convert(typeof(tf), @inbounds tstops[integ.tstops_idx])
-        stop < tf && stop - integ.t >= T(1.0e-14) && return stop
+        integ.t < stop < tf && return stop
     end
     return tf
 end
