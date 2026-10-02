@@ -10,16 +10,12 @@ function Adapt.adapt_structure(to, ps::ParamWrapper{P, T}) where {P, T}
     )
 end
 
-"""
-    ensemble_param(p, i)
-
-Per-trajectory parameter argument for `EnsembleGPUArray` kernels.
-
-`pack_ordinary_parameters` distinguishes layouts: a 1-D `AbstractVector{<:Number}` is a
-batch of scalars and yields `p[i]::Number`; an `nparam × ntraj` matrix (including
-`ntraj = 1`) yields the column view `p[:, i]`. A bare `Number` covers a singleton
-scalar left as a scalar. Non-numeric containers use `p[i]`.
-"""
+# Per-trajectory parameter argument for `EnsembleGPUArray` kernels.
+#
+# `pack_ordinary_parameters` distinguishes layouts: a 1-D `AbstractVector{<:Number}` is a
+# batch of scalars and yields `p[i]::Number`; an `nparam × ntraj` matrix (including
+# `ntraj = 1`) yields the column view `p[:, i]`. A bare `Number` covers a singleton
+# scalar left as a scalar. Non-numeric containers use `p[i]`.
 @inline ensemble_param(p::Number, ::Integer) = p
 @inline function ensemble_param(p::AbstractArray{<:Number}, i::Integer)
     if ndims(p) == 1
@@ -31,6 +27,8 @@ end
 @inline ensemble_param(p::AbstractArray, i::Integer) = @inbounds p[i]
 
 # The reparameterization is adapted from:https://github.com/rtqichen/torchdiffeq/issues/122#issuecomment-738978844
+# Map normalized time t∈[0,1] to each trajectory's physical tspan via a separate
+# local `t_phys`. Reassigning the kernel argument `t` leaks across CPU workgroup lanes.
 @kernel function gpu_kernel(
         f, du, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
@@ -40,8 +38,8 @@ end
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
     # reparameterization t->(t_0, t_f) from t->(0, 1).
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
-    @views @inbounds f(du[:, i], u[:, i], p, t)
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
+    @views @inbounds f(du[:, i], u[:, i], p, t_phys)
     @inbounds for j in 1:size(du, 1)
         du[j, i] = du[j, i] * (tspan[2] - tspan[1])
     end
@@ -56,8 +54,8 @@ end
     @inbounds p = params[i].params
     @inbounds tspan = params[i].data
     # reparameterization
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
-    @views @inbounds x = f(u[:, i], p, t)
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
+    @views @inbounds x = f(u[:, i], p, t_phys)
     @inbounds for j in 1:size(du, 1)
         du[j, i] = x[j] * (tspan[2] - tspan[1])
     end
@@ -87,9 +85,9 @@ end
     @inbounds tspan = params[i + 1].data
 
     # reparameterization
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
-    @views @inbounds f(J[section, section], u[:, i + 1], p, t)
+    @views @inbounds f(J[section, section], u[:, i + 1], p, t_phys)
     @inbounds for j in section, k in section
 
         J[k, j] = J[k, j] * (tspan[2] - tspan[1])
@@ -108,9 +106,9 @@ end
     @inbounds tspan = params[i + 1].data
 
     # reparameterization
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
-    @views @inbounds x = f(u[:, i + 1], p, t)
+    @views @inbounds x = f(u[:, i + 1], p, t_phys)
 
     @inbounds for j in section, k in section
 
@@ -235,9 +233,9 @@ end
     @inbounds tspan = params[i].data
 
     # reparameterization
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
-    @views @inbounds jac(_W, u[:, i], p, t)
+    @views @inbounds jac(_W, u[:, i], p, t_phys)
 
     @inbounds for i in eachindex(_W)
         _W[i] = gamma * _W[i] * (tspan[2] - tspan[1])
@@ -277,9 +275,9 @@ end
     _W = @inbounds @view(W[:, :, i])
 
     # reparameterization
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
-    @views @inbounds x = jac(u[:, i], p, t)
+    @views @inbounds x = jac(u[:, i], p, t_phys)
     @inbounds for j in 1:length(_W)
         _W[j] = x[j] * (tspan[2] - tspan[1])
     end
@@ -319,10 +317,10 @@ end
     @inbounds tspan = params[i].data
 
     # reparameterization
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds jac(_W, u[:, i], p, t)
+    @views @inbounds jac(_W, u[:, i], p, t_phys)
     @inbounds for i in 1:len
         _W[i, i] = -inv(gamma) + _W[i, i] * (tspan[2] - tspan[1])
     end
@@ -339,10 +337,10 @@ end
     @inbounds tspan = params[i].data
 
     # reparameterization
-    t = (tspan[2] - tspan[1]) * t + tspan[1]
+    t_phys = (tspan[2] - tspan[1]) * t + tspan[1]
 
     _W = @inbounds @view(W[:, :, i])
-    @views @inbounds x = jac(u[:, i], p, t)
+    @views @inbounds x = jac(u[:, i], p, t_phys)
     @inbounds for j in 1:length(_W)
         _W[j] = x[j] * (tspan[2] - tspan[1])
     end
