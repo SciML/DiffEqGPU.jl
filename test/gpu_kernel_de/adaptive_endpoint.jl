@@ -356,3 +356,28 @@ end
     exact = Float64(BigFloat(1.0f14) * BigFloat(stop))
     @test all(s -> s.t[end] == stop && abs(s.u[end][1] - exact) <= 64eps(Float32), sol.u)
 end
+
+# A landing step far below `dtmin` must stay accurate for every method family. For the
+# Rosenbrock methods W = I/(γ dt) - J then has entries near 1/dt, which overflowed the
+# unscaled Cramer solve and silently zeroed (or NaN'd) the increment.
+@testset "Adaptive tiny landing step ($(nameof(typeof(alg))), rate $rate)" for
+    alg in ADAPTIVE_ALGS, rate in (1.0f14, 1.0f20)
+    stop = 1.0f-20
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == stop, terminate!; save_positions = (false, false)
+    )
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(rate, rate), SVector(0.0f0, 0.0f0), (0.0f0, 2.0f-14)
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = 1.0f-14, tstops = [stop], callback = cb,
+        merge_callbacks = true, save_everystep = false, abstol = 1.0f-12, reltol = 1.0f-3
+    )
+    exact = Float64(BigFloat(rate) * BigFloat(stop))
+    @test all(
+        s -> s.t[end] == stop &&
+            all(x -> isapprox(Float64(x), exact; rtol = 64eps(Float32)), s.u[end]),
+        sol.u
+    )
+end
