@@ -120,14 +120,14 @@ end
             !saved_in_cb && savevalues!(integ, ts, us)
         end
 
-        if integ.t > tspan[2] && saveat === nothing
-            @inbounds us[end] = integ(tspan[2])
-            @inbounds ts[end] = tspan[2]
-        end
-
+        # Endpoint-only output has two rows, so `us[end]` is `us[2]`. Skipping the
+        # interpolation there keeps `k1`-`k6` out of the loop-carried state.
         if saveat === nothing && !save_everystep
             @inbounds us[2] = integ.u
             @inbounds ts[2] = integ.t
+        elseif integ.t > tspan[2] && saveat === nothing
+            @inbounds us[end] = integ(tspan[2])
+            @inbounds ts[end] = tspan[2]
         end
     else
         @inbounds us[1] = prob.u0

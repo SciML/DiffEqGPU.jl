@@ -21,6 +21,11 @@ end
 # control can still round onto `tf` in `t += dt`; see
 # https://github.com/SciML/DiffEqGPU.jl/issues/567.)
 
+# `qold^beta2` of the PI controller. The I controller has `beta2 = 0`, so the factor is
+# exactly one and the device `pow` call is skipped.
+@inline _qold_factor(alg, qold, beta2) = qold^beta2
+@inline _qold_factor(::GPUTsit5IController, qold, beta2) = one(qold)
+
 # Whether a pending tstop before `tf` lies inside the step just accepted from `integ.t`.
 @inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops

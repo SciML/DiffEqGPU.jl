@@ -130,7 +130,7 @@ end
         if iszero(EEst)
             q = integ.alg isa GPUTsit5IController ? zero(T) : inv(qmax)
         else
-            q = q11 / (qold^beta2)
+            q = q11 / _qold_factor(integ.alg, qold, beta2)
         end
 
         if EEst > 1
