@@ -404,11 +404,25 @@ end
         end
     end
 
-    if rootfind == SciMLBase.LeftRootFind
-        return left
-    else
-        return right
-    end
+    root = rootfind == SciMLBase.LeftRootFind ? left : right
+    return _implicit_root(f, root, tup)
+end
+
+# The bracketing iterations above carry no derivative information about the root, so
+# reattach the implicit-function-theorem sensitivity dt = -∂f/∂θ / ∂f/∂t. The correction
+# term is identically zero in the primal, which keeps the returned root bit-for-bit equal
+# to `root` and preserves the side of the event chosen by `rootfind`.
+@inline function _implicit_root(f, root, tup)
+    left, right = tup
+    t = ignore_derivatives(root)
+    h = cbrt(eps(typeof(t))) * max(abs(t), right - left)
+    tl = max(left, t - h)
+    tr = min(right, t + h)
+    slope = ignore_derivatives((f(tr) - f(tl)) / (tr - tl))
+    valid = !iszero(slope) & isfinite(slope)
+    ft = f(t)
+    correction = (ft - ignore_derivatives(ft)) / ifelse(valid, slope, one(slope))
+    return t - convert(typeof(t), ifelse(valid, correction, zero(correction)))
 end
 
 @inline function DiffEqBase.find_callback_time(

@@ -120,3 +120,42 @@ end
     Enzyme.autodiff(Reverse, initial_state_loss, Active, Duplicated(u0, du0), Const(backend))
     @test du0 ≈ fill(exp(0.2), length(u0)) rtol = 1.0e-7
 end
+
+event_condition(u, t, integrator) = u[1] - integrator.p[1]
+reset_half!(integrator) = (integrator.u = SVector(0.5))
+
+function event_time_loss(p, rhs, u0, backend)
+    prob = ODEProblem{false}(rhs, SVector(u0), (0.0, 1.0), SVector(p[1]))
+    prob_func = (prob, ctx) -> remake(prob; p = SVector(p[ctx.sim_id]))
+    cb = ContinuousCallback(event_condition, reset_half!; save_positions = (false, false))
+    sol = solve(
+        EnsembleProblem(prob; prob_func, safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = length(p), adaptive = false,
+        dt = 0.05, callback = cb, merge_callbacks = true, save_everystep = false
+    )
+    return sum(s -> only(s.u[end]), sol.u)
+end
+
+@testset "Parameter-dependent continuous event time gradients" begin
+    # u′ = 1 from 0 hits u = p > 0.75 once, at t = p, so u(1) = 1.5 - p.
+    p = [0.78, 0.84, 0.93]
+    rhs = (u, p, t) -> SVector(1.0)
+    @test event_time_loss(p, rhs, 0.0, backend) ≈ sum(1.5 .- p) rtol = 1.0e-10
+    dp = zero(p)
+    Enzyme.autodiff(
+        Reverse, event_time_loss, Active, Duplicated(p, dp),
+        Const(rhs), Const(0.0), Const(backend)
+    )
+    @test dp ≈ -ones(3) rtol = 1.0e-8
+
+    # u′ = u from 1 hits u = p at t = log(p), so u(1) = 0.5e / p.
+    p = [1.3, 1.7, 2.2]
+    rhs = (u, p, t) -> u
+    @test event_time_loss(p, rhs, 1.0, backend) ≈ sum(0.5 * ℯ ./ p) rtol = 1.0e-7
+    dp = zero(p)
+    Enzyme.autodiff(
+        Reverse, event_time_loss, Active, Duplicated(p, dp),
+        Const(rhs), Const(1.0), Const(backend)
+    )
+    @test dp ≈ -0.5 * ℯ ./ p .^ 2 rtol = 1.0e-6
+end
