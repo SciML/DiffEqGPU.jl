@@ -24,7 +24,7 @@ end
 @inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     (tstops === nothing || integ.tstops_idx > length(tstops)) && return false
-    stop = @inbounds tstops[integ.tstops_idx]
+    stop = convert(typeof(tf), @inbounds tstops[integ.tstops_idx])
     return stop < tf && stop - integ.t <= integ.dt
 end
 
@@ -35,7 +35,7 @@ end
 @inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
-        stop = @inbounds tstops[integ.tstops_idx]
+        stop = convert(typeof(tf), @inbounds tstops[integ.tstops_idx])
         stop < tf && stop - integ.t >= T(1.0e-14) && return stop
     end
     return tf

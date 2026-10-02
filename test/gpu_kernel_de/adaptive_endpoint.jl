@@ -319,3 +319,18 @@ end
     end
     @test isempty(failures)
 end
+
+# `tstops` given as a Float64 array for a Float32 problem: the step bound must stay in
+# the integrator's time type.
+@testset "Adaptive Float64 tstops on a Float32 problem ($(nameof(typeof(alg))))" for
+    alg in ADAPTIVE_ALGS
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(1.0f0, 1.0f0), SVector(1.0f0, 1.0f0), (0.75f0, 1.0f0)
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = 0.125f0, tstops = [0.875],
+        abstol = 1.0f-9, reltol = 1.0f-6, save_everystep = false
+    )
+    @test all(s -> s.t[end] == 1.0f0 && s.u[end] ≈ SVector(1.25f0, 1.25f0), sol.u)
+end
