@@ -138,7 +138,7 @@ end
     tf = integ.tf
     dtprop = dt
     dt = _bounded_step(integ, dt, tf, T)
-    shortened_to_land = dt < dtprop
+    shortened_to_land = dt < dtprop && _next_stop(integ, tf, T) < tf
 
     @unpack c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, a0201, a0301, a0302,
         a0401, a0403, a0501, a0503, a0504, a0601, a0604, a0605, a0701, a0704, a0705, a0706,
@@ -279,8 +279,8 @@ end
         end
 
         if EEst > 1
-            # A landing step that overflowed retries with the controller's covering step,
-            # which lands on the stop by interpolation.
+            # A landing step on a stop that overflowed retries with the controller's covering
+            # step, which lands on the stop by interpolation; it never reaches past `tf`.
             dt = !finite && shortened_to_land ? dtprop : dt / min(inv(qmin), q11 / gamma)
             shortened_to_land = false
         else # EEst <= 1
@@ -307,17 +307,14 @@ end
             integ.tprev = t
             integ.u = u
 
-            stop_in_step = _tstop_in_step(integ, tf, T)
-            # Only a covering retry reaches past `tf`; like a covered stop, it lands by
-            # interpolation.
-            if stop_in_step || dt > tf - t
-                integ.t = stop_in_step ? integ.tstops[integ.tstops_idx] : tf
+            if _tstop_in_step(integ, tf, T)
+                integ.t = integ.tstops[integ.tstops_idx]
                 if integ.t - t != dt
                     integ.u = integ(integ.t)
-                    mapreduce(isfinite, &, integ.u) || error("non-finite state at tstop or tf")
+                    mapreduce(isfinite, &, integ.u) || error("non-finite state at tstop")
                 end
                 dt = integ.t - integ.tprev
-                stop_in_step && (integ.tstops_idx += 1)
+                integ.tstops_idx += 1
             elseif dt == tf - t
                 integ.t = tf
             else

@@ -457,8 +457,24 @@ end
     @test all(s -> all(x -> isapprox(x, stop; rtol = 128eps(T)), s.u[end]), sol.u)
 end
 
-# A final landing step that overflows retries with the controller's covering step, which
-# may reach past `tf`; it lands on `tf` by interpolation and runs the endpoint callbacks.
+# A covering retry never reaches past `tf`: when the final interval cannot be integrated
+# the solve fails explicitly. The only acceptable outcomes are an accurate state at
+# exactly `tf`, or an explicit failure; success at another time, or with a non-finite
+# state, is never acceptable.
+function endpoint_or_failure(solve_thunk, tf, exact; rtol)
+    sol = try
+        solve_thunk()
+    catch err
+        return err isa ErrorException &&
+            (occursin("dt<dtmin", err.msg) || occursin("non-finite state", err.msg))
+    end
+    return all(sol.u) do s
+        !SciMLBase.successful_retcode(s.retcode) ||
+            s.t[end] == tf &&
+            all(x -> isfinite(x) && isapprox(BigFloat(x), exact; rtol), s.u[end])
+    end
+end
+
 @testset "Adaptive overflowing final landing step ($(nameof(typeof(alg))), $T, $mode)" for
     alg in (GPURosenbrock23(), GPURodas4(), GPURodas5P()), T in (Float32, Float64),
         mode in (:tiny, :scaled, :scaled_callback)
@@ -475,22 +491,19 @@ end
     )
     kw = mode == :scaled_callback ? (; tstops = T[tf], callback = cb, merge_callbacks = true) :
         (;)
-    sol = solve(
+    solve_final() = solve(
         EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
         trajectories = 2, adaptive = true, dt = mode == :tiny ? T(1.0e-14) : T(0.001),
         save_everystep = false, abstol = T(1.0e-12), reltol = T(1.0e-3), kw...
     )
     exact = BigFloat(rate) * BigFloat(tf) / BigFloat(mass) + (mode == :scaled_callback)
-    @test all(
-        s -> s.t[end] == tf &&
-            all(x -> isapprox(BigFloat(x), exact; rtol = 128eps(T)), s.u[end]),
-        sol.u
-    )
+    @test endpoint_or_failure(tf, exact; rtol = 128eps(T)) do
+        solve_final()
+    end
 end
 
-# A right-hand side that is NaN exactly at `tf` must not yield a successful solve past
-# `tf` or a non-finite state: the solve either ends at `tf` with an accurate state or
-# fails explicitly.
+# A right-hand side that is NaN exactly at `tf` ends either accurately at `tf` or in an
+# explicit failure.
 @testset "Adaptive NaN right-hand side at tf ($(nameof(typeof(alg))), $T)" for
     alg in ADAPTIVE_ALGS, T in (Float32, Float64)
     tf = T(0.125)
@@ -498,16 +511,11 @@ end
         (u, p, t) -> t == tf ? SVector(T(NaN), T(NaN)) : SVector(one(T), one(T)),
         zero(SVector{2, T}), (zero(T), tf)
     )
-    outcome = try
-        sol = solve(
+    @test endpoint_or_failure(tf, BigFloat(tf); rtol = 1.0e-3) do
+        solve(
             EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
             trajectories = 2, adaptive = true, dt = T(0.5), save_everystep = false,
             abstol = T(1.0e-12), reltol = T(1.0e-3)
         )
-        all(s -> s.t[end] == tf && all(x -> isapprox(x, tf; rtol = 1.0e-3), s.u[end]), sol.u)
-    catch err
-        err isa ErrorException &&
-            (occursin("dt<dtmin", err.msg) || occursin("non-finite state", err.msg))
     end
-    @test outcome
 end
