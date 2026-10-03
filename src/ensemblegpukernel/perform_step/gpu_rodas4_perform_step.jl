@@ -263,21 +263,19 @@ end
             integ.tprev = t
             integ.u = u
 
-            if _tstop_in_step(integ, tf, T)
-                integ.t = integ.tstops[integ.tstops_idx]
+            stop_in_step = _tstop_in_step(integ, tf, T)
+            # Only a covering retry reaches past `tf`; like a covered stop, it lands by
+            # interpolation.
+            if stop_in_step || dt > tf - t
+                integ.t = stop_in_step ? integ.tstops[integ.tstops_idx] : tf
                 if integ.t - t != dt
                     integ.u = integ(integ.t)
-                    mapreduce(isfinite, &, integ.u) || error("non-finite state at tstop")
+                    mapreduce(isfinite, &, integ.u) || error("non-finite state at tstop or tf")
                 end
                 dt = integ.t - integ.tprev
-                integ.tstops_idx += 1
+                stop_in_step && (integ.tstops_idx += 1)
             elseif dt == tf - t
                 integ.t = tf
-            elseif dt > tf - t
-                # Only a covering retry reaches past `tf`; it lands on `tf` by interpolation.
-                integ.t = tf
-                integ.u = integ(tf)
-                mapreduce(isfinite, &, integ.u) || error("non-finite state at tf")
             else
                 ##Advance the integrator
                 integ.t += dt
