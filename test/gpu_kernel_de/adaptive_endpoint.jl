@@ -456,3 +456,58 @@ end
     @test all(s -> s.t[end] == stop && s.u[1] == zero(SVector{2, T}), sol.u)
     @test all(s -> all(x -> isapprox(x, stop; rtol = 128eps(T)), s.u[end]), sol.u)
 end
+
+# A final landing step that overflows retries with the controller's covering step, which
+# may reach past `tf`; it lands on `tf` by interpolation and runs the endpoint callbacks.
+@testset "Adaptive overflowing final landing step ($(nameof(typeof(alg))), $T, $mode)" for
+    alg in (GPURosenbrock23(), GPURodas4(), GPURodas5P()), T in (Float32, Float64),
+        mode in (:tiny, :scaled, :scaled_callback)
+    mass = mode == :tiny ? one(T) : T === Float32 ? T(1.0e30) : T(1.0e300)
+    rate = mode == :tiny ? T(1.0e14) : mass
+    tf = mode == :tiny ? (T === Float32 ? T(5.0e-38) : T(1.0e-307)) : T(1.0e-10)
+    f = ODEFunction{false}(
+        (u, p, t) -> SVector(rate, rate); mass_matrix = mass * SMatrix{2, 2, T}(I)
+    )
+    prob = ODEProblem{false}(f, zero(SVector{2, T}), (zero(T), tf))
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == tf, integrator -> (integrator.u += SVector(one(T), one(T)));
+        save_positions = (false, false)
+    )
+    kw = mode == :scaled_callback ? (; tstops = T[tf], callback = cb, merge_callbacks = true) :
+        (;)
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = mode == :tiny ? T(1.0e-14) : T(0.001),
+        save_everystep = false, abstol = T(1.0e-12), reltol = T(1.0e-3), kw...
+    )
+    exact = BigFloat(rate) * BigFloat(tf) / BigFloat(mass) + (mode == :scaled_callback)
+    @test all(
+        s -> s.t[end] == tf &&
+            all(x -> isapprox(BigFloat(x), exact; rtol = 128eps(T)), s.u[end]),
+        sol.u
+    )
+end
+
+# A right-hand side that is NaN exactly at `tf` must not yield a successful solve past
+# `tf` or a non-finite state: the solve either ends at `tf` with an accurate state or
+# fails explicitly.
+@testset "Adaptive NaN right-hand side at tf ($(nameof(typeof(alg))), $T)" for
+    alg in ADAPTIVE_ALGS, T in (Float32, Float64)
+    tf = T(0.125)
+    prob = ODEProblem{false}(
+        (u, p, t) -> t == tf ? SVector(T(NaN), T(NaN)) : SVector(one(T), one(T)),
+        zero(SVector{2, T}), (zero(T), tf)
+    )
+    outcome = try
+        sol = solve(
+            EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+            trajectories = 2, adaptive = true, dt = T(0.5), save_everystep = false,
+            abstol = T(1.0e-12), reltol = T(1.0e-3)
+        )
+        all(s -> s.t[end] == tf && all(x -> isapprox(x, tf; rtol = 1.0e-3), s.u[end]), sol.u)
+    catch err
+        err isa ErrorException &&
+            (occursin("dt<dtmin", err.msg) || occursin("non-finite state", err.msg))
+    end
+    @test outcome
+end

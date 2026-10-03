@@ -202,11 +202,17 @@ end
                 integ.t = integ.tstops[integ.tstops_idx]
                 if integ.t - t != dt
                     integ.u = integ(integ.t)
+                    mapreduce(isfinite, &, integ.u) || error("non-finite state at tstop")
                 end
                 dt = integ.t - integ.tprev
                 integ.tstops_idx += 1
             elseif dt == tf - t
                 integ.t = tf
+            elseif dt > tf - t
+                # Only a covering retry reaches past `tf`; it lands on `tf` by interpolation.
+                integ.t = tf
+                integ.u = integ(tf)
+                mapreduce(isfinite, &, integ.u) || error("non-finite state at tf")
             else
                 ##Advance the integrator
                 integ.t += dt
