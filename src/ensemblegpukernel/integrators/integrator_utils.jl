@@ -34,18 +34,15 @@ end
     return stop < tf && stop - integ.t <= integ.dt
 end
 
-# Shortest step taken to land on a stop or `tf`. Below it, the `C/dt` terms of the
-# Rosenbrock stage formulas (|C| ≤ 166 for Rodas5P) can overflow, so closer stops are
-# reached by interpolating the covering step and a shorter final interval fails `dtmin`.
-@inline _landing_floor(::Type{T}) where {T} = T(1024) / floatmax(T)
-
 # The next time the adaptive integrator has to land on exactly: the next pending
-# tstop at least `_landing_floor` after `integ.t` and before `tf`, otherwise `tf`.
+# tstop after `integ.t` and before `tf`, otherwise `tf`. A landing step whose arithmetic
+# overflows (non-finite error estimate) is retried with the controller's unshortened
+# step, which covers the stop and lands on it by interpolation.
 @inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
         stop = convert(typeof(tf), @inbounds tstops[integ.tstops_idx])
-        stop < tf && stop - integ.t >= _landing_floor(T) && return stop
+        integ.t < stop < tf && return stop
     end
     return tf
 end
@@ -85,11 +82,16 @@ end
         savedexactly = true
         while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= integrator.t
             savet = saveat[integrator.cur_t]
-            Θ = (savet - integrator.tprev) / integrator.dt
-            @inbounds us[integrator.cur_t] = _ode_interpolant(
-                Θ, integrator.dt,
-                integrator.uprev, integrator
-            )
+            # The step's endpoints are known exactly; only interior points need the
+            # dense output, which is not exact at Θ = 0 or 1 for every method.
+            @inbounds us[integrator.cur_t] = if savet == integrator.t
+                integrator.u
+            elseif savet == integrator.tprev
+                integrator.uprev
+            else
+                Θ = (savet - integrator.tprev) / integrator.dt
+                _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+            end
             @inbounds ts[integrator.cur_t] = savet
             integrator.cur_t += 1
         end

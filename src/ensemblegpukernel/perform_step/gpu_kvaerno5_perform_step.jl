@@ -159,7 +159,7 @@ end
 
     while EEst > convert(T, 1.0)
         (dt < convert(T, 1.0f-14) || t + dt == t) &&
-            (dt != _next_stop(integ, tf, T) - t || dt < _landing_floor(T)) &&
+            dt != _next_stop(integ, tf, T) - t &&
             error("dt<dtmin")
 
         ## Steps
@@ -254,6 +254,15 @@ end
         tmp = (err) ./
             (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
+        # `ODE_DEFAULT_NORM` is computed with fast-math, so NaN is checked on its inputs.
+        if !(all(isfinite, u) && all(isfinite, tmp))
+            EEst = T(Inf)
+            if shortened_to_land
+                dt = dtprop
+                shortened_to_land = false
+                continue
+            end
+        end
 
         q11 = EEst^beta1
         if iszero(EEst)

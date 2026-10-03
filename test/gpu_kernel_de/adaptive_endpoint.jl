@@ -1,4 +1,4 @@
-using DiffEqGPU, KernelAbstractions, SciMLBase, StaticArrays, Test
+using DiffEqGPU, KernelAbstractions, LinearAlgebra, SciMLBase, StaticArrays, Test
 
 const ADAPTIVE_ALGS = (
     GPUTsit5(), GPUTsit5IController(), GPUVern7(), GPUVern9(),
@@ -381,10 +381,11 @@ end
     )
 end
 
-# Stops below `_landing_floor` (where Rosenbrock `C/dt` stage terms overflow) are reached
-# by interpolating the covering step: the result is finite and accurate, never NaN. Vern7's
-# dense output is checked only for finiteness: https://github.com/SciML/DiffEqGPU.jl/issues/554
-@testset "Adaptive stop below the landing floor ($(nameof(typeof(alg))), $T)" for
+# A stop so close that the landing step overflows (Rosenbrock `C/dt` terms) is reached by
+# interpolating the controller's covering step: the result is finite and accurate, never
+# NaN. Vern7's dense output is checked only for finiteness:
+# https://github.com/SciML/DiffEqGPU.jl/issues/554
+@testset "Adaptive stop near floatmin ($(nameof(typeof(alg))), $T)" for
     alg in ADAPTIVE_ALGS, T in (Float32, Float64)
     stop = T === Float32 ? 5.0f-38 : 1.0e-307
     rate = T(1.0e14)
@@ -406,4 +407,52 @@ end
             s -> all(x -> isapprox(Float64(x), exact; rtol = 128eps(T)), s.u[end]), sol.u
         )
     end
+end
+
+# With a scaled mass matrix the landing step's W = J - M/(γ dt) overflows even when the
+# stop itself is representable. A step whose state or error estimate is not finite is
+# never accepted: the solver retries with the controller's covering step and lands on
+# the stop by interpolation.
+@testset "Adaptive overflowing landing step with mass matrix ($(nameof(typeof(alg))), $T)" for
+    alg in (GPURosenbrock23(), GPURodas4(), GPURodas5P()), T in (Float32, Float64)
+    stop, rate, mass = T(1024) / floatmax(T), T(1.0e14), T(1024)
+    f = ODEFunction{false}(
+        (u, p, t) -> SVector(rate, rate); mass_matrix = mass * SMatrix{2, 2, T}(I)
+    )
+    prob = ODEProblem{false}(f, zero(SVector{2, T}), (zero(T), T(2.0e-14)))
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == stop, terminate!; save_positions = (false, false)
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = T(1.0e-14), tstops = [stop], callback = cb,
+        merge_callbacks = true, save_everystep = false, abstol = T(1.0e-12), reltol = T(1.0e-3)
+    )
+    exact = BigFloat(rate) * BigFloat(stop) / BigFloat(mass)
+    @test all(
+        s -> s.t[end] == stop &&
+            all(x -> isapprox(BigFloat(x), exact; rtol = 128eps(T)), s.u[end]),
+        sol.u
+    )
+end
+
+# `saveat` points at the ends of an accepted step are the step's own states; the dense
+# output is only used strictly inside the step.
+@testset "Adaptive saveat at step endpoints ($(nameof(typeof(alg))), $T)" for
+    alg in ADAPTIVE_ALGS, T in (Float32, Float64)
+    stop = T(0.125)
+    cb = DiscreteCallback(
+        (u, t, integrator) -> t == stop, terminate!; save_positions = (false, false)
+    )
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(one(T), one(T)), zero(SVector{2, T}), (zero(T), one(T))
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = T(0.5), tstops = [stop], callback = cb,
+        merge_callbacks = true, saveat = T[0, stop / 2, stop], abstol = T(1.0e-12),
+        reltol = T(1.0e-6)
+    )
+    @test all(s -> s.t[end] == stop && s.u[1] == zero(SVector{2, T}), sol.u)
+    @test all(s -> all(x -> isapprox(x, stop; rtol = 128eps(T)), s.u[end]), sol.u)
 end
