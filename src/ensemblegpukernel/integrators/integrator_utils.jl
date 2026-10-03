@@ -405,24 +405,27 @@ end
     end
 
     root = rootfind == SciMLBase.LeftRootFind ? left : right
-    return _implicit_root(f, root, tup)
+    return within_autodiff() ? _implicit_root(f, root) : root
 end
 
-# The bracketing iterations above carry no derivative information about the root, so
-# reattach the implicit-function-theorem sensitivity dt = -∂f/∂θ / ∂f/∂t. The correction
-# term is identically zero in the primal, which keeps the returned root bit-for-bit equal
-# to `root` and preserves the side of the event chosen by `rootfind`.
-@inline function _implicit_root(f, root, tup)
-    left, right = tup
+struct EventTimeTag end
+
+@inline _event_time_derivative(y::ForwardDiff.Dual{EventTimeTag}) = ForwardDiff.partials(y, 1)
+@inline _event_time_derivative(y) = zero(y)
+
+# The bracketing iterations carry no derivative information about the root, so attach
+# the implicit-function-theorem sensitivity dt = -∂f/∂θ / ∂f/∂t at the converged root.
+# The correction term is identically zero in the primal, so the root is unchanged.
+@inline function _implicit_root(f, root)
     t = ignore_derivatives(root)
-    h = cbrt(eps(typeof(t))) * max(abs(t), right - left)
-    tl = max(left, t - h)
-    tr = min(right, t + h)
-    slope = ignore_derivatives((f(tr) - f(tl)) / (tr - tl))
-    valid = !iszero(slope) & isfinite(slope)
+    slope = ignore_derivatives(
+        _event_time_derivative(f(ForwardDiff.Dual{EventTimeTag}(t, one(t))))
+    )
+    if iszero(slope) || !isfinite(slope)
+        error("Cannot differentiate a continuous callback event time: the condition's time derivative at the event is zero or non-finite (tangential or singular crossing).")
+    end
     ft = f(t)
-    correction = (ft - ignore_derivatives(ft)) / ifelse(valid, slope, one(slope))
-    return t - convert(typeof(t), ifelse(valid, correction, zero(correction)))
+    return t - convert(typeof(t), (ft - ignore_derivatives(ft)) / slope)
 end
 
 @inline function DiffEqBase.find_callback_time(
@@ -518,4 +521,20 @@ end
         tmp = integrator(abst)
     end
     return callback.condition(tmp, abst, integrator)
+end
+
+# Event-time derivatives must include the interpolated state's dependence on time, so
+# they always interpolate instead of reusing the stored endpoint states.
+@inline function DiffEqBase.get_condition(
+        integrator::SciMLBase.AbstractODEIntegrator{
+            AlgType,
+            IIP,
+            S, T,
+        },
+        callback,
+        abst::ForwardDiff.Dual{EventTimeTag}
+    ) where {
+        AlgType <: GPUODEAlgorithm, IIP, S, T,
+    }
+    return callback.condition(integrator(abst), abst, integrator)
 end
