@@ -1,4 +1,9 @@
-using DiffEqGPU, KernelAbstractions, SciMLBase, StaticArrays, Test
+using Adapt, DiffEqGPU, KernelAbstractions, SciMLBase, StaticArrays, Test
+
+struct HostAdaptRecipe{T}
+    rate::T
+end
+Adapt.adapt_structure(::KernelAbstractions.CPU, p::HostAdaptRecipe) = SVector(p.rate)
 
 @testset "Kernel ensemble host storage" begin
     f(u, p, t) = SVector(p[1] * u[1])
@@ -80,4 +85,19 @@ using DiffEqGPU, KernelAbstractions, SciMLBase, StaticArrays, Test
     DiffEqGPU._make_kernel_problem(bits_ens, 1, nothing, SciMLBase.default_rng_func, nothing)
     @test seen[]
     @test bits_prob.p == SVector(0.2f0)
+end
+
+@testset "Kernel host storage respects user adapt_structure" begin
+    f(u, p, t) = p[1] * u
+    prob = ODEProblem{false}(f, SVector(1.0), (0.0, 1.0), HostAdaptRecipe(0.2))
+    @test isbits(DiffEqGPU.make_prob_compatible(prob))
+    backend = KernelAbstractions.CPU()
+    for safetycopy in (true, false)
+        ensemble = EnsembleProblem(prob; safetycopy)
+        sol = solve(
+            ensemble, GPUTsit5(), EnsembleGPUKernel(backend, 0.0);
+            trajectories = 2, adaptive = false, dt = 0.01, save_everystep = false
+        )
+        @test only(sol.u[1].u[end]) ≈ exp(0.2) rtol = 1e-10
+    end
 end

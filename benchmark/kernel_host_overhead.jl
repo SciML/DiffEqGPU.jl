@@ -10,7 +10,8 @@ const u0 = @SVector [1.0f0, 0.0f0, 0.0f0]
 const p0 = @SVector [10.0f0, 28.0f0, 8 / 3.0f0]
 const prob = ODEProblem{false}(lorenz, u0, (0.0f0, 1.0f0), p0)
 const prob_func = (prob, ctx) -> remake(prob; p = p0 .* (1 + Float32(ctx.sim_id % 97) / 1000))
-const ens = EnsembleProblem(prob; prob_func, safetycopy = false)
+const SAFETYCOPY = length(ARGS) > 1 ? parse(Bool, ARGS[2]) : false
+const ens = EnsembleProblem(prob; prob_func, safetycopy = SAFETYCOPY)
 const alg = GPUTsit5()
 const ealg = EnsembleGPUKernel(backend, 0.0)
 const saveat = 0.0f0:0.01f0:1.0f0
@@ -53,7 +54,7 @@ endpoint_pass(solve_endpoints(16))
 timeseries_steps_meanvar(solve_saveat(16))
 
 const TREE = isempty(ARGS) ? "branch" : ARGS[1]
-println("tree=$TREE backend=CPU threads=$(Threads.nthreads()) reps=$REPS")
+println("tree=$TREE backend=CPU threads=$(Threads.nthreads()) reps=$REPS safetycopy=$SAFETYCOPY")
 println("metric=median wall seconds; checksum=sum of endpoint u[1]; analysis=timeseries_steps_meanvar")
 flush(stdout)
 

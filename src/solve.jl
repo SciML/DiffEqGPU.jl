@@ -225,16 +225,48 @@ end
 @inline _unwrap_kernel_host(prob) = prob
 @inline _unwrap_kernel_host(prob::Ref) = prob[]
 
+# Kernels read `prob.f` (rhs, jac, tgrad, jac_prototype, mass_matrix,
+# initialization_data), `u0`, `tspan`, `p` and `kwargs`. The host problem can feed
+# the kernel as-is only while `adapt` leaves all of them equal: a user
+# `Adapt.adapt_structure` on an isbits field type must still take effect.
+function _kernel_adaptation_is_identity(backend, prob)
+    adapted = adapt(backend, prob)
+    adapted === prob && return true
+    adapted isa SciMLBase.AbstractODEProblem || return false
+    f, af = prob.f, adapted.f
+    (f isa SciMLBase.ODEFunction && af isa SciMLBase.ODEFunction) || return false
+    return isequal(af.f, f.f) &&
+        isequal(af.jac, f.jac) &&
+        isequal(af.tgrad, f.tgrad) &&
+        isequal(af.jac_prototype, f.jac_prototype) &&
+        isequal(af.mass_matrix, f.mass_matrix) &&
+        isequal(af.initialization_data, f.initialization_data) &&
+        isequal(adapted.u0, prob.u0) &&
+        isequal(adapted.tspan, prob.tspan) &&
+        isequal(adapted.p, prob.p) &&
+        isequal(adapted.kwargs, prob.kwargs)
+end
+
 function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func, master_rng)
     first_prob = _make_kernel_problem(ensembleprob, first(I), sim_seeds, rng_func, master_rng)
     # CPU kernels can consume isbits problems directly; Enzyme needs its record path.
     if backend isa CPU && !within_autodiff() && isbits(first_prob)
         probs = Vector{typeof(first_prob)}(undef, length(I))
         probs[1] = first_prob
+        identical = _kernel_adaptation_is_identity(backend, first_prob)
         for j in 2:length(I)
-            probs[j] = _make_kernel_problem(ensembleprob, I[j], sim_seeds, rng_func, master_rng)
+            prob = _make_kernel_problem(ensembleprob, I[j], sim_seeds, rng_func, master_rng)
+            probs[j] = prob
+            identical = identical && _kernel_adaptation_is_identity(backend, prob)
         end
-        return probs, probs
+        identical && return probs, probs
+        first_adapted = _kernel_record(adapt(backend, first_prob))
+        adapted_probs = Vector{typeof(first_adapted)}(undef, length(I))
+        adapted_probs[1] = first_adapted
+        for j in 2:length(I)
+            adapted_probs[j] = _kernel_record(adapt(backend, probs[j]))
+        end
+        return probs, adapted_probs
     end
     first_adapted = _kernel_record(adapt(backend, first_prob))
     first_ref = _wrap_kernel_host(first_prob)
