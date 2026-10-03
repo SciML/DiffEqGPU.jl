@@ -163,6 +163,9 @@ end
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dtprop = dt
+    dt = _bounded_step(integ, dt, tf, T)
+    shortened_to_land = dt < dtprop && _next_stop(integ, tf, T) < tf
 
     tmp = integ.tmp
     f = integ.f
@@ -194,8 +197,11 @@ end
 
     EEst = convert(T, Inf)
 
+    dt = _representable_step(integ, dt, tf, T)
     while EEst > convert(T, 1.0)
-        dt < convert(T, 1.0f-14) && error("dt<dtmin")
+        (dt < convert(T, 1.0f-14) || t + dt == t) &&
+            dt != _next_stop(integ, tf, T) - t &&
+            error("dt<dtmin")
 
         # Precalculations
         dtC21 = C21 / dt
@@ -294,6 +300,9 @@ end
 
         tmp = k8 ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
+        # `ODE_DEFAULT_NORM` is computed with fast-math, so NaN is checked on its inputs.
+        finite = mapreduce(isfinite, &, u) & mapreduce(isfinite, &, tmp)
+        finite || (EEst = T(Inf))
 
         q11 = EEst^beta1
         if iszero(EEst)
@@ -303,11 +312,18 @@ end
         end
 
         if EEst > 1
-            dt = dt / min(inv(qmin), q11 / gamma)
+            # A landing step on a stop that overflowed retries with the controller's covering
+            # step, which lands on the stop by interpolation; it never reaches past `tf`.
+            dt = _representable_step(
+                integ, !finite && shortened_to_land ? dtprop : dt / min(inv(qmin), q11 / gamma),
+                tf, T
+            )
+            shortened_to_land = false
         else # EEst <= 1
             q = max(inv(qmax), min(inv(qmin), q / gamma))
             qold = max(EEst, qoldinit)
             dtnew = dt / q #dtnew
+            shortened_to_land && (dtnew = max(dtnew, dtprop))
 
             @inbounds begin # Necessary for interpolation
                 @unpack h21, h22, h23, h24, h25, h26, h27, h28, h31, h32, h33, h34,
@@ -327,18 +343,19 @@ end
 
             if _tstop_in_step(integ, tf, T)
                 integ.t = integ.tstops[integ.tstops_idx]
-                if abs(integ.t - (t + dt)) > eps(integ.t)
+                if integ.t - t != dt
                     integ.u = integ(integ.t)
+                    mapreduce(isfinite, &, integ.u) || error("non-finite state at tstop")
                 end
                 dt = integ.t - integ.tprev
                 integ.tstops_idx += 1
-            elseif (tf - t - dt) < convert(T, 1.0f-14)
+            elseif dt == tf - t
                 integ.t = tf
             else
                 ##Advance the integrator
                 integ.t += dt
             end
-            integ.dtnew = min(abs(dtnew), abs(_next_stop(integ, tf) - integ.t))
+            integ.dtnew = dtnew
         end
     end
 
