@@ -101,6 +101,7 @@ end
 
     EEst = convert(T, Inf)
 
+    dt = _representable_step(integ, dt, tf, T)
     while EEst > T(1.0)
         (dt < T(1.0e-14) || t + dt == t) &&
             dt != _next_stop(integ, tf, T) - t &&
@@ -139,7 +140,10 @@ end
         if EEst > 1
             # A landing step on a stop that overflowed retries with the controller's covering
             # step, which lands on the stop by interpolation; it never reaches past `tf`.
-            dt = !finite && shortened_to_land ? dtprop : dt / min(inv(qmin), q11 / gamma)
+            dt = _representable_step(
+                integ, !finite && shortened_to_land ? dtprop : dt / min(inv(qmin), q11 / gamma),
+                tf, T
+            )
             shortened_to_land = false
         else # EEst <= 1
             q = max(inv(qmax), min(inv(qmin), q / gamma))

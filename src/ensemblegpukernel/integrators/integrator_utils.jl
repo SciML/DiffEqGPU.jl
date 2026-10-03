@@ -20,9 +20,8 @@ end
 # of length exactly `tf - t`. A step whose state is not finite is never accepted. Only a
 # landing on a stop before `tf` retries with the controller's covering step (landing on
 # the stop by interpolation), so no accepted step reaches past `tf`.
-# There is no tolerance-based endpoint snap. (At large |t| a step shortened by error
-# control can still round onto `tf` in `t += dt`; see
-# https://github.com/SciML/DiffEqGPU.jl/issues/567.)
+# There is no tolerance-based endpoint snap, and `_representable_step` makes every time
+# update exact, so completion always means the interval was integrated.
 
 # `qold^beta2` of the PI controller. The I controller has `beta2 = 0`, so the factor is
 # exactly one and the device `pow` call is skipped.
@@ -55,6 +54,20 @@ end
     target = _next_stop(integ, tf, T)
     remaining = target - integ.t
     return remaining <= dt + dt / 100 || integ.t + dt >= target ? remaining : dt
+end
+
+# Trial step whose end time `t + dt` is exactly representable and no longer than `dt`,
+# so the accepted time update is exact and the time advance equals the integrated
+# length. Rounding down, never up, keeps a step that error control shortened from
+# rounding onto `tf` or a stop; a step of exactly the distance to the landing target
+# is kept as is. A step with no representable end time before `t + dt` becomes zero
+# and fails the `dtmin` check.
+@inline function _representable_step(integ, dt, tf, ::Type{T}) where {T}
+    t = integ.t
+    dt == _next_stop(integ, tf, T) - t && return dt
+    tnext = t + dt
+    tnext - t > dt && (tnext = prevfloat(tnext))
+    return tnext - t
 end
 
 @inline function savevalues!(

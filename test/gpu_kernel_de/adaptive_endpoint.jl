@@ -519,3 +519,60 @@ end
         )
     end
 end
+
+# Large |t|: the final interval is a single representable time step (8 units). If error
+# control rejects it, no shorter step has a representable end time, so the solve must
+# fail with `dt<dtmin` rather than round a shortened step onto `tf` and report success.
+@testset "Adaptive rounded completion at large t ($(nameof(typeof(alg))), $T)" for
+    alg in ADAPTIVE_ALGS, T in (Float32, Float64)
+    t0 = T(2)^(T === Float32 ? 26 : 55)
+    tf = nextfloat(t0)
+    L = tf - t0
+    rhs(u, p, t) = SVector(p[1], -p[2] * u[2])
+    # Step level: whenever a step reports `t == tf`, it must have covered all of `L`.
+    violations = []
+    for z in 10.0 .^ range(-5, 2; length = 281)
+        p = SVector(inv(L), T(z) / L)
+        integ = DiffEqGPU.init(
+            alg, ODEFunction{false}(rhs), false, SVector(zero(T), one(T)), t0, tf, L, p,
+            T(1.0e-9), T(1.0e-6), DiffEqGPU.DiffEqBase.ODE_DEFAULT_NORM, nothing,
+            CallbackSet(nothing), nothing
+        )
+        try
+            DiffEqGPU.step!(integ, zeros(T, 2), zeros(SVector{2, T}, 2))
+        catch err
+            err isa ErrorException && occursin("dt<dtmin", err.msg) && continue
+            rethrow()
+        end
+        integ.t == tf && integ.dt != L && push!(violations, (; z, dt = integ.dt))
+    end
+    @test isempty(violations)
+    # Public solve: the review's reproducer, exact endpoint [1, exp(-1)].
+    prob = ODEProblem{false}(rhs, SVector(zero(T), one(T)), (t0, tf), SVector(inv(L), inv(L)))
+    @test final_interval_outcome(exp(-1.0)) do
+        solve(
+            EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+            trajectories = 2, adaptive = true, dt = L, abstol = T(1.0e-9),
+            reltol = T(1.0e-6), save_everystep = false
+        )
+    end
+end
+
+# Large |t| without tstops: steps that are not whole multiples of the time resolution
+# must not advance time by a different amount than they integrate.
+@testset "Adaptive time advance equals integrated length at large t ($(nameof(typeof(alg))), $T)" for
+    alg in ADAPTIVE_ALGS, T in (Float32, Float64)
+    t0 = T(2)^(T === Float32 ? 26 : 55)
+    @assert eps(t0) == T(8)
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(one(T), one(T)), SVector(zero(T), zero(T)), (t0, t0 + T(64))
+    )
+    for dt in (T(12), T(20))
+        sol = solve(
+            EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+            trajectories = 2, adaptive = true, dt, abstol = T(1.0e-6), reltol = T(1.0e-3),
+            save_everystep = false
+        )
+        @test all(s -> s.t[end] == t0 + T(64) && s.u[end] ≈ SVector(T(64), T(64)), sol.u)
+    end
+end
