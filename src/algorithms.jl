@@ -87,6 +87,15 @@ This introduces the following limitations on its usage:
     Callbacks with `terminate!` do not work well with `EnsembleGPUArray` because the entire
     integration halts when any trajectory halts. Use with caution.
 
+# Step-size control
+
+All trajectories of a batch advance with one shared step. The error estimate is measured
+per trajectory (the RMS over its own components) and the largest of these decides
+acceptance and the next step, so every trajectory meets `abstol`/`reltol` as it would in a
+solve of its own. The shared step is therefore the one the hardest trajectory needs: a batch
+mixing easy and hard trajectories takes as many steps as the hard ones. Pass
+`internalnorm` to `solve` to replace this norm; it receives the batched state array.
+
 # Examples
 
 ```julia
