@@ -160,12 +160,15 @@ end
 end
 
 @testset "Event root sensitivities reject degenerate crossings" begin
-    # Zero time derivative at the exact root t = 0, and a slope that overflows Float32.
+    # Zero time derivative at the exact root t = 0, a slope that overflows Float32, and
+    # a condition whose time derivative cancels. The slopes depend on `p` at run time,
+    # as kernel conditions always do through the integrator state.
     for (p, g, bracket) in (
             (0.0, (t, p) -> t^3 - p, (-1.0, 1.0)),
-            (0.71f0, (t, p) -> ((t - p) * 1.0f38) * 10.0f0, (0.7, 0.75)),
+            (0.71f0, (t, p) -> ((t - p) * p * 1.0f38) * 10.0f0, (0.7, 0.75)),
+            (0.5, (t, p) -> p * t - p * t + (one(t) - p), (-1.0, 1.0)),
         )
-        @test_throws ErrorException Enzyme.autodiff(
+        @test_throws r"time derivative at the event is zero or non-finite" Enzyme.autodiff(
             Reverse, event_root, Active, Active(p), Const(g), Const(bracket),
             Const(SciMLBase.LeftRootFind)
         )
@@ -199,4 +202,37 @@ end
         Const(rhs), Const(linear_event), Const(1), Const(backend)
     )
     @test dp ≈ -0.5 * ℯ ./ p .^ 2 rtol = 1.0e-6
+end
+
+time_event(u, t, integrator) = t - integrator.p[1]
+reset_zero!(integrator) = (integrator.u = zero(integrator.u))
+double_state!(integrator) = (integrator.u = 2 * integrator.u)
+
+function endpoint_event_loss(p, affect!, backend)
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(1.0), SVector(0.0), (0.0, 1.0), SVector(p[1])
+    )
+    cb = ContinuousCallback(time_event, affect!; save_positions = (false, false))
+    sol = solve(
+        EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = 3, adaptive = false,
+        dt = 0.25, callback = cb, merge_callbacks = true, save_everystep = false
+    )
+    return sum(s -> only(s.u[end]), sol.u) / 3
+end
+
+@testset "Event time gradients at step endpoints ($(nameof(affect!)))" for (affect!, sign) in (
+        (reset_zero!, -1), (double_state!, 1),
+    )
+    # u′ = 1 from 0 with the event at t = p: resetting gives u(1) = 1 - p and doubling
+    # gives u(1) = 2p + (1 - p) = 1 + p. p = 0.5 and 0.75 land exactly on step endpoints.
+    for p in (0.5, 0.74, 0.75, 0.76)
+        @test endpoint_event_loss([p], affect!, backend) ≈ 1 + sign * p rtol = 1.0e-12
+        dp = [0.0]
+        Enzyme.autodiff(
+            Reverse, endpoint_event_loss, Active, Duplicated([p], dp),
+            Const(affect!), Const(backend)
+        )
+        @test only(dp) ≈ sign rtol = 1.0e-10
+    end
 end

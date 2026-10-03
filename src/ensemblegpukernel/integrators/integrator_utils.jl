@@ -230,6 +230,12 @@ end
         integrator.step_idx -= Int(round((integrator.t - t) / integrator.dt))
         integrator.t = t
         #integrator.dt = integrator.t - integrator.tprev
+    elseif within_autodiff()
+        # An event exactly at the step end leaves the values unchanged, but its time may
+        # carry a different sensitivity than the step end, which must reach the state.
+        # The difference of equal interpolated values is +0.0, so `u` is unchanged.
+        integrator.u = integrator.u - (integrator(integrator.t) - integrator(t))
+        integrator.t = t
     end
 end
 @inline function DiffEqBase.change_t_via_interpolation!(
@@ -415,12 +421,11 @@ struct EventTimeTag end
 
 # The bracketing iterations carry no derivative information about the root, so attach
 # the implicit-function-theorem sensitivity dt = -∂f/∂θ / ∂f/∂t at the converged root.
-# The correction term is identically zero in the primal, so the root is unchanged.
+# The correction term is identically zero in the primal, so the root is unchanged, and
+# its numerator being zero also makes the slope's own sensitivity drop out.
 @inline function _implicit_root(f, root)
     t = ignore_derivatives(root)
-    slope = ignore_derivatives(
-        _event_time_derivative(f(ForwardDiff.Dual{EventTimeTag}(t, one(t))))
-    )
+    slope = _event_time_derivative(f(ForwardDiff.Dual{EventTimeTag}(t, one(t))))
     if iszero(slope) || !isfinite(slope)
         error("Cannot differentiate a continuous callback event time: the condition's time derivative at the event is zero or non-finite (tangential or singular crossing).")
     end
@@ -470,15 +475,18 @@ end
         bottom_sign * top_sign <= 0
 
     event_idx = 1
+    zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
 
     if !event_occurred
         callback_t = integrator.t
         residual = zero(bottom_condition)
-    elseif callback.rootfind == SciMLBase.NoRootFind || iszero(top_sign)
+    elseif callback.rootfind == SciMLBase.NoRootFind
         callback_t = top_t
         residual = zero(bottom_condition)
+    elseif iszero(top_sign)
+        callback_t = within_autodiff() ? _implicit_root(zero_func, top_t) : top_t
+        residual = zero(bottom_condition)
     else
-        zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
         callback_t = gpu_find_root(zero_func, (bottom_t, top_t), callback.rootfind)
         residual = zero_func(callback_t)
     end

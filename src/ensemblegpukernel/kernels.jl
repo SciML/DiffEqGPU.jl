@@ -58,6 +58,12 @@
         if integ.t > tspan[2] && saveat === nothing
             @inbounds us[end] = integ(tspan[2])
             @inbounds ts[end] = tspan[2]
+        elseif within_autodiff() && integ.t == tspan[2] && saveat === nothing
+            # A grid ending exactly at tspan[2] can still carry a different time
+            # sensitivity (e.g. after an event on a step endpoint). The difference of
+            # equal interpolated values is +0.0, so the saved state is unchanged.
+            @inbounds us[end] = integ.u - (integ(integ.t) - integ(tspan[2]))
+            @inbounds ts[end] = tspan[2]
         end
     else
         @inbounds us[1] = prob.u0
