@@ -100,6 +100,25 @@ end
     @test all(s -> s.u[end] ≈ SVector(1.0f0), sol.u)
 end
 
+@testset "Float32 initialization solve carries no Float64" begin
+    initprob = NonlinearProblem{false}((u, p) -> u .- 1.0f0, SVector(0.0f0))
+    initdata = SciMLBase.OverrideInitData(
+        initprob, nothing, sol -> sol.u, nothing, nothing, Val(true)
+    )
+    f = ODEFunction{false}((u, p, t) -> zero(u); initialization_data = initdata)
+    prob = ODEProblem(f, SVector(0.0f0), (0.0f0, 0.1f0))
+    ir = string(
+        code_typed(
+            DiffEqGPU.gpu_initialization_solve,
+            Tuple{typeof(prob), Nothing, Float32, Float32}
+        )
+    )
+    @test !occursin("Float64", ir)
+    u, _, success = DiffEqGPU.gpu_initialization_solve(prob, nothing, 1.0f-6, 1.0f-6)
+    @test success
+    @test u ≈ SVector(1.0f0)
+end
+
 @testset "Saving a stop already on the fixed time grid" begin
     prob = ODEProblem{false}((u, p, t) -> -u, SVector(1.0f0), (0.0f0, 1.0f0))
     sol = solve(
