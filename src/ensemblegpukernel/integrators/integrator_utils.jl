@@ -16,7 +16,10 @@ end
 
 # Adaptive steps land on pending tstops and on `tf` by construction: `_bounded_step`
 # makes a trial step that would reach (or nearly reach) the next landing target exactly
-# the remaining distance, and the accept branch only marks `t = tf` for such a step.
+# the remaining distance, and the accept branch marks `t = tf` only for an accepted step
+# of length exactly `tf - t`. A step whose state is not finite is never accepted. Only a
+# landing on a stop before `tf` retries with the controller's covering step (landing on
+# the stop by interpolation), so no accepted step reaches past `tf`.
 # There is no tolerance-based endpoint snap. (At large |t| a step shortened by error
 # control can still round onto `tf` in `t += dt`; see
 # https://github.com/SciML/DiffEqGPU.jl/issues/567.)
@@ -35,9 +38,7 @@ end
 end
 
 # The next time the adaptive integrator has to land on exactly: the next pending
-# tstop after `integ.t` and before `tf`, otherwise `tf`. A landing step whose arithmetic
-# overflows (non-finite error estimate) is retried with the controller's unshortened
-# step, which covers the stop and lands on it by interpolation.
+# tstop after `integ.t` and before `tf`, otherwise `tf`.
 @inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
