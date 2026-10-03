@@ -236,3 +236,47 @@ end
         @test only(dp) ≈ sign rtol = 1.0e-10
     end
 end
+
+function event_fields_loss(x, condition, adaptive, backend)
+    a, b, t0, tf, c, r, dt = x
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(p[1]), SVector(b), (t0, tf), SVector(a, c, r)
+    )
+    affect!(integrator) = (integrator.u = SVector(integrator.p[3]))
+    cb = ContinuousCallback(condition, affect!; save_positions = (false, false))
+    sol = solve(
+        EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = 3, adaptive, dt,
+        callback = cb, merge_callbacks = true, save_everystep = false
+    )
+    return sum(s -> only(s.u[end]), sol.u) / 3
+end
+
+mixed_event(u, t, integrator) = u[1] + 10 * t - integrator.p[2]
+state_event(u, t, integrator) = u[1] - integrator.p[2]
+
+@testset "Event time gradients for all problem fields (adaptive = $adaptive)" for adaptive in (false, true)
+    # x = [a, b, t0, tf, c, r, dt] for u′ = a, u(t0) = b, reset to r, dt = 0.25.
+    # u + 10t = c fires once at τ = (c - b + a t0) / (a + 10), so L = r + a (tf - τ).
+    # c = 8.25 puts τ = 0.75 exactly on a step endpoint.
+    for c in (8.14, 8.25, 8.36)
+        x = [1.0, 0.0, 0.0, 1.0, c, 2.0, 0.25]
+        dx = zero(x)
+        @test event_fields_loss(x, mixed_event, adaptive, backend) ≈ 3 - c / 11 atol = 1.0e-12
+        Enzyme.autodiff(
+            Reverse, event_fields_loss, Active, Duplicated(x, dx),
+            Const(mixed_event), Const(adaptive), Const(backend)
+        )
+        @test dx ≈ [1 - 10c / 121, 1 / 11, -1 / 11, 1, -1 / 11, 1, 0] atol = 1.0e-10
+    end
+    # u = c fires at τ₁ = t0 + (c - b) / a and, after each reset to r = 0, every c / a,
+    # giving six events per solve, several within one original step: L = a (tf - τ₆).
+    x = [1.0, 0.0, 0.0, 1.0, 0.15, 0.0, 0.25]
+    dx = zero(x)
+    @test event_fields_loss(x, state_event, adaptive, backend) ≈ 0.1 atol = 1.0e-12
+    Enzyme.autodiff(
+        Reverse, event_fields_loss, Active, Duplicated(x, dx),
+        Const(state_event), Const(adaptive), Const(backend)
+    )
+    @test dx ≈ [1, 1, -1, 1, -6, 6, 0] atol = 1.0e-10
+end

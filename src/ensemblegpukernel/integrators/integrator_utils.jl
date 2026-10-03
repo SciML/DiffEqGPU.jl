@@ -418,18 +418,23 @@ struct EventTimeTag end
 
 @inline _event_time_derivative(y::ForwardDiff.Dual{EventTimeTag}) = ForwardDiff.partials(y, 1)
 @inline _event_time_derivative(y) = zero(y)
+@inline _event_value(y::ForwardDiff.Dual{EventTimeTag}) = ForwardDiff.value(y)
+@inline _event_value(y) = y
 
 # The bracketing iterations carry no derivative information about the root, so attach
-# the implicit-function-theorem sensitivity dt = -∂f/∂θ / ∂f/∂t at the converged root.
-# The correction term is identically zero in the primal, so the root is unchanged, and
-# its numerator being zero also makes the slope's own sensitivity drop out.
+# the implicit-function-theorem sensitivity dτ = -∂f/∂θ / ∂f/∂t at the converged root.
+# Both partials come from one dual evaluation at the detached root, which interpolates
+# the state even at a step endpoint, so ∂f/∂θ holds the evaluation time fixed instead of
+# following a moving endpoint. The correction is identically zero in the primal, so the
+# root is unchanged, and its zero numerator makes the slope's own sensitivity drop out.
 @inline function _implicit_root(f, root)
     t = ignore_derivatives(root)
-    slope = _event_time_derivative(f(ForwardDiff.Dual{EventTimeTag}(t, one(t))))
-    if iszero(slope) || !isfinite(slope)
+    y = f(ForwardDiff.Dual{EventTimeTag}(t, one(t)))
+    slope = _event_time_derivative(y)
+    ft = _event_value(y)
+    if iszero(slope) || !isfinite(slope) || !isfinite(ft)
         error("Cannot differentiate a continuous callback event time: the condition's time derivative at the event is zero or non-finite (tangential or singular crossing).")
     end
-    ft = f(t)
     return t - convert(typeof(t), (ft - ignore_derivatives(ft)) / slope)
 end
 
