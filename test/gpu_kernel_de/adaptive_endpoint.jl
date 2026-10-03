@@ -147,7 +147,7 @@ end
 # a whole number of ulps (see https://github.com/SciML/DiffEqGPU.jl/issues/567).
 @testset "Adaptive tstop inside a coarse step, public solve ($(nameof(typeof(alg))))" for
     alg in ADAPTIVE_ALGS
-    t0 = Float32(2^26)
+    t0 = Float32(2)^26
     tf = t0 + 32.0f0
     prob = ODEProblem{false}(
         (u, p, t) -> SVector(1.0f0, 1.0f0), SVector(0.0f0, 0.0f0), (t0, tf)
@@ -231,7 +231,7 @@ end
 # and is then overwritten with the stop's state would corrupt the sample at t0 + 8.
 @testset "Adaptive saveat inside a step that reaches a tstop ($(nameof(typeof(alg))), $T)" for
     alg in ADAPTIVE_ALGS, T in (Float32, Float64)
-    t0 = T(T === Float32 ? 2^26 : 2^55)
+    t0 = T === Float32 ? T(2)^26 : T(2)^55
     @assert eps(t0) == T(8)
     prob = ODEProblem{false}(
         (u, p, t) -> SVector(one(T), one(T)), SVector(zero(T), zero(T)), (t0, t0 + T(32))
