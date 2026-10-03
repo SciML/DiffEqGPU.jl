@@ -268,14 +268,8 @@ end
         tmp = tmp ./ (abstol .+ max.(abs.(uprev), abs.(u)) * reltol)
         EEst = DiffEqBase.ODE_DEFAULT_NORM(tmp, t)
         # `ODE_DEFAULT_NORM` is computed with fast-math, so NaN is checked on its inputs.
-        if !(all(isfinite, u) && all(isfinite, tmp))
-            EEst = T(Inf)
-            if shortened_to_land
-                dt = dtprop
-                shortened_to_land = false
-                continue
-            end
-        end
+        finite = mapreduce(isfinite, &, u) & mapreduce(isfinite, &, tmp)
+        finite || (EEst = T(Inf))
 
         q11 = EEst^beta1
         if iszero(EEst)
@@ -285,7 +279,9 @@ end
         end
 
         if EEst > 1
-            dt = dt / min(inv(qmin), q11 / gamma)
+            # A landing step that overflowed retries with the controller's covering step,
+            # which lands on the stop by interpolation.
+            dt = !finite && shortened_to_land ? dtprop : dt / min(inv(qmin), q11 / gamma)
             shortened_to_land = false
         else # EEst <= 1
             q = max(inv(qmax), min(inv(qmin), q / gamma))
