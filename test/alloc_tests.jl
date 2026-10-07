@@ -7,6 +7,8 @@ using DiffEqGPU
 
 # Note: AllocCheck.@check_allocs is not compatible with GPU kernels and complex
 # dispatch, so we use @allocated instead for testing allocation counts.
+# @allocated must be evaluated inside a function: measured at top-level scope,
+# older Julia versions also count boxing the measured call's result.
 
 # Test Lorenz system for allocation tests
 function lorenz(u, p, t)
@@ -26,11 +28,11 @@ end
         t = 0.0f0
 
         # Warmup
-        lorenz(u, p, t)
+        measure() = @allocated lorenz(u, p, t)
+        measure()
 
         # Test allocations
-        allocs = @allocated lorenz(u, p, t)
-        @test allocs == 0
+        @test measure() == 0
     end
 
     @testset "make_prob_compatible should be low allocation" begin
@@ -42,12 +44,12 @@ end
         prob = ODEProblem{false}(lorenz, u0, tspan, p)
 
         # Warmup
-        DiffEqGPU.make_prob_compatible(prob)
+        measure() = @allocated DiffEqGPU.make_prob_compatible(prob)
+        measure()
 
         # Test - some allocations are expected for problem conversion
-        allocs = @allocated DiffEqGPU.make_prob_compatible(prob)
         # Should be reasonably low (less than 1KB)
-        @test allocs < 1024
+        @test measure() < 1024
     end
 
     @testset "diffeqgpunorm should not allocate for SVector" begin
@@ -55,11 +57,11 @@ end
         t = 0.0f0
 
         # Warmup
-        DiffEqGPU.diffeqgpunorm(u, t)
+        measure() = @allocated DiffEqGPU.diffeqgpunorm(u, t)
+        measure()
 
         # Test allocations
-        allocs = @allocated DiffEqGPU.diffeqgpunorm(u, t)
-        @test allocs == 0
+        @test measure() == 0
     end
 
     @testset "diffeqgpunorm should not allocate for scalars" begin
@@ -67,10 +69,10 @@ end
         t = 0.0f0
 
         # Warmup
-        DiffEqGPU.diffeqgpunorm(u, t)
+        measure() = @allocated DiffEqGPU.diffeqgpunorm(u, t)
+        measure()
 
         # Test allocations
-        allocs = @allocated DiffEqGPU.diffeqgpunorm(u, t)
-        @test allocs == 0
+        @test measure() == 0
     end
 end
