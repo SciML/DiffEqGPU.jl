@@ -14,28 +14,60 @@ function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where
     return T(1 / 5), zero(T), T(5), T(1 / 5), T(9 / 10), T(1.0e-4), T(1.0e-4)
 end
 
+# Adaptive steps land on pending tstops and on `tf` by construction: `_bounded_step`
+# makes a trial step that would reach (or nearly reach) the next landing target exactly
+# the remaining distance, and the accept branch marks `t = tf` only for an accepted step
+# of length exactly `tf - t`. A step whose state is not finite is never accepted. Only a
+# landing on a stop before `tf` retries with the controller's covering step (landing on
+# the stop by interpolation), so no accepted step reaches past `tf`.
+# There is no tolerance-based endpoint snap, and `_representable_step` makes every time
+# update exact, so completion always means the interval was integrated.
+
 # `qold^beta2` of the PI controller. The I controller has `beta2 = 0`, so the factor is
 # exactly one and the device `pow` call is skipped.
 @inline _qold_factor(alg, qold, beta2) = qold^beta2
 @inline _qold_factor(::GPUTsit5IController, qold, beta2) = one(qold)
 
-# Whether a pending tstop before `tf` falls inside the step just accepted from `integ.t`.
+# Whether a pending tstop before `tf` lies inside the step just accepted from `integ.t`.
 @inline function _tstop_in_step(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     (tstops === nothing || integ.tstops_idx > length(tstops)) && return false
-    stop = @inbounds tstops[integ.tstops_idx]
-    return stop < tf && stop - integ.t - integ.dt - T(100) * eps(T) < T(0)
+    stop = convert(typeof(tf), @inbounds tstops[integ.tstops_idx])
+    return stop < tf && stop - integ.t <= integ.dt
 end
 
 # The next time the adaptive integrator has to land on exactly: the next pending
 # tstop after `integ.t` and before `tf`, otherwise `tf`.
-@inline function _next_stop(integ, tf)
+@inline function _next_stop(integ, tf, ::Type{T}) where {T}
     tstops = integ.tstops
     if tstops !== nothing && integ.tstops_idx <= length(tstops)
-        stop = @inbounds tstops[integ.tstops_idx]
+        stop = convert(typeof(tf), @inbounds tstops[integ.tstops_idx])
         integ.t < stop < tf && return stop
     end
     return tf
+end
+
+# Trial step from `integ.t`: never past the next landing target, and exactly the
+# remaining distance when the proposal reaches it or would leave less than 1% of a
+# step before it.
+@inline function _bounded_step(integ, dt, tf, ::Type{T}) where {T}
+    target = _next_stop(integ, tf, T)
+    remaining = target - integ.t
+    return remaining <= dt + dt / 100 || integ.t + dt >= target ? remaining : dt
+end
+
+# Trial step whose end time `t + dt` is exactly representable and no longer than `dt`,
+# so the accepted time update is exact and the time advance equals the integrated
+# length. Rounding down, never up, keeps a step that error control shortened from
+# rounding onto `tf` or a stop; a step of exactly the distance to the landing target
+# is kept as is. A step with no representable end time before `t + dt` becomes zero
+# and fails the `dtmin` check.
+@inline function _representable_step(integ, dt, tf, ::Type{T}) where {T}
+    t = integ.t
+    dt == _next_stop(integ, tf, T) - t && return dt
+    tnext = t + dt
+    tnext - t > dt && (tnext = prevfloat(tnext))
+    return tnext - t
 end
 
 @inline function savevalues!(
@@ -62,19 +94,33 @@ end
     elseif saveat !== nothing
         saved = true
         savedexactly = true
-        while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= integrator.t
-            savet = saveat[integrator.cur_t]
-            Θ = (savet - integrator.tprev) / integrator.dt
-            @inbounds us[integrator.cur_t] = _ode_interpolant(
-                Θ, integrator.dt,
-                integrator.uprev, integrator
-            )
-            @inbounds ts[integrator.cur_t] = savet
-            integrator.cur_t += 1
-        end
+        _save_saveat!(integrator, ts, us, integrator.t)
     end
 
     return saved, savedexactly
+end
+
+# Save the pending `saveat` points up to `tsave` from the current step. The dense output
+# of several methods uses `integrator.u` as the step's end state, so this must run
+# before `integrator.u` is moved back to an event time.
+@inline function _save_saveat!(integrator, ts, us, tsave)
+    saveat = integrator.saveat
+    while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= tsave
+        savet = saveat[integrator.cur_t]
+        # The step's endpoints are known exactly; only interior points need the
+        # dense output, which is not exact at Θ = 0 or 1 for every method.
+        @inbounds us[integrator.cur_t] = if savet == integrator.t
+            integrator.u
+        elseif savet == integrator.tprev
+            integrator.uprev
+        else
+            Θ = (savet - integrator.tprev) / integrator.dt
+            _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+        end
+        @inbounds ts[integrator.cur_t] = savet
+        integrator.cur_t += 1
+    end
+    return nothing
 end
 
 @inline function DiffEqBase.terminate!(
@@ -263,6 +309,7 @@ end
         cb_time, prev_sign, event_idx, ts,
         us
     ) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
+    integrator.saveat === nothing || _save_saveat!(integrator, ts, us, cb_time)
     DiffEqBase.change_t_via_interpolation!(integrator, cb_time)
 
     # The new absolute-time callback handling can leave dtnew ≈ 0 when
