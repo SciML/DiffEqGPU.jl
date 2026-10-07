@@ -94,24 +94,33 @@ end
     elseif saveat !== nothing
         saved = true
         savedexactly = true
-        while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= integrator.t
-            savet = saveat[integrator.cur_t]
-            # The step's endpoints are known exactly; only interior points need the
-            # dense output, which is not exact at Θ = 0 or 1 for every method.
-            @inbounds us[integrator.cur_t] = if savet == integrator.t
-                integrator.u
-            elseif savet == integrator.tprev
-                integrator.uprev
-            else
-                Θ = (savet - integrator.tprev) / integrator.dt
-                _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
-            end
-            @inbounds ts[integrator.cur_t] = savet
-            integrator.cur_t += 1
-        end
+        _save_saveat!(integrator, ts, us, integrator.t)
     end
 
     return saved, savedexactly
+end
+
+# Save the pending `saveat` points up to `tsave` from the current step. The dense output
+# of several methods uses `integrator.u` as the step's end state, so this must run
+# before `integrator.u` is moved back to an event time.
+@inline function _save_saveat!(integrator, ts, us, tsave)
+    saveat = integrator.saveat
+    while integrator.cur_t <= length(saveat) && saveat[integrator.cur_t] <= tsave
+        savet = saveat[integrator.cur_t]
+        # The step's endpoints are known exactly; only interior points need the
+        # dense output, which is not exact at Θ = 0 or 1 for every method.
+        @inbounds us[integrator.cur_t] = if savet == integrator.t
+            integrator.u
+        elseif savet == integrator.tprev
+            integrator.uprev
+        else
+            Θ = (savet - integrator.tprev) / integrator.dt
+            _ode_interpolant(Θ, integrator.dt, integrator.uprev, integrator)
+        end
+        @inbounds ts[integrator.cur_t] = savet
+        integrator.cur_t += 1
+    end
+    return nothing
 end
 
 @inline function DiffEqBase.terminate!(
@@ -300,6 +309,7 @@ end
         cb_time, prev_sign, event_idx, ts,
         us
     ) where {AlgType <: GPUODEAlgorithm, IIP, S, T}
+    integrator.saveat === nothing || _save_saveat!(integrator, ts, us, cb_time)
     DiffEqBase.change_t_via_interpolation!(integrator, cb_time)
 
     # The new absolute-time callback handling can leave dtnew ≈ 0 when

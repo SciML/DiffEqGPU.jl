@@ -576,3 +576,26 @@ end
         @test all(s -> s.t[end] == t0 + T(64) && s.u[end] ≈ SVector(T(64), T(64)), sol.u)
     end
 end
+
+# A `saveat` point inside a step that a ContinuousCallback cuts short at an event is
+# saved from that step's dense output, whose end state is the step's own, not the state
+# moved back to the event.
+@testset "Adaptive saveat before a continuous event ($(nameof(typeof(alg))), $T)" for
+    alg in ADAPTIVE_ALGS, T in (Float32, Float64)
+    cb = ContinuousCallback(
+        (u, t, integrator) -> u[1],
+        integrator -> (integrator.u = SVector(integrator.u[1], -integrator.u[2]));
+        save_positions = (false, false)
+    )
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(u[2], zero(T)), SVector{2, T}(1, -1), (zero(T), T(2))
+    )
+    sol = solve(
+        EnsembleProblem(prob), alg, EnsembleGPUKernel(KernelAbstractions.CPU(), 0.0);
+        trajectories = 2, adaptive = true, dt = T(2), callback = cb,
+        merge_callbacks = true, saveat = T[0.5, 2]
+    )
+    @test all(s -> s.t == T[0.5, 2], sol.u)
+    @test all(s -> isapprox(s.u[1], SVector{2, T}(0.5, -1); atol = 1.0e-4), sol.u)
+    @test all(s -> isapprox(s.u[2], SVector{2, T}(1, 1); atol = 1.0e-4), sol.u)
+end
