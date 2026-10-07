@@ -136,6 +136,9 @@ if GROUP == "CPU"
     @time @safetestset "Adaptive endpoint termination" begin
         include("gpu_kernel_de/adaptive_endpoint.jl")
     end
+    @time @safetestset "Allocation Tests" begin
+        include("alloc_tests.jl")
+    end
 end
 
 if GROUP == "JLArrays"
@@ -166,12 +169,5 @@ end
 if GROUP == "CUDA"
     @time @safetestset "Enzyme ensemble gradients" begin
         include("enzyme_environment.jl")
-    end
-end
-
-# Allocation tests run separately to avoid precompilation interference
-if GROUP == "all" || GROUP == "nopre"
-    @time @safetestset "Allocation Tests" begin
-        include("alloc_tests.jl")
     end
 end
