@@ -62,6 +62,20 @@ function vectorized_map_solve(
     )
 end
 
+# `LinSolveGPUSplitFactorize` solves with the per-trajectory LU factors that the generated
+# `Wfact` builds from `f.jac`; without `f.jac` no factorization exists to solve with.
+function ensemble_array_alg(alg, f, len)
+    hasproperty(alg, :linsolve) || return alg
+    SciMLBase.has_jac(f) || throw(
+        ArgumentError(
+            "EnsembleGPUArray and EnsembleCPUArray with the implicit method $(nameof(typeof(alg))) " *
+                "require an analytic Jacobian: pass `ODEFunction(f; jac = ...)`. " *
+                "EnsembleGPUKernel with GPURosenbrock23, GPURodas5P or GPUKvaerno5 does not."
+        )
+    )
+    return remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
+end
+
 function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
     if ensemblealg isa EnsembleGPUArray
         backend = ensemblealg.backend
@@ -90,14 +104,9 @@ function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
         colorvec = nothing
     end
 
+    _alg = ensemble_array_alg(alg, prob.f, len)
     _callback = generate_callback(prob, length(I), ensemblealg; kwargs...)
     prob = generate_problem(prob, u0, p, jac_prototype, colorvec)
-
-    if hasproperty(alg, :linsolve)
-        _alg = remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
-    else
-        _alg = alg
-    end
 
     return sol = solve(
         prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,

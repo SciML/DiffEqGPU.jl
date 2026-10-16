@@ -87,6 +87,9 @@ if GROUP in SUPPORTS_LUFACT
     @time @safetestset "EnsembleGPUArray OOP" begin
         include("ensemblegpuarray_oop.jl")
     end
+    @time @safetestset "EnsembleGPUArray implicit methods need f.jac" begin
+        include("ensemblegpuarray_implicit_jac.jl")
+    end
 end
 
 # EnsembleGPUArray kernels has Int64 arguments, causing them to fail with Metal and oneAPI
@@ -129,6 +132,9 @@ if GROUP == "CPU"
     end
     @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
         include("ensemblegpuarray_scalar_batch.jl")
+    end
+    @time @safetestset "EnsembleGPUArray implicit methods need f.jac" begin
+        include("ensemblegpuarray_implicit_jac.jl")
     end
     @time @safetestset "Kernel ensemble host storage" begin
         include("gpu_kernel_de/host_fastpath.jl")
