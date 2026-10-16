@@ -8,4 +8,4 @@ Gradient tests must use the package and its loaded extensions without adding dif
 
 # Kernel stepper inlining
 
-Keep `@inline` on the `step!` methods in `src/ensemblegpukernel/perform_step/`. Without it the mutable integrator escapes into a call and is heap-allocated in device code: on OpenCL the resulting `gpu_malloc` fails and the kernel exits without writing output, and on Julia 1.12 Enzyme returns an incorrect adaptive Float64 gradient (the primal is unchanged). Scope `@muladd` to arithmetic blocks rather than removing the inline annotation.
+Keep `@inline` on the `step!` methods in `src/ensemblegpukernel/perform_step/`. Without it the mutable integrator escapes into a call and is heap-allocated in device code: on OpenCL the resulting `gpu_malloc` fails and the kernel exits without writing output, and on Julia 1.12 Enzyme returns an incorrect adaptive Float64 gradient (the primal is unchanged). Apply `@muladd` to whole kernel and stepper functions together with `@inline`.

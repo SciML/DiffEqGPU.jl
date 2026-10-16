@@ -1,4 +1,4 @@
-@kernel function em_kernel(
+@muladd @kernel function em_kernel(
         @Const(probs), _us, _ts, dt,
         saveat, ::Val{save_everystep}
     ) where {save_everystep}
