@@ -14,9 +14,14 @@ function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where
     return T(1 / 5), zero(T), T(5), T(1 / 5), T(9 / 10), T(1.0e-4), T(1.0e-4)
 end
 
+# Step-size controller power, through `fastpower` as in the OrdinaryDiffEq controllers.
+# `fastpower` evaluates in Float32, so NaN, Inf and values beyond the Float32 range use `^`
+# and a non-finite error estimate keeps producing a non-finite step size.
+@inline _controller_pow(x, y) = x <= floatmax(Float32) ? fastpower(x, y) : x^y
+
 # `qold^beta2` of the PI controller. The I controller has `beta2 = 0`, so the factor is
-# exactly one and the device `pow` call is skipped.
-@inline _qold_factor(alg, qold, beta2) = qold^beta2
+# exactly one.
+@inline _qold_factor(alg, qold, beta2) = _controller_pow(qold, beta2)
 @inline _qold_factor(::GPUTsit5IController, qold, beta2) = one(qold)
 
 # Whether a pending tstop before `tf` falls inside the step just accepted from `integ.t`.
