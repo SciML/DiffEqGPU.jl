@@ -72,3 +72,10 @@ end
         trajectories = 2, adaptive = true, dt = 0.01f0
     )
 end
+
+@testset "I-controller history factor is exactly one ($T)" for T in (Float32, Float64)
+    for qold in (T(1.0e-4), T(0.3), one(T), T(7), floatmax(T), T(Inf), T(NaN))
+        @test DiffEqGPU._qold_factor(GPUTsit5IController(), qold, zero(T)) === qold^zero(T)
+        @test DiffEqGPU._qold_factor(GPUTsit5(), qold, T(0.08)) === qold^T(0.08)
+    end
+end

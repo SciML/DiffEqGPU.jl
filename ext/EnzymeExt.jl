@@ -1,11 +1,11 @@
 module EnzymeExt
 
 using DiffEqGPU: DiffEqGPU
-using Enzyme: Enzyme, EnzymeRules, Const, Duplicated, Reverse
+using Enzyme: Enzyme, EnzymeRules, Annotation, Const, Duplicated, Reverse
 
 function EnzymeRules.augmented_primal(
         config::EnzymeRules.RevConfig, func::Const{typeof(DiffEqGPU._kernel_transfer)},
-        ::Type{RT}, backend::Const, x::Duplicated
+        ::Type{RT}, backend::Annotation, x::Duplicated
     ) where {RT}
     y = func.val(backend.val, x.val)
     # Zero the elements on the host; device-array wrapper metadata can be inactive.
@@ -20,7 +20,7 @@ _copy_payload!(dest, src) = (copyto!(dest, src); nothing)
 
 function EnzymeRules.reverse(
         config::EnzymeRules.RevConfig, ::Const{typeof(DiffEqGPU._kernel_transfer)},
-        ::Type{RT}, dy, backend::Const, x::Duplicated
+        ::Type{RT}, dy, backend::Annotation, x::Duplicated
     ) where {RT}
     # Let Enzyme accumulate every active field, including captured functions and times.
     primal = Array(x.val)
