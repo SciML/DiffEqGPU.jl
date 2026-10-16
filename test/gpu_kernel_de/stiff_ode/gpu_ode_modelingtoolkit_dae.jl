@@ -281,7 +281,7 @@ end
 @testset "Host symbolic setter with trivial initialization" begin
     @parameters decay_rate = 1.0
     @variables population(t) = 1.0
-    @mtkcompile decay_system = ODESystem(
+    @mtkcompile decay_system = System(
         [D(population) ~ -decay_rate * population], t
     )
 
@@ -327,7 +327,7 @@ end
         px^2 + py^2 ~ L^2
     ]
 
-    @mtkcompile pendulum = ODESystem(eqs, t, [px, py, pλ], [g, L])
+    @mtkcompile pendulum = System(eqs, t, [px, py, pλ], [g, L])
 
     mtk_prob = ODEProblem{false, SciMLBase.FullSpecialize}(
         pendulum, [py => 0.99, D(px) => 0.0], (0.0, 1.0),

@@ -52,3 +52,19 @@ end
         @test dp == T[4]
     end
 end
+
+@testset "Transfer rule accepts any backend annotation ($backend)" for backend in transfer_backends
+    config = EnzymeRules.RevConfig{true, true, 1, (false, false, false), false, false}()
+    func = Const(DiffEqGPU._kernel_transfer)
+    x = Duplicated([1.0, 2.0], zeros(2))
+    for backend_arg in (Const(backend), Duplicated(backend, backend))
+        fill!(x.dval, 0)
+        RT = Duplicated{typeof(DiffEqGPU._kernel_transfer(backend, x.val))}
+        aug = EnzymeRules.augmented_primal(config, func, RT, backend_arg, x)
+        @test Array(aug.primal) == x.val
+        fill!(aug.shadow, 1)
+        @test EnzymeRules.reverse(config, func, RT, aug.tape, backend_arg, x) ===
+            (nothing, nothing)
+        @test x.dval == ones(2)
+    end
+end
