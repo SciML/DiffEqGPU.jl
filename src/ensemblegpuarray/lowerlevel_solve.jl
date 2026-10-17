@@ -62,17 +62,10 @@ function vectorized_map_solve(
     )
 end
 
-# `LinSolveGPUSplitFactorize` solves with the per-trajectory LU factors that the generated
-# `Wfact` builds from `f.jac`; without `f.jac` no factorization exists to solve with.
+# `LinSolveGPUSplitFactorize` solves with the per-trajectory LU factors that the `Wfact`
+# generated from `f.jac` writes; without `f.jac` the algorithm keeps its own linear solver.
 function ensemble_array_alg(alg, f, len)
-    hasproperty(alg, :linsolve) || return alg
-    SciMLBase.has_jac(f) || throw(
-        ArgumentError(
-            "EnsembleGPUArray and EnsembleCPUArray with the implicit method $(nameof(typeof(alg))) " *
-                "require an analytic Jacobian: pass `ODEFunction(f; jac = ...)`. " *
-                "EnsembleGPUKernel with GPURosenbrock23, GPURodas5P or GPUKvaerno5 does not."
-        )
-    )
+    hasproperty(alg, :linsolve) && SciMLBase.has_jac(f) || return alg
     return remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
 end
 

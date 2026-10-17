@@ -1,12 +1,15 @@
 using DiffEqGPU, Test
-using OrdinaryDiffEq: Rosenbrock23, Rodas5P, Tsit5
-using SciMLBase: EnsembleProblem, EnsembleSerial, ODEFunction, ODEProblem, remake, solve
+using OrdinaryDiffEq: Rodas5P, Rosenbrock23, Tsit5
+using OrdinaryDiffEqSDIRK: ImplicitEuler
+using OrdinaryDiffEqNonlinearSolve: NLFunctional
+using SciMLBase: EnsembleProblem, EnsembleSerial, ODEFunction, ODEProblem, ReturnCode,
+    remake, solve
 
 include("utils.jl")
 
-# Implicit methods in `EnsembleGPUArray` factorize one Jacobian block per trajectory, built
-# from `f.jac`. Without `f.jac` there is nothing to factorize, so the solve must be rejected
-# instead of running the batched linear solve on an unfactorized matrix.
+# Implicit methods in `EnsembleGPUArray` factorize one Jacobian block per trajectory when
+# `f.jac` is given and use the algorithm's own linear solver otherwise. Both must agree with
+# solving each trajectory separately.
 
 function lorenz!(du, u, p, t)
     du[1] = p[1] * (u[2] - u[1])
@@ -32,29 +35,29 @@ const u0 = Float32[1, 0, 0]
 const tspan = (0.0f0, 1.0f0)
 const p = Float32[10, 28, 8 / 3]
 prob_func(prob, ctx) = remake(prob; p = prob.p .* (1 + ctx.sim_id / 10))
-const kw = (; trajectories = 3, save_everystep = false, abstol = 1.0f-6, reltol = 1.0f-3)
-endpoints(sol) = [Array(s.u[end]) for s in sol.u]
 
-@testset "Implicit EnsembleGPUArray without f.jac ($(nameof(typeof(alg))))" for alg in (
-        Rosenbrock23(), Rodas5P(),
-    )
-    ens = EnsembleProblem(ODEProblem(lorenz!, u0, tspan, p); prob_func)
-    @test_throws ArgumentError solve(ens, alg, EnsembleGPUArray(backend); kw...)
-end
+cases = (
+    ("Rosenbrock23 without jac", Rosenbrock23(), lorenz!, (;)),
+    ("Rodas5P without jac", Rodas5P(), lorenz!, (;)),
+    ("Rosenbrock23 with jac", Rosenbrock23(), ODEFunction(lorenz!; jac = lorenz_jac!), (;)),
+    ("Rodas5P with jac", Rodas5P(), ODEFunction(lorenz!; jac = lorenz_jac!), (;)),
+    (
+        "ImplicitEuler with NLFunctional", ImplicitEuler(nlsolve = NLFunctional()), lorenz!,
+        (; adaptive = false, dt = 1.0f-3),
+    ),
+    ("Tsit5", Tsit5(), lorenz!, (;)),
+)
 
-@testset "Implicit EnsembleGPUArray with f.jac ($(nameof(typeof(alg))))" for alg in (
-        Rosenbrock23(), Rodas5P(),
-    )
-    f = ODEFunction(lorenz!; jac = lorenz_jac!)
+@testset "EnsembleGPUArray $name matches EnsembleSerial" for (name, alg, f, extra) in cases
     ens = EnsembleProblem(ODEProblem(f, u0, tspan, p); prob_func)
-    ref = endpoints(solve(ens, alg, EnsembleSerial(); kw...))
-    sol = endpoints(solve(ens, alg, EnsembleGPUArray(backend); kw...))
-    @test all(isapprox.(sol, ref; rtol = 1.0e-2))
-end
-
-@testset "Explicit EnsembleGPUArray does not need f.jac" begin
-    ens = EnsembleProblem(ODEProblem(lorenz!, u0, tspan, p); prob_func)
-    ref = endpoints(solve(ens, Tsit5(), EnsembleSerial(); kw...))
-    sol = endpoints(solve(ens, Tsit5(), EnsembleGPUArray(backend); kw...))
-    @test all(isapprox.(sol, ref; rtol = 1.0e-2))
+    kw = (;
+        trajectories = 3, save_everystep = false, abstol = 1.0f-6, reltol = 1.0f-3, extra...,
+    )
+    ref = solve(ens, alg, EnsembleSerial(); kw...)
+    sol = solve(ens, alg, EnsembleGPUArray(backend); kw...)
+    for i in 1:3
+        @test sol.u[i].retcode == ReturnCode.Success
+        @test sol.u[i].t[end] == tspan[2]
+        @test isapprox(Array(sol.u[i].u[end]), ref.u[i].u[end]; rtol = 1.0e-2)
+    end
 end

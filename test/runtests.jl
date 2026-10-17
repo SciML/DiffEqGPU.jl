@@ -87,7 +87,7 @@ if GROUP in SUPPORTS_LUFACT
     @time @safetestset "EnsembleGPUArray OOP" begin
         include("ensemblegpuarray_oop.jl")
     end
-    @time @safetestset "EnsembleGPUArray implicit methods need f.jac" begin
+    @time @safetestset "EnsembleGPUArray implicit methods" begin
         include("ensemblegpuarray_implicit_jac.jl")
     end
 end
@@ -133,7 +133,7 @@ if GROUP == "CPU"
     @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
         include("ensemblegpuarray_scalar_batch.jl")
     end
-    @time @safetestset "EnsembleGPUArray implicit methods need f.jac" begin
+    @time @safetestset "EnsembleGPUArray implicit methods" begin
         include("ensemblegpuarray_implicit_jac.jl")
     end
     @time @safetestset "Kernel ensemble host storage" begin
