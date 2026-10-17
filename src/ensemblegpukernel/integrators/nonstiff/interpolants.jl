@@ -369,6 +369,22 @@ end
     )
 end
 
+@inline _tsit5_bθs(rs, θ) = SimpleDiffEq.bθs(rs, θ)
+
+# `SimpleDiffEq.bθs` requires θ to share the coefficients' element type, which excludes
+# the dual times used to differentiate event conditions.
+@inline function _tsit5_bθs(rs::SVector{22}, θ::ForwardDiff.Dual{EventTimeTag})
+    r11, r12, r13, r14, r22, r23, r24, r32, r33, r34, r42, r43, r44, r52, r53,
+        r54, r62, r63, r64, r72, r73, r74 = rs
+    z = zero(eltype(rs))
+    return (
+        @evalpoly(θ, z, r11, r12, r13, r14), @evalpoly(θ, z, z, r22, r23, r24),
+        @evalpoly(θ, z, z, r32, r33, r34), @evalpoly(θ, z, z, r42, r43, r44),
+        @evalpoly(θ, z, z, r52, r53, r54), @evalpoly(θ, z, z, r62, r63, r64),
+        @evalpoly(θ, z, z, r72, r73, r74),
+    )
+end
+
 @inline @muladd function _ode_interpolant(
         Θ, dt, y₀,
         integ::T
@@ -376,7 +392,7 @@ end
         T <:
         Union{GPUT5I, GPUAT5I},
     }
-    b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = SimpleDiffEq.bθs(integ.rs, Θ)
+    b1θ, b2θ, b3θ, b4θ, b5θ, b6θ, b7θ = _tsit5_bθs(integ.rs, Θ)
     return y₀ +
         dt *
         (

@@ -230,6 +230,12 @@ end
         integrator.step_idx -= Int(round((integrator.t - t) / integrator.dt))
         integrator.t = t
         #integrator.dt = integrator.t - integrator.tprev
+    elseif within_autodiff()
+        # An event exactly at the step end leaves the values unchanged, but its time may
+        # carry a different sensitivity than the step end, which must reach the state.
+        # The difference of equal interpolated values is +0.0, so `u` is unchanged.
+        integrator.u = integrator.u - (integrator(integrator.t) - integrator(t))
+        integrator.t = t
     end
 end
 @inline function DiffEqBase.change_t_via_interpolation!(
@@ -404,11 +410,32 @@ end
         end
     end
 
-    if rootfind == SciMLBase.LeftRootFind
-        return left
-    else
-        return right
+    root = rootfind == SciMLBase.LeftRootFind ? left : right
+    return within_autodiff() ? _implicit_root(f, root) : root
+end
+
+struct EventTimeTag end
+
+@inline _event_time_derivative(y::ForwardDiff.Dual{EventTimeTag}) = ForwardDiff.partials(y, 1)
+@inline _event_time_derivative(y) = zero(y)
+@inline _event_value(y::ForwardDiff.Dual{EventTimeTag}) = ForwardDiff.value(y)
+@inline _event_value(y) = y
+
+# The bracketing iterations carry no derivative information about the root, so attach
+# the implicit-function-theorem sensitivity dτ = -∂f/∂θ / ∂f/∂t at the converged root.
+# Both partials come from one dual evaluation at the detached root, which interpolates
+# the state even at a step endpoint, so ∂f/∂θ holds the evaluation time fixed instead of
+# following a moving endpoint. The correction is identically zero in the primal, so the
+# root is unchanged, and its zero numerator makes the slope's own sensitivity drop out.
+@inline function _implicit_root(f, root)
+    t = ignore_derivatives(root)
+    y = f(ForwardDiff.Dual{EventTimeTag}(t, one(t)))
+    slope = _event_time_derivative(y)
+    ft = _event_value(y)
+    if iszero(slope) || !isfinite(slope) || !isfinite(ft)
+        error("Cannot differentiate a continuous callback event time: the condition's time derivative at the event is zero or non-finite (tangential or singular crossing).")
     end
+    return t - convert(typeof(t), (ft - ignore_derivatives(ft)) / slope)
 end
 
 @inline function DiffEqBase.find_callback_time(
@@ -453,15 +480,18 @@ end
         bottom_sign * top_sign <= 0
 
     event_idx = 1
+    zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
 
     if !event_occurred
         callback_t = integrator.t
         residual = zero(bottom_condition)
-    elseif callback.rootfind == SciMLBase.NoRootFind || iszero(top_sign)
+    elseif callback.rootfind == SciMLBase.NoRootFind
         callback_t = top_t
         residual = zero(bottom_condition)
+    elseif iszero(top_sign)
+        callback_t = within_autodiff() ? _implicit_root(zero_func, top_t) : top_t
+        residual = zero(bottom_condition)
     else
-        zero_func(abst, p = nothing) = DiffEqBase.get_condition(integrator, callback, abst)
         callback_t = gpu_find_root(zero_func, (bottom_t, top_t), callback.rootfind)
         residual = zero_func(callback_t)
     end
@@ -504,4 +534,20 @@ end
         tmp = integrator(abst)
     end
     return callback.condition(tmp, abst, integrator)
+end
+
+# Event-time derivatives must include the interpolated state's dependence on time, so
+# they always interpolate instead of reusing the stored endpoint states.
+@inline function DiffEqBase.get_condition(
+        integrator::SciMLBase.AbstractODEIntegrator{
+            AlgType,
+            IIP,
+            S, T,
+        },
+        callback,
+        abst::ForwardDiff.Dual{EventTimeTag}
+    ) where {
+        AlgType <: GPUODEAlgorithm, IIP, S, T,
+    }
+    return callback.condition(integrator(abst), abst, integrator)
 end
