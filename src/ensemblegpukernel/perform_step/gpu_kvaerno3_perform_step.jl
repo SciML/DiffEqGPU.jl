@@ -25,7 +25,7 @@
     end
 
     if integ.u_modified
-        k1 = f(uprev, p, t)
+        k1 = _kvaerno_explicit_du(f, uprev, p, t)
         integ.u_modified = false
     else
         @inbounds k1 = integ.k1
@@ -79,7 +79,7 @@
     k2 = z₄ ./ dt
 
     @inbounds begin # Necessary for interpolation
-        integ.k1 = f(integ.u, p, t)
+        integ.k1 = _kvaerno_explicit_du(f, integ.u, p, t)
         integ.k2 = k2
     end
 
@@ -113,7 +113,7 @@ end
         α32 = integ.tab
 
     if integ.u_modified
-        k1 = f(uprev, p, t)
+        k1 = _kvaerno_explicit_du(f, uprev, p, t)
         integ.u_modified = false
     else
         @inbounds k1 = integ.k1
@@ -134,7 +134,7 @@ end
 
         # FSAL Step 1
 
-        k1 = f(uprev, p, t)
+        k1 = _kvaerno_explicit_du(f, uprev, p, t)
 
         z₁ = dt * k1
 
