@@ -82,9 +82,10 @@ end
 end
 
 @testset "Controller power ($T)" for T in (Float32, Float64)
-    for y in (T(0.08), T(1 / 7), T(0.2)),
+    for y in (T(0.08), T(1 / 7), T(0.2), T(0.35)),
             x in (T(1.0e-30), T(1.0e-4), T(0.3), one(T), T(7), T(1.0e30), floatmax(Float32))
-        # `fastpower` covers the normal Float32 range with relative error below 2e-5.
+        # For the controller exponents (7/(10k), 2/(5k), 1/5 for orders k = 2:9), `fastpower`
+        # has relative error below 3.4e-5 over the normal Float32 range.
         @test DiffEqGPU._controller_pow(x, y) ≈ x^y rtol = 1.0e-4
     end
     outside = (zero(T), nextfloat(zero(T)), prevfloat(T(floatmin(Float32))), T(Inf), T(NaN))
