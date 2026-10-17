@@ -486,14 +486,9 @@ function batch_solve_up(ensembleprob, probs, alg, ensemblealg, I, u0, p; kwargs.
         colorvec = nothing
     end
 
+    _alg = ensemble_array_alg(alg, probs[1].f, len)
     _callback = generate_callback(probs[1], length(I), ensemblealg; kwargs...)
     prob = generate_problem(probs[1], u0, p, jac_prototype, colorvec)
-
-    if hasproperty(alg, :linsolve)
-        _alg = remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
-    else
-        _alg = alg
-    end
 
     sol = solve(
         prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
@@ -589,14 +584,9 @@ function ChainRulesCore.rrule(
         colorvec = nothing
     end
 
+    _alg = ensemble_array_alg(alg, probs[1].f, len)
     _callback = generate_callback(probs[1], length(I), ensemblealg)
     prob = generate_problem(probs[1], u0, pdual, jac_prototype, colorvec)
-
-    if hasproperty(alg, :linsolve)
-        _alg = remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
-    else
-        _alg = alg
-    end
 
     sol = solve(
         prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
