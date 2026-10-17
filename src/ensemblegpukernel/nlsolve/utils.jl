@@ -1,4 +1,4 @@
-@inline function nlsolve(nlsolver::NLType, integrator::IntegType) where {NLType, IntegType}
+@muladd @inline function nlsolve(nlsolver::NLType, integrator::IntegType) where {NLType, IntegType}
     maxiters = nlsolver.maxiters
     dt = nlsolver.dt
     p = integrator.p

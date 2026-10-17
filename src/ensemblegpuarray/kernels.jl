@@ -29,7 +29,7 @@ end
 # The reparameterization is adapted from:https://github.com/rtqichen/torchdiffeq/issues/122#issuecomment-738978844
 # Map normalized time t∈[0,1] to each trajectory's physical tspan via a separate
 # local `t_phys`. Reassigning the kernel argument `t` leaks across CPU workgroup lanes.
-@kernel function gpu_kernel(
+@muladd @kernel function gpu_kernel(
         f, du, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(t)
@@ -45,7 +45,7 @@ end
     end
 end
 
-@kernel function gpu_kernel_oop(
+@muladd @kernel function gpu_kernel_oop(
         f, du, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(t)
@@ -61,12 +61,12 @@ end
     end
 end
 
-@kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
+@muladd @kernel function gpu_kernel(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
     @views @inbounds f(du[:, i], u[:, i], ensemble_param(p, i), t)
 end
 
-@kernel function gpu_kernel_oop(f, du, @Const(u), @Const(p), @Const(t))
+@muladd @kernel function gpu_kernel_oop(f, du, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear)
     @views @inbounds x = f(u[:, i], ensemble_param(p, i), t)
     @inbounds for j in 1:size(du, 1)
@@ -74,7 +74,7 @@ end
     end
 end
 
-@kernel function jac_kernel(
+@muladd @kernel function jac_kernel(
         f, J, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(t)
@@ -94,7 +94,7 @@ end
     end
 end
 
-@kernel function jac_kernel_oop(
+@muladd @kernel function jac_kernel_oop(
         f, J, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(t)
@@ -116,13 +116,13 @@ end
     end
 end
 
-@kernel function jac_kernel(f, J, @Const(u), @Const(p), @Const(t))
+@muladd @kernel function jac_kernel(f, J, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
     @views @inbounds f(J[section, section], u[:, i + 1], ensemble_param(p, i + 1), t)
 end
 
-@kernel function jac_kernel_oop(f, J, @Const(u), @Const(p), @Const(t))
+@muladd @kernel function jac_kernel_oop(f, J, @Const(u), @Const(p), @Const(t))
     i = @index(Global, Linear) - 1
     section = (1 + (i * size(u, 1))):((i + 1) * size(u, 1))
     @views @inbounds x = f(u[:, i + 1], ensemble_param(p, i + 1), t)
@@ -132,20 +132,20 @@ end
     end
 end
 
-@kernel function discrete_condition_kernel(condition, cur, @Const(u), @Const(t), @Const(p))
+@muladd @kernel function discrete_condition_kernel(condition, cur, @Const(u), @Const(t), @Const(p))
     i = @index(Global, Linear)
     @views @inbounds cur[i] = condition(
         u[:, i], t, FakeIntegrator(u[:, i], t, ensemble_param(p, i))
     )
 end
 
-@kernel function discrete_affect!_kernel(affect!, cur, u, t, p)
+@muladd @kernel function discrete_affect!_kernel(affect!, cur, u, t, p)
     i = @index(Global, Linear)
     @views @inbounds cur[i] &&
         affect!(FakeIntegrator(u[:, i], t, ensemble_param(p, i)))
 end
 
-@kernel function continuous_condition_kernel(
+@muladd @kernel function continuous_condition_kernel(
         condition, out, @Const(u), @Const(t),
         @Const(p)
     )
@@ -155,7 +155,7 @@ end
     )
 end
 
-@kernel function continuous_affect!_kernel(
+@muladd @kernel function continuous_affect!_kernel(
         affect!, affect_neg!, simultaneous_events, u, t, p
     )
     i = @index(Global, Linear)
@@ -220,7 +220,7 @@ function workgroupsize(backend, n)
     return min(maxthreads(backend), n)
 end
 
-@kernel function W_kernel(
+@muladd @kernel function W_kernel(
         jac, W, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}), @Const(gamma),
         @Const(t)
@@ -246,7 +246,7 @@ end
     end
 end
 
-@kernel function W_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
+@muladd @kernel function W_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
@@ -260,7 +260,7 @@ end
     end
 end
 
-@kernel function W_kernel_oop(
+@muladd @kernel function W_kernel_oop(
         jac, W, @Const(u),
         @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(gamma),
@@ -290,7 +290,7 @@ end
     end
 end
 
-@kernel function W_kernel_oop(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
+@muladd @kernel function W_kernel_oop(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
@@ -307,7 +307,7 @@ end
     end
 end
 
-@kernel function Wt_kernel(
+@muladd @kernel function Wt_kernel(
         jac, W, @Const(u), @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(gamma), @Const(t)
     ) where {P, T}
@@ -326,7 +326,7 @@ end
     end
 end
 
-@kernel function Wt_kernel_oop(
+@muladd @kernel function Wt_kernel_oop(
         jac, W, @Const(u), @Const(params::AbstractArray{ParamWrapper{P, T}}),
         @Const(gamma), @Const(t)
     ) where {P, T}
@@ -349,7 +349,7 @@ end
     end
 end
 
-@kernel function Wt_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
+@muladd @kernel function Wt_kernel(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
@@ -359,7 +359,7 @@ end
     end
 end
 
-@kernel function Wt_kernel_oop(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
+@muladd @kernel function Wt_kernel_oop(jac, W, @Const(u), @Const(p), @Const(gamma), @Const(t))
     i = @index(Global, Linear)
     len = size(u, 1)
     _W = @inbounds @view(W[:, :, i])
@@ -372,7 +372,7 @@ end
     end
 end
 
-@kernel function gpu_kernel_tgrad(
+@muladd @kernel function gpu_kernel_tgrad(
         f::AbstractArray{T}, du, @Const(u), @Const(p),
         @Const(t)
     ) where {T}
@@ -380,7 +380,7 @@ end
     @inbounds f = f[i].tgrad
     @views @inbounds f(du[:, i], u[:, i], ensemble_param(p, i), t)
 end
-@kernel function gpu_kernel_oop_tgrad(
+@muladd @kernel function gpu_kernel_oop_tgrad(
         f::AbstractArray{T}, du, @Const(u), @Const(p),
         @Const(t)
     ) where {T}
@@ -518,7 +518,7 @@ function (p::LinSolveGPUSplitFactorize)(::Type{Val{:init}}, f, u0_prototype)
     return LinSolveGPUSplitFactorize(size(u0_prototype)...)
 end
 
-@kernel function ldiv!_kernel(W, u, @Const(len), @Const(nfacts))
+@muladd @kernel function ldiv!_kernel(W, u, @Const(len), @Const(nfacts))
     i = @index(Global, Linear)
     section = (1 + ((i - 1) * len)):(i * len)
     _W = @inbounds @view(W[:, :, i])
