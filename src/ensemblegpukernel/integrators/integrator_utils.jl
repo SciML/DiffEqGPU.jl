@@ -15,9 +15,10 @@ function build_adaptive_controller_cache(::GPUTsit5IController, ::Type{T}) where
 end
 
 # Step-size controller power, through `fastpower` as in the OrdinaryDiffEq controllers.
-# `fastpower` evaluates in Float32, so NaN, Inf and values beyond the Float32 range use `^`
-# and a non-finite error estimate keeps producing a non-finite step size.
-@inline _controller_pow(x, y) = x <= floatmax(Float32) ? fastpower(x, y) : x^y
+# `fastpower` evaluates in Float32, so zero, NaN, Inf and values outside the normal Float32
+# range use `^`, and a non-finite error estimate keeps producing a non-finite step size.
+@inline _controller_pow(x, y) = floatmin(Float32) <= x <= floatmax(Float32) ?
+    fastpower(x, y) : x^y
 
 # `qold^beta2` of the PI controller. The I controller has `beta2 = 0`, so the factor is
 # exactly one.

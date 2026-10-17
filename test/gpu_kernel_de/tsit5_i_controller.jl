@@ -76,11 +76,20 @@ end
 @testset "I-controller history factor is exactly one ($T)" for T in (Float32, Float64)
     for qold in (T(1.0e-4), T(0.3), one(T), T(7), floatmax(T), T(Inf), T(NaN))
         @test DiffEqGPU._qold_factor(GPUTsit5IController(), qold, zero(T)) === qold^zero(T)
-        # The PI factor uses `fastpower` (max relative error ~2e-5) for finite inputs.
-        if isfinite(qold) && qold <= floatmax(Float32)
-            @test DiffEqGPU._qold_factor(GPUTsit5(), qold, T(0.08)) ≈ qold^T(0.08) rtol = 1.0e-4
-        else
-            @test DiffEqGPU._qold_factor(GPUTsit5(), qold, T(0.08)) === qold^T(0.08)
-        end
+        @test DiffEqGPU._qold_factor(GPUTsit5(), qold, T(0.08)) ===
+            DiffEqGPU._controller_pow(qold, T(0.08))
+    end
+end
+
+@testset "Controller power ($T)" for T in (Float32, Float64)
+    for y in (T(0.08), T(1 / 7), T(0.2)),
+            x in (T(1.0e-30), T(1.0e-4), T(0.3), one(T), T(7), T(1.0e30), floatmax(Float32))
+        # `fastpower` covers the normal Float32 range with relative error below 2e-5.
+        @test DiffEqGPU._controller_pow(x, y) ≈ x^y rtol = 1.0e-4
+    end
+    outside = (zero(T), nextfloat(zero(T)), prevfloat(T(floatmin(Float32))), T(Inf), T(NaN))
+    outside = T === Float64 ? (outside..., 1.0e-300, 1.0e300, floatmax(T)) : outside
+    for y in (T(0.08), T(0.2)), x in outside
+        @test DiffEqGPU._controller_pow(x, y) === x^y
     end
 end
