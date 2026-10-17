@@ -1,0 +1,270 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>GPU Ensemble Simulation with Random Decay Rates · DiffEqGPU.jl</title><meta name="title" content="GPU Ensemble Simulation with Random Decay Rates · DiffEqGPU.jl"/><meta property="og:title" content="GPU Ensemble Simulation with Random Decay Rates · DiffEqGPU.jl"/><meta property="twitter:title" content="GPU Ensemble Simulation with Random Decay Rates · DiffEqGPU.jl"/><meta name="description" content="Documentation for DiffEqGPU.jl."/><meta property="og:description" content="Documentation for DiffEqGPU.jl."/><meta property="twitter:description" content="Documentation for DiffEqGPU.jl."/><meta property="og:url" content="https://docs.sciml.ai/DiffEqGPU/stable/examples/gpu_ensemble_random_decay/"/><meta property="twitter:url" content="https://docs.sciml.ai/DiffEqGPU/stable/examples/gpu_ensemble_random_decay/"/><link rel="canonical" href="https://docs.sciml.ai/DiffEqGPU/stable/examples/gpu_ensemble_random_decay/"/><script data-outdated-warner src="../../assets/warner.js"></script><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.050/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.2/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.16.8/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../search_index.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-mocha.css" data-theme-name="catppuccin-mocha"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-macchiato.css" data-theme-name="catppuccin-macchiato"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-frappe.css" data-theme-name="catppuccin-frappe"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/catppuccin-latte.css" data-theme-name="catppuccin-latte"/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="DiffEqGPU.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DiffEqGPU.jl</a></span></div><button class="docs-search-query input is-rounded is-small is-clickable my-2 mx-auto py-1 px-2" id="documenter-search-query">Search docs (Ctrl + /)</button><ul class="docs-menu"><li><a class="tocitem" href="../../">DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li><li><a class="tocitem" href="../../getting_started/">Getting Started with GPU-Accelerated Differential Equations in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox"/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../tutorials/gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation</a></li><li><a class="tocitem" href="../../tutorials/parallel_callbacks/">Massively Parallel ODE Solving with Event Handling and Callbacks</a></li><li><a class="tocitem" href="../../tutorials/modelingtoolkit/">Symbolic-Numeric GPU Acceleration with ModelingToolkit</a></li><li><a class="tocitem" href="../../tutorials/multigpu/">Setting Up Multi-GPU Parallel Parameter Sweeps</a></li><li><a class="tocitem" href="../../tutorials/lower_level_api/">Using the Lower Level API for Decreased Overhead with GPU accelerated Ensembles</a></li><li><a class="tocitem" href="../../tutorials/weak_order_conv_sde/">Using the EnsembleGPUKernel SDE solvers for the expectation of SDEs </a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../tutorials/within_method_gpu/">Within-Method GPU Parallelism of Ordinary Differential Equation Solves</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox" checked/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li class="is-active"><a class="tocitem" href>GPU Ensemble Simulation with Random Decay Rates</a><ul class="internal"><li><a class="tocitem" href="#Setup"><span>Setup</span></a></li><li class="toplevel"><a class="tocitem" href="#Solving-on-GPU-and-CPU"><span>Solving on GPU and CPU</span></a></li><li class="toplevel"><a class="tocitem" href="#Performance-Comparison"><span>Performance Comparison</span></a></li><li class="toplevel"><a class="tocitem" href="#CPU-Statistical-Analysis-and-Visualization"><span>CPU Statistical Analysis and Visualization</span></a></li><li class="toplevel"><a class="tocitem" href="#GPU-Statistical-Analysis-and-Visualization"><span>GPU Statistical Analysis and Visualization</span></a></li></ul></li><li><a class="tocitem" href="../sde/">GPU Parallel Solving of Stochastic Differential Equations</a></li><li><a class="tocitem" href="../ad/">Using GPU-accelerated Ensembles with Automatic Differentiation</a></li><li><a class="tocitem" href="../reductions/">Batched Reductions for Lowering Peak Memory Requirements</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../reaction_diffusion/">GPU-Accelerated Stochastic Partial Differential Equations</a></li><li><a class="tocitem" href="../bruss/">GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a></li></ul></li></ul></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/ensemblegpukernel/">EnsembleGPUKernel</a></li><li><a class="tocitem" href="../../manual/ensemblegpuarray/">EnsembleGPUArray</a></li><li><a class="tocitem" href="../../manual/backends/">Compute Backends (GPU Choices)</a></li><li><a class="tocitem" href="../../manual/optimal_trajectories/">Choosing Optimal Numbers of Trajectories</a></li><li><a class="tocitem" href="../../manual/choosing_ensembler/">Choosing the Ensemble: EnsembleGPUArray vs EnsembleGPUKernel</a></li><li><a class="tocitem" href="../../manual/developer_interfaces/">Developer Interfaces</a></li><li><a class="tocitem" href="../../manual/api/">API</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><a class="docs-sidebar-button docs-navbar-link fa-solid fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Examples</a></li><li><a class="is-disabled">GPU Ensembles</a></li><li class="is-active"><a href>GPU Ensemble Simulation with Random Decay Rates</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>GPU Ensemble Simulation with Random Decay Rates</a></li></ul></nav><div class="docs-right"><a class="docs-navbar-link" href="https://github.com/SciML/DiffEqGPU.jl" title="View the repository on GitHub"><span class="docs-icon fa-brands"></span><span class="docs-label is-hidden-touch">GitHub</span></a><a class="docs-navbar-link" href="https://github.com/SciML/DiffEqGPU.jl/blob/master/docs/src/examples/gpu_ensemble_random_decay.md" title="Edit source on GitHub"><span class="docs-icon fa-solid"></span></a><a class="docs-settings-button docs-navbar-link fa-solid fa-gear" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-article-toggle-button fa-solid fa-chevron-up" id="documenter-article-toggle-button" href="javascript:;" title="Collapse all docstrings"></a></div></header><article class="content" id="documenter-page"><h1 id="GPU-Ensemble-Simulation-with-Random-Decay-Rates"><a class="docs-heading-anchor" href="#GPU-Ensemble-Simulation-with-Random-Decay-Rates">GPU Ensemble Simulation with Random Decay Rates</a><a id="GPU-Ensemble-Simulation-with-Random-Decay-Rates-1"></a><a class="docs-heading-anchor-permalink" href="#GPU-Ensemble-Simulation-with-Random-Decay-Rates" title="Permalink"></a></h1><p>In this tutorial, we demonstrate how to perform GPU-accelerated ensemble simulations using DiffEqGPU.jl. We model an exponential decay ODE: [ u&#39;(t) = -\lambda \, u(t) ] with the twist that each trajectory uses a random decay rate (\lambda) sampled uniformly from ([0.5, 1.5]). This version uses <code>StaticArrays</code> for the state vector, which is often more robust and performant for small ODEs on the GPU.</p><h2 id="Setup"><a class="docs-heading-anchor" href="#Setup">Setup</a><a id="Setup-1"></a><a class="docs-heading-anchor-permalink" href="#Setup" title="Permalink"></a></h2><p>We first load the necessary packages, define the ODE using <code>StaticArrays</code>, and set up an <code>EnsembleProblem</code> that randomizes the decay rate for each trajectory.</p><pre><code class="language-julia hljs"># Make sure you have the necessary packages installed
+# using Pkg
+# Pkg.add([&quot;OrdinaryDiffEq&quot;, &quot;DiffEqGPU&quot;, &quot;CUDA&quot;,  &quot;StaticArrays&quot;, &quot;Random&quot;, &quot;Statistics&quot;, &quot;Plots&quot;])
+# # Depending on your system, you might need to configure CUDA.jl:
+# # import Pkg; Pkg.build(&quot;CUDA&quot;)
+using OrdinaryDiffEq, DiffEqGPU, CUDA, StaticArrays, Random, Statistics, Plots
+
+# Set a random seed for reproducibility
+Random.seed!(123)
+
+# Define the decay ODE using the OUT-OF-PLACE form for StaticArrays:
+# f(u, p, t) should return a new SVector representing the derivative du/dt.
+# This form is generally preferred for StaticArrays on the GPU.
+function decay_static(u::SVector, p, t)
+    λ = p[1] # Parameter is expected as a scalar or single-element container
+    return @SVector [-λ * u[1]]
+end
+
+# Setup initial condition as a 1-element SVector (Static Array).
+# Using StaticArrays explicitly helps the GPU compiler generate efficient, static code.
+u0 = @SVector [1.0f0]
+
+# Define time span (using Float32 for GPU efficiency)
+tspan = (0.0f0, 5.0f0)
+
+# Define the base parameter (will be overridden by prob_func)
+# We wrap it in an SVector to match how parameters might be handled internally,
+# though a scalar Float32 often works too. Using SVector can sometimes avoid type issues.
+base_param = @SVector [1.0f0]
+
+# Create the ODEProblem using the static function and SVector initial condition
+prob = ODEProblem{false}(decay_static, u0, tspan, base_param) # Use {false} for out-of-place
+
+# Define a probability function that randomizes λ for each ensemble member.
+# Each trajectory&#39;s λ is sampled uniformly from [0.5, 1.5].
+prob_func = (prob, ctx) -&gt; begin
+    new_λ = 0.5f0 + 1.0f0 * rand(Float32)
+    remake(prob, p = @SVector [new_λ])
+end
+
+ensemble_prob = EnsembleProblem(prob, prob_func = prob_func, safetycopy = false)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleProblem with problem ODEProblem</code></pre><h1 id="Solving-on-GPU-and-CPU"><a class="docs-heading-anchor" href="#Solving-on-GPU-and-CPU">Solving on GPU and CPU</a><a id="Solving-on-GPU-and-CPU-1"></a><a class="docs-heading-anchor-permalink" href="#Solving-on-GPU-and-CPU" title="Permalink"></a></h1><p>Here we solve the ensemble problem on both GPU and CPU. We use 10,000 trajectories with a fixed time step to facilitate performance comparison. For performance benchmarking, we initially solve without saving every step (save_everystep=false).</p><pre><code class="language-julia hljs"># Number of trajectories
+num_trajectories = 10_000
+
+# --- GPU Simulation ---
+gpu_sol_perf = nothing # Initialize variable for performance run
+if CUDA.has_cuda() &amp;&amp; CUDA.functional()
+    @info &quot;Running GPU simulation (initial run for performance, includes compilation)...&quot;
+    # Use EnsembleGPUKernel with the CUDABackend.
+    # GPUTsit5 is suitable for non-stiff ODEs on the GPU.
+    # save_everystep=false reduces memory overhead and transfer time if only final states are needed.
+    gpu_sol = solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
+        trajectories = num_trajectories,
+        save_everystep = false, # Crucial for performance measurement
+        dt = 0.01f0, adaptive = false)
+else
+    @warn &quot;CUDA not available. Skipping GPU simulation.&quot;
+    gpu_sol = nothing
+end
+
+# --- CPU Simulation ---
+@info &quot;Running CPU simulation (initial run for performance, includes compilation)...&quot;
+# Use EnsembleThreads for multi-threaded CPU execution.
+# Tsit5 is the CPU counterpart to GPUTsit5.
+# Match GPU saving options for fair comparison.
+cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+    trajectories = num_trajectories,
+    save_everystep = false, # Match GPU setting
+    dt = 0.01f0, adaptive = false)</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 10000 with uType:
+SciMLBase.ODESolution{Float32, 2, Vector{StaticArraysCore.SVector{1, Float32}}, Nothing, Nothing, Vector{Float32}, Vector{Vector{StaticArraysCore.SVector{1, Float32}}}, Nothing, SciMLBase.ODEProblem{StaticArraysCore.SVector{1, Float32}, Tuple{Float32, Float32}, false, StaticArraysCore.SVector{1, Float32}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, typeof(Main.decay_static), LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Nothing, @NamedTuple{}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEqTsit5.Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), FastBroadcast.Serial}, OrdinaryDiffEqCore.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, typeof(Main.decay_static), LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Vector{StaticArraysCore.SVector{1, Float32}}, Vector{Float32}, Vector{Vector{StaticArraysCore.SVector{1, Float32}}}, Nothing, OrdinaryDiffEqTsit5.Tsit5ConstantCache, Nothing}, SciMLBase.DEStats, Nothing, Nothing, Nothing, Nothing, Nothing}</code></pre><h1 id="Performance-Comparison"><a class="docs-heading-anchor" href="#Performance-Comparison">Performance Comparison</a><a id="Performance-Comparison-1"></a><a class="docs-heading-anchor-permalink" href="#Performance-Comparison" title="Permalink"></a></h1><p>We re-run the simulations using @time to get a cleaner measurement of the execution time, excluding the initial compilation overhead.</p><pre><code class="language-julia hljs"># --- GPU Timing (Second Run) ---
+if gpu_sol_perf !== nothing
+    @info &quot;Timing GPU simulation (second run, no data saving)...&quot;
+    @time solve(ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
+        trajectories = num_trajectories, save_everystep = false,
+        dt = 0.01f0, adaptive = false)
+else
+    @info &quot;Skipping GPU timing (CUDA not available).&quot;
+end
+
+# --- CPU Timing (Second Run) ---
+@info &quot;Timing CPU simulation (second run, no data saving)...&quot;
+@time cpu_sol = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+    trajectories = num_trajectories, save_everystep = false,
+    dt = 0.01f0, adaptive = false)
+
+# Note: The first @time includes compilation and setup, the second is more representative
+# of the pure computation time for subsequent runs. Expect GPU to be significantly
+# faster for a large number of trajectories like 10,000.</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">EnsembleSolution Solution of length 10000 with uType:
+SciMLBase.ODESolution{Float32, 2, Vector{StaticArraysCore.SVector{1, Float32}}, Nothing, Nothing, Vector{Float32}, Vector{Vector{StaticArraysCore.SVector{1, Float32}}}, Nothing, SciMLBase.ODEProblem{StaticArraysCore.SVector{1, Float32}, Tuple{Float32, Float32}, false, StaticArraysCore.SVector{1, Float32}, SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, typeof(Main.decay_static), LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Base.Pairs{Symbol, Union{}, Nothing, @NamedTuple{}}, SciMLBase.StandardODEProblem}, OrdinaryDiffEqTsit5.Tsit5{typeof(OrdinaryDiffEqCore.trivial_limiter!), typeof(OrdinaryDiffEqCore.trivial_limiter!), FastBroadcast.Serial}, OrdinaryDiffEqCore.InterpolationData{SciMLBase.ODEFunction{false, SciMLBase.AutoSpecialize, typeof(Main.decay_static), LinearAlgebra.UniformScaling{Bool}, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, Nothing, typeof(SciMLBase.DEFAULT_OBSERVED), Nothing, Nothing, Nothing, Nothing}, Vector{StaticArraysCore.SVector{1, Float32}}, Vector{Float32}, Vector{Vector{StaticArraysCore.SVector{1, Float32}}}, Nothing, OrdinaryDiffEqTsit5.Tsit5ConstantCache, Nothing}, SciMLBase.DEStats, Nothing, Nothing, Nothing, Nothing, Nothing}</code></pre><h1 id="CPU-Statistical-Analysis-and-Visualization"><a class="docs-heading-anchor" href="#CPU-Statistical-Analysis-and-Visualization">CPU Statistical Analysis and Visualization</a><a id="CPU-Statistical-Analysis-and-Visualization-1"></a><a class="docs-heading-anchor-permalink" href="#CPU-Statistical-Analysis-and-Visualization" title="Permalink"></a></h1><p>To visualize the evolution of the ensemble statistics (mean and standard deviation) over time using the <em>CPU results</em>, we need the solutions at multiple time points. We re-solve the problem on the CPU, this time saving the results at each step (save_everystep=true). We then process the results and plot them.</p><pre><code class="language-julia hljs"># Re-solve on CPU, saving all steps for plotting
+@info &quot;Re-solving CPU simulation to collect data for plotting...&quot;
+cpu_sol_plot = solve(ensemble_prob, Tsit5(), EnsembleThreads();
+    trajectories = num_trajectories,
+    save_everystep = true, # Save data at each dt step
+    dt = 0.01f0,
+    adaptive = false)
+
+solutions_vector_cpu = cpu_sol_plot.u
+
+# Extract time points from the first trajectory&#39;s solution (assuming all are same)
+t_vals_cpu = solutions_vector_cpu[1].t
+num_times_cpu = length(t_vals_cpu)
+
+# Create a matrix to hold the results: rows=time, columns=trajectories
+# Initialize with NaN in case some trajectories fail
+ensemble_vals_cpu = fill(NaN32, num_times_cpu, num_trajectories) # Use Float32
+
+# Extract the state value (u[1]) from each trajectory at each time point
+for i in 1:num_trajectories
+    sol = solutions_vector_cpu[i]
+    # Check if the trajectory simulation was successful and data looks valid
+    if sol.retcode == ReturnCode.Success &amp;&amp; length(sol.u) == num_times_cpu
+        # sol.u is a Vector{SVector{1, Float32}}. We need the element from each SVector.
+        ensemble_vals_cpu[:, i] .= getindex.(sol.u, 1)
+    else
+        @warn &quot;CPU Trajectory $i failed or had unexpected length. Retcode: $(sol.retcode). Length: $(length(sol.u)). Skipping.&quot;
+        # Column remains NaN
+    end
+end
+
+# Filter out failed trajectories (columns with NaN)
+successful_traj_indices_cpu = findall(
+    j -&gt; !all(isnan, view(ensemble_vals_cpu, :, j)), 1:num_trajectories)
+num_successful_cpu = length(successful_traj_indices_cpu)
+
+if num_successful_cpu == 0
+    @error &quot;No successful CPU trajectories to analyze!&quot;
+else
+    if num_successful_cpu &lt; num_trajectories
+        @warn &quot;$(num_trajectories - num_successful_cpu) CPU trajectories failed. Analysis based on $num_successful_cpu trajectories.&quot;
+        ensemble_vals_cpu = ensemble_vals_cpu[:, successful_traj_indices_cpu] # Keep only successful ones
+    end
+
+    # Compute ensemble statistics over successful CPU trajectories
+    mean_u_cpu = mapslices(mean, ensemble_vals_cpu, dims = 2)[:]
+    std_u_cpu = mapslices(std, ensemble_vals_cpu, dims = 2)[:]
+
+    # --- Plotting CPU Results ---
+    p1_cpu = plot(
+        t_vals_cpu, mean_u_cpu, ribbon = std_u_cpu, xlabel = &quot;Time (t)&quot;, ylabel = &quot;u(t)&quot;,
+        title = &quot;CPU Ensemble Mean ±1σ ($num_successful_cpu Trajectories)&quot;,
+        label = &quot;Mean u(t)&quot;, fillalpha = 0.3, lw = 2)
+
+    final_vals_cpu = ensemble_vals_cpu[end, :]
+    p2_cpu = histogram(final_vals_cpu, bins = 30, normalize = :probability,
+        xlabel = &quot;Final u(T)&quot;, ylabel = &quot;Probability Density&quot;,
+        title = &quot;CPU Distribution of Final Values (t=$(tspan[2]))&quot;,
+        label = &quot;&quot;, legend = false)
+
+    plot_cpu = plot(
+        p1_cpu, p2_cpu, layout = (1, 2), size = (1000, 450), legend = :outertopright)
+    @info &quot;Displaying CPU analysis plot...&quot;
+    display(plot_cpu)
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">[ Info: Re-solving CPU simulation to collect data for plotting...
+[ Info: Displaying CPU analysis plot...
+GKS: cannot open display - headless operation mode active</code></pre><h1 id="GPU-Statistical-Analysis-and-Visualization"><a class="docs-heading-anchor" href="#GPU-Statistical-Analysis-and-Visualization">GPU Statistical Analysis and Visualization</a><a id="GPU-Statistical-Analysis-and-Visualization-1"></a><a class="docs-heading-anchor-permalink" href="#GPU-Statistical-Analysis-and-Visualization" title="Permalink"></a></h1><p>Similarly, we can analyze the results from the <em>GPU simulation</em>. This requires re-running the simulation to save the time series data and then transferring the data from the GPU memory to the CPU RAM for analysis and plotting using standard tools. Note that this data transfer can be a significant bottleneck for large numbers of trajectories or time steps.</p><pre><code class="language-julia hljs"># Check if GPU simulation was successful initially before proceeding
+gpu_analysis_plot = nothing # Initialize plot variable
+if gpu_sol_perf !== nothing &amp;&amp; CUDA.has_cuda() &amp;&amp; CUDA.functional()
+    @info &quot;Re-solving GPU simulation to collect data for plotting...&quot;
+    # Add @time to see the impact of saving data
+    @time gpu_sol_plot = solve(
+        ensemble_prob, GPUTsit5(), EnsembleGPUKernel(CUDA.CUDABackend());
+        trajectories = num_trajectories,
+        save_everystep = true, # &lt;&lt;-- Save data at each dt step on GPU
+        dt = 0.01f0,
+        adaptive = false)
+
+    # --- Data Transfer and Analysis ---
+    # The result gpu_sol_plot should be an EnsembleSolution containing a Vector{ODESolution}
+    # Accessing it might implicitly transfer, or we can use Array()
+    @info &quot;Transferring GPU solution objects (if needed) and processing...&quot;
+    # Let&#39;s try accessing .u directly first, assuming it holds the Vector{ODESolution}
+    # If this fails, we might try Array(gpu_sol_plot) -&gt; Vector{ODESolution}
+    solutions_vector = gpu_sol_plot.u
+
+    # Check if the transfer actually happened / if we have the right type
+    if !(solutions_vector isa AbstractVector{&lt;:ODESolution})
+        @warn &quot;gpu_sol_plot.u is not a Vector{ODESolution}. Trying Array(gpu_sol_plot)...&quot;
+        # This might explicitly trigger the transfer and construction of ODESolution objects on CPU
+        # Note: This might be slow/memory intensive!
+        @time solutions_vector = Array(gpu_sol_plot)
+        if !(solutions_vector isa AbstractVector{&lt;:ODESolution})
+            @error &quot;Could not obtain Vector{ODESolution} from GPU result. Type is $(typeof(solutions_vector)). Aborting GPU analysis.&quot;
+            solutions_vector = nothing # Mark as failed
+        end
+    end
+
+    if solutions_vector !== nothing
+        # Extract time points from the first successful trajectory&#39;s solution
+        first_successful_gpu_idx = findfirst(
+            sol -&gt; sol.retcode == ReturnCode.Success, solutions_vector)
+
+        if first_successful_gpu_idx === nothing
+            @error &quot;No successful GPU trajectories found in the returned solutions vector!&quot;
+        else
+            t_vals_gpu = solutions_vector[first_successful_gpu_idx].t
+            num_times_gpu = length(t_vals_gpu)
+
+            # Create a matrix to hold the results from GPU (now on CPU)
+            ensemble_vals_gpu = fill(NaN32, num_times_gpu, num_trajectories) # Use Float32
+
+            # Extract the state value (u[1]) from each trajectory
+            num_processed = 0
+            for i in 1:num_trajectories
+                sol = solutions_vector[i] # Access the i-th ODESolution
+                if sol.retcode == ReturnCode.Success
+                    # Check consistency of time points (optional but good)
+                    if length(sol.t) == num_times_gpu # &amp;&amp; sol.t == t_vals_gpu (can be slow check)
+                        # sol.u is likely Vector{SVector{1, Float32}} after transfer
+                        ensemble_vals_gpu[:, i] .= getindex.(sol.u, 1)
+                        num_processed += 1
+                    else
+                        @warn &quot;GPU Trajectory $i succeeded but time points mismatch (Expected $(num_times_gpu), Got $(length(sol.t))). Skipping.&quot;
+                        # Column remains NaN
+                    end
+                else
+                    # @warn &quot;GPU Trajectory $i failed with retcode: $(sol.retcode). Skipping.&quot; # Potentially verbose
+                    # Column remains NaN
+                end
+            end
+            @info &quot;Processed $num_processed successful GPU trajectories.&quot;
+
+            # Filter out failed trajectories (columns with NaN)
+            successful_traj_indices_gpu = findall(
+                j -&gt; !all(isnan, view(ensemble_vals_gpu, :, j)), 1:num_trajectories)
+            num_successful_gpu = length(successful_traj_indices_gpu)
+
+            if num_successful_gpu == 0
+                @error &quot;No successful GPU trajectories suitable for analysis after processing!&quot;
+            else
+                if num_successful_gpu &lt; num_trajectories
+                    # This count includes those skipped due to time mismatch or failure
+                    @warn &quot;Analysis based on $num_successful_gpu trajectories (out of $num_trajectories initial).&quot;
+                    # Keep only successful, valid ones
+                    ensemble_vals_gpu = ensemble_vals_gpu[:, successful_traj_indices_gpu]
+                end
+
+                # Compute ensemble statistics over successful GPU trajectories
+                mean_u_gpu = mapslices(mean, ensemble_vals_gpu, dims = 2)[:]
+                std_u_gpu = mapslices(std, ensemble_vals_gpu, dims = 2)[:]
+
+                # --- Plotting GPU Results ---
+                p1_gpu = plot(t_vals_gpu, mean_u_gpu, ribbon = std_u_gpu,
+                    xlabel = &quot;Time (t)&quot;, ylabel = &quot;u(t)&quot;,
+                    title = &quot;GPU Ensemble Mean ±1σ ($num_successful_gpu Trajectories)&quot;,
+                    label = &quot;Mean u(t)&quot;, fillalpha = 0.3, lw = 2)
+
+                final_vals_gpu = ensemble_vals_gpu[end, :]
+                p2_gpu = histogram(final_vals_gpu, bins = 30, normalize = :probability,
+                    xlabel = &quot;Final u(T)&quot;, ylabel = &quot;Probability Density&quot;,
+                    title = &quot;GPU Distribution of Final Values (t=$(tspan[2]))&quot;,
+                    label = &quot;&quot;, legend = false)
+
+                gpu_analysis_plot = plot(p1_gpu, p2_gpu, layout = (1, 2),
+                    size = (1000, 450), legend = :outertopright)
+                @info &quot;Displaying GPU analysis plot...&quot;
+                display(gpu_analysis_plot)
+
+                # Cleanup large structures if memory is a concern
+                ensemble_vals_gpu = nothing
+                solutions_vector = nothing
+                # gc()
+            end
+        end
+    end # End if solutions_vector !== nothing
+else
+    @warn &quot;Skipping GPU analysis section because initial GPU performance run failed or CUDA is unavailable.&quot;
+end</code></pre><pre class="documenter-example-output"><code class="nohighlight hljs ansi">┌ Warning: Assignment to `num_processed` in soft scope is ambiguous because a global variable by the same name exists: `num_processed` will be treated as a new local. Disambiguate by using `local num_processed` to suppress this warning or `global num_processed` to assign to the existing global variable.
+└ @ gpu_ensemble_random_decay.md:248
+┌ Warning: Skipping GPU analysis section because initial GPU performance run failed or CUDA is unavailable.
+└ @ Main gpu_ensemble_random_decay.md:304</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../../tutorials/within_method_gpu/">« Within-Method GPU Parallelism of Ordinary Differential Equation Solves</a><a class="docs-footer-nextpage" href="../sde/">GPU Parallel Solving of Stochastic Differential Equations »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="auto">Automatic (OS)</option><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option><option value="catppuccin-latte">catppuccin-latte</option><option value="catppuccin-frappe">catppuccin-frappe</option><option value="catppuccin-macchiato">catppuccin-macchiato</option><option value="catppuccin-mocha">catppuccin-mocha</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 1.17.0 on <span class="colophon-date" title="Friday 28 August 2026 11:27">Friday 28 August 2026</span>. Using Julia version 1.12.7.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
