@@ -14,9 +14,8 @@ end
     @inbounds return similar_type(b, typeof(a[1] \ b[1]))(a[1] \ b[1])
 end
 
-@inline function _linear_solve(
+@inline function _cramer_solve(
         ::Size{(2, 2)},
-        ::Size{(2,)},
         a::StaticMatrix{<:Any, <:Any, Ta},
         b::StaticVector{<:Any, Tb}
     ) where {Ta, Tb}
@@ -28,9 +27,8 @@ end
     )
 end
 
-@inline function _linear_solve(
+@inline function _cramer_solve(
         ::Size{(3, 3)},
-        ::Size{(3,)},
         a::StaticMatrix{<:Any, <:Any, Ta},
         b::StaticVector{<:Any, Tb}
     ) where {Ta, Tb}
@@ -54,6 +52,26 @@ end
                 (a[1, 1] * a[2, 2] - a[1, 2] * a[2, 1]) * b[3]
         ) / d
     )
+end
+
+# Cramer's rule forms products of up to n matrix entries, which overflow (or underflow)
+# for badly scaled systems such as a Rosenbrock W = I/(γ dt) - J with a tiny dt. When
+# that happens, solve the system divided by its largest entry instead: the solution is
+# unchanged, and well-scaled systems keep their exact unscaled arithmetic.
+for Sa in [(2, 2), (3, 3)]
+    @eval @inline function _linear_solve(
+            ::Size{$Sa},
+            ::Size{($Sa[1],)},
+            a::StaticMatrix{<:Any, <:Any, Ta},
+            b::StaticVector{<:Any, Tb}
+        ) where {Ta, Tb}
+        d = det(a)
+        x = _cramer_solve(Size($Sa), a, b)
+        isfinite(d) && !iszero(d) && all(isfinite, x) && return x
+        s = maximum(abs, a)
+        (isfinite(s) && !iszero(s)) || return x
+        return _cramer_solve(Size($Sa), a / s, b / s)
+    end
 end
 
 for Sa in [(2, 2), (3, 3)]  # not needed for Sa = (1, 1);
