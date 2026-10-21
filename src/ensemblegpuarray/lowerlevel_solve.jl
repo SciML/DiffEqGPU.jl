@@ -62,6 +62,13 @@ function vectorized_map_solve(
     )
 end
 
+# `LinSolveGPUSplitFactorize` solves with the per-trajectory LU factors that the `Wfact`
+# generated from `f.jac` writes; without `f.jac` the algorithm keeps its own linear solver.
+function ensemble_array_alg(alg, f, len)
+    hasproperty(alg, :linsolve) && SciMLBase.has_jac(f) || return alg
+    return remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
+end
+
 function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
     if ensemblealg isa EnsembleGPUArray
         backend = ensemblealg.backend
@@ -90,14 +97,9 @@ function vectorized_map_solve_up(prob, alg, ensemblealg, I, u0, p; kwargs...)
         colorvec = nothing
     end
 
+    _alg = ensemble_array_alg(alg, prob.f, len)
     _callback = generate_callback(prob, length(I), ensemblealg; kwargs...)
     prob = generate_problem(prob, u0, p, jac_prototype, colorvec)
-
-    if hasproperty(alg, :linsolve)
-        _alg = remake(alg, linsolve = LinSolveGPUSplitFactorize(len, -1))
-    else
-        _alg = alg
-    end
 
     return sol = solve(
         prob, _alg; kwargs..., callback = _callback, merge_callbacks = false,
