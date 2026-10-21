@@ -612,7 +612,7 @@ weakdeps = ["Functors"]
     DiffEqCallbacksFunctorsExt = "Functors"
 
 [[deps.DiffEqGPU]]
-deps = ["Adapt", "ChainRulesCore", "CommonSolve", "DiffEqBase", "Distributed", "DocStringExtensions", "EnzymeCore", "ForwardDiff", "GPUArraysCore", "KernelAbstractions", "LinearAlgebra", "LinearSolve", "MuladdMacro", "Parameters", "PrecompileTools", "Random", "RecursiveArrayTools", "SciMLBase", "SciMLPublic", "Setfield", "SimpleDiffEq", "SimpleNonlinearSolve", "StaticArrays", "StaticArraysCore", "TOML", "UnPack", "ZygoteRules"]
+deps = ["Adapt", "ChainRulesCore", "CommonSolve", "DiffEqBase", "Distributed", "DocStringExtensions", "EnzymeCore", "FastPower", "ForwardDiff", "GPUArraysCore", "KernelAbstractions", "LinearAlgebra", "LinearSolve", "MuladdMacro", "Parameters", "PrecompileTools", "Random", "RecursiveArrayTools", "SciMLBase", "SciMLPublic", "Setfield", "SimpleDiffEq", "SimpleNonlinearSolve", "StaticArrays", "StaticArraysCore", "TOML", "UnPack", "ZygoteRules"]
 path = "/home/runner/_work/DiffEqGPU.jl/DiffEqGPU.jl"
 uuid = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 version = "3.21.6"
