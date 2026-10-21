@@ -1,4 +1,4 @@
-@inline function step!(integ::GPURB23I{false, S, T}, ts, us) where {T, S}
+@muladd @inline function step!(integ::GPURB23I{false, S, T}, ts, us) where {T, S}
     dt = integ.dt
     t = integ.t
     p = integ.p
@@ -71,7 +71,7 @@ end
 
 #############################Adaptive Version#####################################
 
-@inline function step!(integ::GPUARB23I{false, S, T}, ts, us) where {S, T}
+@muladd @inline function step!(integ::GPUARB23I{false, S, T}, ts, us) where {S, T}
     beta1, beta2, qmax, qmin, gamma, qoldinit,
         _ = build_adaptive_controller_cache(
         integ.alg,

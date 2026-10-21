@@ -36,6 +36,8 @@ end
 # `t0 + (tf - t0)` rounds one ulp below `tf` here. A step that already covers the
 # interval must snap to `tf` rather than take a further ulp-sized step, which would
 # leave `t == tf` but shift the state of this exactly integrable problem by `eps(tf)`.
+# At |u| ≈ 7e7, Float32 rounding in the Rodas stage sums reaches a few hundred, so
+# reltol = 1e-4 keeps the error estimate of the covering step far below 1.
 @testset "Adaptive endpoint snap ($(nameof(typeof(alg))))" for
     alg in ADAPTIVE_ALGS
     t0, tf = 2.094426f7, 9.4428696f7
@@ -43,7 +45,7 @@ end
     f = ODEFunction{false}((u, p, t) -> SVector(1.0f0, 1.0f0))
     integ = DiffEqGPU.init(
         alg, f, false, SVector(1.0f0, 1.0f0), t0, tf, tf - t0, SVector(0.0f0),
-        1.0f-9, 1.0f-6, DiffEqGPU.DiffEqBase.ODE_DEFAULT_NORM, nothing,
+        1.0f-9, 1.0f-4, DiffEqGPU.DiffEqBase.ODE_DEFAULT_NORM, nothing,
         CallbackSet(nothing), nothing
     )
     ts, us = zeros(Float32, 2), zeros(SVector{2, Float32}, 2)

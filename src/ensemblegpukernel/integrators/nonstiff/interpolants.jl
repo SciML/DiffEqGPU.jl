@@ -25,7 +25,7 @@ end
 # where wᵢ is the RK step weight. This guarantees exact endpoints in floating point:
 # at Θ=0 the Θ factor gives zero, at Θ=1 the (Θ-1) factor kills the correction.
 # The qᵢ coefficients are obtained by synthetic division of (bᵢ(Θ)/Θ - wᵢ) by (Θ-1).
-@inline function _vern7_qΘs(integ::T, Θ) where {T <: Union{GPUV7I, GPUAV7I}}
+@inline @muladd function _vern7_qΘs(integ::T, Θ) where {T <: Union{GPUV7I, GPUAV7I}}
     @unpack r011, r012, r013, r014, r015, r016, r017, r042, r043, r044, r045, r046, r047,
         r052, r053, r054, r055, r056, r057, r062, r063, r064, r065, r066, r067, r072, r073,
         r074, r075, r076, r077, r082, r083, r084, r085, r086, r087, r092, r093, r094, r095,
@@ -189,7 +189,7 @@ end
     return y₀ + Θ * step_sum + Θ * (Θ - 1) * correction
 end
 
-@inline function bΘs(integ::T, Θ) where {T <: Union{GPUV9I, GPUAV9I}}
+@inline @muladd function bΘs(integ::T, Θ) where {T <: Union{GPUV9I, GPUAV9I}}
     @unpack r011, r012, r013, r014, r015, r016, r017, r018, r019, r082, r083, r084, r085,
         r086, r087, r088, r089, r092, r093, r094, r095, r096, r097, r098, r099, r102, r103,
         r104, r105, r106, r107, r108, r109, r112, r113, r114, r115, r116, r117, r118, r119,
