@@ -213,7 +213,7 @@ _shallow_reconstruct_problem(prob) = deepcopy(prob)
         deepcopy(prob)
 end
 
-@noinline function _make_kernel_problem(ensembleprob, i, sim_seeds, rng_func, master_rng)
+@noinline function _make_kernel_problem(ensembleprob, i, sim_seeds, rng_func::F, master_rng) where {F}
     ctx = _make_ensemble_context(i, sim_seeds, rng_func, master_rng)
     prob = ensembleprob.safetycopy ? _safety_copy_ensemble_prob(ensembleprob.prob) :
         ensembleprob.prob
@@ -235,7 +235,7 @@ end
 end
 @inline _adapt_kernel_problem(backend, prob) = _kernel_record(adapt(backend, prob))
 
-function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func, master_rng)
+function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func::F, master_rng) where {F}
     first_prob = _make_kernel_problem(ensembleprob, first(I), sim_seeds, rng_func, master_rng)
     first_adapted = _adapt_kernel_problem(backend, first_prob)
     first_ref = _wrap_kernel_host(first_prob)
