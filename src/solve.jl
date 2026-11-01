@@ -226,14 +226,13 @@ end
 @inline _unwrap_kernel_host(prob::Ref) = prob[]
 
 # Kernels read problem fields (`f`, `u0`, `tspan`, `p`, `kwargs`) directly, so
-# outside autodiff a CPU kernel can consume the adapted problem without the
+# outside autodiff kernels can consume the adapted problem without the
 # `KernelODEProblem` repackaging. Enzyme needs the record layout for host
 # aggregate shadows.
-@inline function _adapt_kernel_problem(backend::CPU, prob)
+@inline function _adapt_kernel_problem(backend, prob)
     adapted = adapt(backend, prob)
     return within_autodiff() ? _kernel_record(adapted) : adapted
 end
-@inline _adapt_kernel_problem(backend, prob) = _kernel_record(adapt(backend, prob))
 
 function _prepare_kernel_problems(ensembleprob, backend, I, sim_seeds, rng_func::F, master_rng) where {F}
     first_prob = _make_kernel_problem(ensembleprob, first(I), sim_seeds, rng_func, master_rng)
