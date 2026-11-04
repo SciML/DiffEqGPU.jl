@@ -46,6 +46,12 @@ if GROUP in ("CPU", "JLArrays", "CUDA", "AMDGPU")
     end
 end
 
+if GROUP == "CPU" || GROUP in SUPPORTS_LUFACT
+    @time @safetestset "EnsembleGPUArray implicit methods" begin
+        include("ensemblegpuarray_implicit_jac.jl")
+    end
+end
+
 @time @safetestset "GPU Kernelized Stiff ODE Mass Matrix" begin
     include("gpu_kernel_de/stiff_ode/gpu_ode_mass_matrix.jl")
 end
@@ -93,9 +99,6 @@ if GROUP in SUPPORTS_LUFACT
     @time @safetestset "EnsembleGPUArray OOP" begin
         include("ensemblegpuarray_oop.jl")
     end
-    @time @safetestset "EnsembleGPUArray implicit methods" begin
-        include("ensemblegpuarray_implicit_jac.jl")
-    end
 end
 
 # EnsembleGPUArray kernels has Int64 arguments, causing them to fail with Metal and oneAPI
@@ -138,9 +141,6 @@ if GROUP == "CPU"
     end
     @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
         include("ensemblegpuarray_scalar_batch.jl")
-    end
-    @time @safetestset "EnsembleGPUArray implicit methods" begin
-        include("ensemblegpuarray_implicit_jac.jl")
     end
     @time @safetestset "Kernel ensemble host storage" begin
         include("gpu_kernel_de/host_fastpath.jl")

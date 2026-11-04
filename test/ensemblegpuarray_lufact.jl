@@ -14,17 +14,17 @@ end
     for factorize! in (DiffEqGPU.lufact!, portable_lufact!)
         W = allocate(backend, T, n, n, nbatch)
         copyto!(W, A)
+        b = reshape(T.(1:(n * nbatch)), n, nbatch)
+        x = allocate(backend, T, n, nbatch)
+        rhs = allocate(backend, T, n, nbatch)
+        copyto!(rhs, b)
         @test factorize!(backend, W) === nothing
+        DiffEqGPU.LinSolveGPUSplitFactorize(n, nbatch)(x, W, rhs)
         factors = Array(W)
         for k in 1:nbatch
             F = factors[:, :, k]
             @test UnitLowerTriangular(F) * UpperTriangular(F) ≈ A[:, :, k]
         end
-        b = reshape(T.(1:(n * nbatch)), n, nbatch)
-        x = allocate(backend, T, n, nbatch)
-        rhs = allocate(backend, T, n, nbatch)
-        copyto!(rhs, b)
-        DiffEqGPU.LinSolveGPUSplitFactorize(n, nbatch)(x, W, rhs)
         solutions = Array(x)
         @test all(k -> isapprox(A[:, :, k] * solutions[:, k], b[:, k]), 1:nbatch)
     end
