@@ -395,12 +395,12 @@ end
 """
     lufact!(backend, W)
 
-Factorize each square matrix in a batched matrix array in place.
+Factorize each square matrix in a batched matrix array in place without pivoting.
 
-This is a developer interface implemented by backend extensions. The factorization is
-consumed by `LinSolveGPUSplitFactorize`; each slice `W[:, :, i]` must be a square matrix,
-and the backend implementation must provide the factorization operation callable from the
-selected execution environment.
+The generic KernelAbstractions implementation factorizes one matrix per work item.
+Backend extensions may provide specialized implementations. The factorization is consumed
+by `LinSolveGPUSplitFactorize`; each slice `W[:, :, i]` must be square and admit LU
+factorization without zero pivots.
 
 # Arguments
 
@@ -419,6 +419,22 @@ W = reshape([2.0f0, 0.0f0, 0.0f0, 3.0f0], 2, 2, 1)
 lufact!(CPU(), W)
 ```
 """
+function lufact!(backend::KernelAbstractions.Backend, W)
+    nfacts = size(W, 3)
+    iszero(nfacts) && return nothing
+    lufact!_kernel(backend)(
+        W, size(W, 1); ndrange = nfacts,
+        workgroupsize = workgroupsize(backend, nfacts)
+    )
+    return nothing
+end
+
+@kernel function lufact!_kernel(W, @Const(len))
+    i = @index(Global, Linear)
+    _W = @inbounds @view(W[:, :, i])
+    generic_lufact!(_W, len)
+end
+
 function lufact!(::CPU, W)
     len = size(W, 1)
     for i in 1:size(W, 3)

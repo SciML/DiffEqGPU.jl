@@ -40,6 +40,12 @@ if GROUP == "QA"
     exit()
 end
 
+if GROUP in ("CPU", "JLArrays", "CUDA", "AMDGPU")
+    @time @safetestset "EnsembleGPUArray batched LU" begin
+        include("ensemblegpuarray_lufact.jl")
+    end
+end
+
 @time @safetestset "GPU Kernelized Stiff ODE Mass Matrix" begin
     include("gpu_kernel_de/stiff_ode/gpu_ode_mass_matrix.jl")
 end

@@ -15,6 +15,11 @@ DiffEqGPU.lufact!
 DiffEqGPU.LinSolveGPUSplitFactorize
 ```
 
+`lufact!` provides a KernelAbstractions fallback for batched LU without pivoting, including
+AMDGPU and JLArrays. CPU and CUDA have specialized implementations. Each matrix must admit
+factorization without zero pivots; the factors are stored in place for
+`LinSolveGPUSplitFactorize`.
+
 ## Problem Conversion
 
 `make_prob_compatible` is the generic conversion hook used before passing a batch of
