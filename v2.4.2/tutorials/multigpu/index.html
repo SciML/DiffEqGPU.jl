@@ -1,0 +1,78 @@
+<!DOCTYPE html>
+<html lang="en"><head><meta charset="UTF-8"/><meta name="viewport" content="width=device-width, initial-scale=1.0"/><title>Setting Up Multi-GPU Parallel Parameter Sweeps · DiffEqGPU.jl</title><script async src="https://www.googletagmanager.com/gtag/js?id=UA-90474609-3"></script><script>  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+  gtag('config', 'UA-90474609-3', {'page_path': location.pathname + location.search + location.hash});
+</script><script data-outdated-warner src="../../assets/warner.js"></script><link rel="canonical" href="https://docs.sciml.ai/DiffEqGPU/stable/tutorials/multigpu/"/><link href="https://cdnjs.cloudflare.com/ajax/libs/lato-font/3.0.0/css/lato-font.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/juliamono/0.045/juliamono.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/fontawesome.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/solid.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/5.15.4/css/brands.min.css" rel="stylesheet" type="text/css"/><link href="https://cdnjs.cloudflare.com/ajax/libs/KaTeX/0.13.24/katex.min.css" rel="stylesheet" type="text/css"/><script>documenterBaseURL="../.."</script><script src="https://cdnjs.cloudflare.com/ajax/libs/require.js/2.3.6/require.min.js" data-main="../../assets/documenter.js"></script><script src="../../siteinfo.js"></script><script src="../../../versions.js"></script><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-dark.css" data-theme-name="documenter-dark" data-theme-primary-dark/><link class="docs-theme-link" rel="stylesheet" type="text/css" href="../../assets/themes/documenter-light.css" data-theme-name="documenter-light" data-theme-primary/><script src="../../assets/themeswap.js"></script><link href="../../assets/favicon.ico" rel="icon" type="image/x-icon"/></head><body><div id="documenter"><nav class="docs-sidebar"><a class="docs-logo" href="../../"><img src="../../assets/logo.png" alt="DiffEqGPU.jl logo"/></a><div class="docs-package-name"><span class="docs-autofit"><a href="../../">DiffEqGPU.jl</a></span></div><form class="docs-search" action="../../search/"><input class="docs-search-query" id="documenter-search-query" name="q" type="text" placeholder="Search docs"/></form><ul class="docs-menu"><li><a class="tocitem" href="../../">DiffEqGPU: Massively Data-Parallel GPU Solving of ODEs</a></li><li><a class="tocitem" href="../../getting_started/">Getting Started with GPU-Accelerated Differential Equations in Julia</a></li><li><span class="tocitem">Tutorials</span><ul><li><input class="collapse-toggle" id="menuitem-3-1" type="checkbox" checked/><label class="tocitem" for="menuitem-3-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../gpu_ensemble_basic/">Massively Data-Parallel ODE Solving the Lorenz Equation</a></li><li><a class="tocitem" href="../parallel_callbacks/">Massively Parallel ODE Solving with Event Handling and Callbacks</a></li><li class="is-active"><a class="tocitem" href>Setting Up Multi-GPU Parallel Parameter Sweeps</a><ul class="internal"><li><a class="tocitem" href="#Setting-Up-a-Multi-GPU-Julia-Environment"><span>Setting Up a Multi-GPU Julia Environment</span></a></li><li><a class="tocitem" href="#Example-Multi-GPU-Script"><span>Example Multi-GPU Script</span></a></li></ul></li><li><a class="tocitem" href="../lower_level_api/">Using the Lower Level API for Decreased Overhead with GPU acclerated Ensembles</a></li><li><a class="tocitem" href="../weak_order_conv_sde/">Using the EnsembleGPUKernel SDE solvers for the expectation of SDEs </a></li></ul></li><li><input class="collapse-toggle" id="menuitem-3-2" type="checkbox"/><label class="tocitem" for="menuitem-3-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../within_method_gpu/">Within-Method GPU Parallelism of Ordinary Differential Equation Solves</a></li></ul></li></ul></li><li><span class="tocitem">Examples</span><ul><li><input class="collapse-toggle" id="menuitem-4-1" type="checkbox"/><label class="tocitem" for="menuitem-4-1"><span class="docs-label">GPU Ensembles</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/sde/">GPU Parallel Solving of Stochastic Differential Equations</a></li><li><a class="tocitem" href="../../examples/ad/">Using GPU-accelerated Ensembles with Automatic Differentiation</a></li><li><a class="tocitem" href="../../examples/reductions/">Batched Reductions for Lowering Peak Memory Requirements</a></li></ul></li><li><input class="collapse-toggle" id="menuitem-4-2" type="checkbox"/><label class="tocitem" for="menuitem-4-2"><span class="docs-label">Within-Method GPU</span><i class="docs-chevron"></i></label><ul class="collapsed"><li><a class="tocitem" href="../../examples/reaction_diffusion/">GPU-Accelerated Stochastic Partial Differential Equations</a></li><li><a class="tocitem" href="../../examples/bruss/">GPU-Acceleration of a Stiff Nonlinear Partial Differential Equation</a></li></ul></li></ul></li><li><span class="tocitem">Manual</span><ul><li><a class="tocitem" href="../../manual/ensemblegpukernel/">EnsembleGPUKernel</a></li><li><a class="tocitem" href="../../manual/ensemblegpuarray/">EnsembleGPUArray</a></li><li><a class="tocitem" href="../../manual/backends/">Compute Backends (GPU Choices)</a></li><li><a class="tocitem" href="../../manual/optimal_trajectories/">Choosing Optimal Numbers of Trajectories</a></li><li><a class="tocitem" href="../../manual/choosing_ensembler/">Choosing the Ensemble: EnsembleGPUArray vs EnsembleGPUKernel</a></li></ul></li></ul><div class="docs-version-selector field has-addons"><div class="control"><span class="docs-label button is-static is-size-7">Version</span></div><div class="docs-selector control is-expanded"><div class="select is-fullwidth is-size-7"><select id="documenter-version-selector"></select></div></div></div></nav><div class="docs-main"><header class="docs-navbar"><nav class="breadcrumb"><ul class="is-hidden-mobile"><li><a class="is-disabled">Tutorials</a></li><li><a class="is-disabled">GPU Ensembles</a></li><li class="is-active"><a href>Setting Up Multi-GPU Parallel Parameter Sweeps</a></li></ul><ul class="is-hidden-tablet"><li class="is-active"><a href>Setting Up Multi-GPU Parallel Parameter Sweeps</a></li></ul></nav><div class="docs-right"><a class="docs-edit-link" href="https://github.com/SciML/DiffEqGPU.jl/blob/master/docs/src/tutorials/multigpu.md" title="Edit on GitHub"><span class="docs-icon fab"></span><span class="docs-label is-hidden-touch">Edit on GitHub</span></a><a class="docs-settings-button fas fa-cog" id="documenter-settings-button" href="#" title="Settings"></a><a class="docs-sidebar-button fa fa-bars is-hidden-desktop" id="documenter-sidebar-button" href="#"></a></div></header><article class="content" id="documenter-page"><h1 id="multigpu"><a class="docs-heading-anchor" href="#multigpu">Setting Up Multi-GPU Parallel Parameter Sweeps</a><a id="multigpu-1"></a><a class="docs-heading-anchor-permalink" href="#multigpu" title="Permalink"></a></h1><div class="admonition is-info"><header class="admonition-header">Note</header><div class="admonition-body"><p>This tutorial assumes one already has familiarity with EnsembleGPUArray and EnsembleGPUKernel. Please see <a href="../gpu_ensemble_basic/#lorenz">the Lorenz equation tutorial</a> before reading this tutorial!</p></div></div><p>In this tutorial, we will show how to increase the number of trajectories that can be computed in parallel by setting up and using a multi-GPU solve. For this, we will set up one Julia process for each GPU and let the internal <code>pmap</code> system of <code>EnsembleGPUArray</code> parallelize the system across all of our GPUs. Let&#39;s dig in.</p><h2 id="Setting-Up-a-Multi-GPU-Julia-Environment"><a class="docs-heading-anchor" href="#Setting-Up-a-Multi-GPU-Julia-Environment">Setting Up a Multi-GPU Julia Environment</a><a id="Setting-Up-a-Multi-GPU-Julia-Environment-1"></a><a class="docs-heading-anchor-permalink" href="#Setting-Up-a-Multi-GPU-Julia-Environment" title="Permalink"></a></h2><p>To set up a multi-GPU environment, first set up processes such that each process has a different GPU. For example:</p><pre><code class="language-julia hljs"># Setup processes with different CUDA devices
+using Distributed
+numgpus = 1
+addprocs(numgpus)
+import CUDA
+
+let gpuworkers = asyncmap(collect(zip(workers(), CUDA.devices()))) do (p, d)
+        remotecall_wait(CUDA.device!, p, d)
+        p
+    end
+end</code></pre><p>Then set up the calls to work with distributed processes:</p><pre><code class="language-julia hljs">@everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
+
+@everywhere begin
+    function lorenz_distributed(du, u, p, t)
+        du[1] = p[1] * (u[2] - u[1])
+        du[2] = u[1] * (p[2] - u[3]) - u[2]
+        du[3] = u[1] * u[2] - p[3] * u[3]
+    end
+    CUDA.allowscalar(false)
+    u0 = Float32[1.0; 0.0; 0.0]
+    tspan = (0.0f0, 100.0f0)
+    p = [10.0f0, 28.0f0, 8 / 3.0f0]
+    Random.seed!(1)
+    function prob_func_distributed(prob, i, repeat)
+        remake(prob, p = rand(3) .* p)
+    end
+end</code></pre><p>Now each batch will run on separate GPUs. Thus, we need to use the <code>batch_size</code> keyword argument from the Ensemble interface to ensure there are multiple batches. Let&#39;s solve 40,000 trajectories, batching 10,000 trajectories at a time:</p><pre><code class="language-julia hljs">prob = ODEProblem(lorenz_distributed, u0, tspan, p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
+
+@time sol2 = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+    trajectories = 40_000,
+    batch_size = 10_000, saveat = 1.0f0)</code></pre><p>This will <code>pmap</code> over the batches, and thus if you have 4 processes each with a GPU, each batch of 10,000 trajectories will be run simultaneously. If you have two processes with two GPUs, this will do two sets of 10,000 at a time.</p><h2 id="Example-Multi-GPU-Script"><a class="docs-heading-anchor" href="#Example-Multi-GPU-Script">Example Multi-GPU Script</a><a id="Example-Multi-GPU-Script-1"></a><a class="docs-heading-anchor-permalink" href="#Example-Multi-GPU-Script" title="Permalink"></a></h2><p>In this example, we know we have a 2-GPU system (1 eGPU), and we split the work across the two by directly defining the devices on the two worker processes:</p><pre><code class="language-julia hljs">using DiffEqGPU, CUDA, OrdinaryDiffEq, Test
+CUDA.device!(0)
+
+using Distributed
+addprocs(2)
+@everywhere using DiffEqGPU, CUDA, OrdinaryDiffEq, Test, Random
+
+@everywhere begin
+    function lorenz_distributed(du, u, p, t)
+        du[1] = p[1] * (u[2] - u[1])
+        du[2] = u[1] * (p[2] - u[3]) - u[2]
+        du[3] = u[1] * u[2] - p[3] * u[3]
+    end
+    CUDA.allowscalar(false)
+    u0 = Float32[1.0; 0.0; 0.0]
+    tspan = (0.0f0, 100.0f0)
+    p = [10.0f0, 28.0f0, 8 / 3.0f0]
+    Random.seed!(1)
+    pre_p_distributed = [rand(Float32, 3) for i in 1:100_000]
+    function prob_func_distributed(prob, i, repeat)
+        remake(prob, p = pre_p_distributed[i] .* p)
+    end
+end
+
+@sync begin
+    @spawnat 2 begin
+        CUDA.allowscalar(false)
+        CUDA.device!(0)
+    end
+    @spawnat 3 begin
+        CUDA.allowscalar(false)
+        CUDA.device!(1)
+    end
+end
+
+CUDA.allowscalar(false)
+prob = ODEProblem(lorenz_distributed, u0, tspan, p)
+monteprob = EnsembleProblem(prob, prob_func = prob_func_distributed)
+
+@time sol = solve(monteprob, Tsit5(), EnsembleGPUArray(CUDA.CUDABackend()),
+    trajectories = 100_000,
+    batch_size = 50_000, saveat = 1.0f0)</code></pre></article><nav class="docs-footer"><a class="docs-footer-prevpage" href="../parallel_callbacks/">« Massively Parallel ODE Solving with Event Handling and Callbacks</a><a class="docs-footer-nextpage" href="../lower_level_api/">Using the Lower Level API for Decreased Overhead with GPU acclerated Ensembles »</a><div class="flexbox-break"></div><p class="footer-message">Powered by <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> and the <a href="https://julialang.org/">Julia Programming Language</a>.</p></nav></div><div class="modal" id="documenter-settings"><div class="modal-background"></div><div class="modal-card"><header class="modal-card-head"><p class="modal-card-title">Settings</p><button class="delete"></button></header><section class="modal-card-body"><p><label class="label">Theme</label><div class="select"><select id="documenter-themepicker"><option value="documenter-light">documenter-light</option><option value="documenter-dark">documenter-dark</option></select></div></p><hr/><p>This document was generated with <a href="https://github.com/JuliaDocs/Documenter.jl">Documenter.jl</a> version 0.27.25 on <span class="colophon-date" title="Wednesday 13 September 2023 15:10">Wednesday 13 September 2023</span>. Using Julia version 1.9.3.</p></section><footer class="modal-card-foot"></footer></div></div></div></body></html>
