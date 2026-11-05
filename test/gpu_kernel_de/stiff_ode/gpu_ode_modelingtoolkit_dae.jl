@@ -380,6 +380,29 @@ end
 # Test 6: Computed initialization maps and the FullSpecialize requirement
 # ============================================================================
 
+@testset "Device initialization verbosity" begin
+    f = SciMLBase.NonlinearFunction{false}((u, p) -> u .- p)
+    for constructor in (
+            SciMLBase.NonlinearProblem{false},
+            SciMLBase.ImmutableNonlinearProblem{false},
+            SciMLBase.NonlinearLeastSquaresProblem{false},
+        )
+        for kwargs in ((;), (; verbose = false), (; verbose = "host logging"))
+            original = constructor(f, SVector(0.0), SVector(1.0); kwargs...)
+            compatible = DiffEqGPU.make_nonlinear_problem_compatible(original)
+            @test isbits(compatible)
+            @test isempty(compatible.kwargs)
+            @test (; original.kwargs...) == kwargs
+            @test compatible.f(compatible.u0, compatible.p) == SVector(-1.0)
+        end
+        original = constructor(
+            f, SVector(0.0), SVector(1.0); verbose = false, maxiters = 7
+        )
+        compatible = DiffEqGPU.make_nonlinear_problem_compatible(original)
+        @test (; compatible.kwargs...) == (; maxiters = 7)
+    end
+end
+
 @testset "Computed initialization maps" begin
     # `my` is an observed variable of the torn initialization system, so the state map
     # computes it rather than copying it. ModelingToolkit compiles that into the

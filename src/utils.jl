@@ -171,6 +171,9 @@ function _to_unbounded_initialization(u, lb, ub)
     end
 end
 
+# Verbosity controls host logging, so device initialization omits it.
+_device_initialization_kwargs(; verbose = nothing, kwargs...) = kwargs
+
 function make_nonlinear_problem_compatible(prob::SciMLBase.NonlinearLeastSquaresProblem)
     static_u0 = make_static_storage(prob.u0)
     static_p = make_parameter_compatible(prob.p)
@@ -197,7 +200,7 @@ function make_nonlinear_problem_compatible(prob::SciMLBase.NonlinearLeastSquares
         compatible_f, static_u0, static_p;
         lb = nothing,
         ub = nothing,
-        prob.kwargs...
+        _device_initialization_kwargs(; prob.kwargs...)...
     )
 end
 
@@ -215,7 +218,7 @@ function make_nonlinear_problem_compatible(
         make_static_storage(prob.u0),
         make_parameter_compatible(prob.p),
         prob.problem_type;
-        prob.kwargs...
+        _device_initialization_kwargs(; prob.kwargs...)...
     )
 end
 

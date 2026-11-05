@@ -222,6 +222,9 @@ end
 
 The stand-in has to be isbits and has to implement whatever the model calls on it.
 
+Device initialization omits the nonlinear problem's `verbose` keyword, which controls
+host logging. Other nonlinear solver keywords are preserved.
+
 The current initialization path has the following restrictions:
 
   - Square, underdetermined, and overdetermined nonlinear least-squares initialization
