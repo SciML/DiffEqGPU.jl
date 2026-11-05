@@ -153,6 +153,12 @@ if GROUP == "JLArrays"
     end
 end
 
+if GROUP in ("CUDA", "JLArrays")
+    @time @safetestset "Kernel problem adaptation" begin
+        include("gpu_kernel_de/problem_adaptation.jl")
+    end
+end
+
 if GROUP == "CUDA"
     @testset "Callbacks" begin
         # Causes dynamic function invocation
