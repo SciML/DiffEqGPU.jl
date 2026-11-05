@@ -155,3 +155,26 @@ end
         @test endpoints ≈ exp.([0.1, 0.2, 0.3]) rtol = 1.0e-10
     end
 end
+
+function kernel_preparation_allocations(::Type{T}, n) where {T}
+    f(u, p, t) = p[1] * u
+    prob = ODEProblem{false}(f, SVector{3, T}(1, 0, 0), (zero(T), one(T)), SVector(T(0.2)))
+    ensemble = EnsembleProblem(
+        prob; safetycopy = false,
+        prob_func = (prob, ctx) -> remake(prob; p = SVector(T(ctx.sim_id) / n))
+    )
+    backend = KernelAbstractions.CPU()
+    prepare() = DiffEqGPU._prepare_kernel_problems(
+        ensemble, backend, 1:n, nothing, SciMLBase.default_rng_func, nothing
+    )
+    probs = prepare()
+    bytes = @allocated prepare()
+    return bytes, Base.summarysize(probs)
+end
+
+@testset "Kernel preparation temporary allocations" for T in (Float32, Float64)
+    kernel_preparation_allocations(T, 4096)
+    bytes, storage = kernel_preparation_allocations(T, 4096)
+    # The storage multiple permits allocator overhead while bounding temporary allocations.
+    @test bytes < 4storage
+end
