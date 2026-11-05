@@ -190,7 +190,8 @@ struct KernelODEProblem{U, T, IIP, P, F, K, PT} <: SciMLBase.AbstractODEProblem{
 end
 _kernel_record(prob) = prob
 @noinline function _kernel_record(prob::SciMLBase.ImmutableODEProblem{U, T, IIP, P, F, K, PT}) where {U, T, IIP, P, F, K, PT}
-    return KernelODEProblem{U, T, IIP, P, F, K, PT}(prob.p, prob.u0, prob.tspan, prob.f, prob.kwargs, prob.problem_type)
+    kwargs = NamedTuple(prob.kwargs)
+    return KernelODEProblem{U, T, IIP, P, F, typeof(kwargs), PT}(prob.p, prob.u0, prob.tspan, prob.f, kwargs, prob.problem_type)
 end
 
 @inline function _ensemble_problem_fields_isbits(prob)
