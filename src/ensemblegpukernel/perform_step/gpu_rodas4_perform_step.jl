@@ -122,10 +122,10 @@ end
         T
     )
 
-    dt = integ.dtnew
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dt = integ.tdir * min(abs(integ.dtnew), abs(_next_stop(integ, tf) - t))
 
     tmp = integ.tmp
     f = integ.f
@@ -258,7 +258,7 @@ end
                 end
                 dt = integ.t - integ.tprev
                 integ.tstops_idx += 1
-            elseif (tf - t - dt) < convert(T, 1.0f-14)
+            elseif integ.tdir * (tf - t - dt) < convert(T, 1.0f-14)
                 integ.t = tf
             else
                 ##Advance the integrator
