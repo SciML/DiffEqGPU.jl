@@ -142,6 +142,9 @@ if GROUP == "CPU"
     @time @safetestset "EnsembleGPUArray scalar batch parameters" begin
         include("ensemblegpuarray_scalar_batch.jl")
     end
+    @time @safetestset "EnsembleGPUArray DynamicalODEFunction" begin
+        include("ensemblegpuarray_dynamical.jl")
+    end
     @time @safetestset "Kernel ensemble host storage" begin
         include("gpu_kernel_de/host_fastpath.jl")
     end
