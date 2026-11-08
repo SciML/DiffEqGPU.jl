@@ -7,6 +7,7 @@ let
     using SciMLTesting
     SciMLTesting.activate_group_env($(repr(envdir)))
     include($(repr(joinpath(envdir, "imports.jl"))))
+    include($(repr(joinpath(envdir, "problem_adaptation.jl"))))
     if $cuda
         include($(repr(joinpath(envdir, "cuda_records.jl"))))
     end
