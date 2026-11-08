@@ -120,3 +120,163 @@ end
     Enzyme.autodiff(Reverse, initial_state_loss, Active, Duplicated(u0, du0), Const(backend))
     @test du0 ≈ fill(exp(0.2), length(u0)) rtol = 1.0e-7
 end
+
+linear_event(u, t, integrator) = u[1] - integrator.p[1]
+function curved_event(u, t, integrator)
+    d = u[1] - integrator.p[1]
+    return d + eltype(u)(1.0e4) * d^3
+end
+reset_half!(integrator) = (integrator.u = SVector(oftype(integrator.u[1], 0.5)))
+
+function event_time_loss(p::Vector{T}, rhs, condition, u0, backend) where {T}
+    prob = ODEProblem{false}(rhs, SVector(T(u0)), (zero(T), one(T)), SVector(p[1]))
+    prob_func = (prob, ctx) -> remake(prob; p = SVector(p[ctx.sim_id]))
+    cb = ContinuousCallback(condition, reset_half!; save_positions = (false, false))
+    sol = solve(
+        EnsembleProblem(prob; prob_func, safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = length(p), adaptive = false,
+        dt = T(0.05), callback = cb, merge_callbacks = true, save_everystep = false
+    )
+    return sum(s -> only(s.u[end]), sol.u)
+end
+
+function event_root(p::T, g, bracket, rootfind) where {T}
+    return DiffEqGPU.gpu_find_root(t -> g(t, p), T.(bracket), rootfind)
+end
+
+@testset "Continuous event root sensitivities ($T, p = $p, $rootfind)" for (T, g, p, bracket) in (
+            (Float32, (t, p) -> (t - p) + 1.0f4 * (t - p)^3, 0.71f0, (0.7, 0.75)),
+            (Float64, (t, p) -> (t - p) + 1.0e4 * (t - p)^3, 0.71, (0.7, 0.75)),
+            (Float64, (t, p) -> (t - p) + (t - p)^3, 1.0e9, (1.0e9 - 1, 1.0e9 + 1)),
+            (Float32, (t, p) -> expm1(25000.0f0 * (t - p)), 0.71f0, (0.7065, 0.7135)),
+        ), rootfind in (SciMLBase.LeftRootFind, SciMLBase.RightRootFind)
+    # Each condition crosses zero transversally at t = p, so dt/dp = 1 exactly.
+    dp, root = Enzyme.autodiff(
+        ReverseWithPrimal, event_root, Active, Active(p), Const(g), Const(bracket),
+        Const(rootfind)
+    )
+    @test root === event_root(p, g, bracket, rootfind)
+    @test first(dp) ≈ 1 rtol = 10 * eps(T)
+end
+
+@testset "Event root sensitivities reject degenerate crossings" begin
+    # Zero time derivative at the exact root t = 0, a slope that overflows Float32, and
+    # a condition whose time derivative cancels. The slopes depend on `p` at run time,
+    # as kernel conditions always do through the integrator state.
+    for (p, g, bracket) in (
+            (0.0, (t, p) -> t^3 - p, (-1.0, 1.0)),
+            (0.71f0, (t, p) -> ((t - p) * p * 1.0f38) * 10.0f0, (0.7, 0.75)),
+            (0.5, (t, p) -> p * t - p * t + (one(t) - p), (-1.0, 1.0)),
+        )
+        @test_throws r"time derivative at the event is zero or non-finite" Enzyme.autodiff(
+            Reverse, event_root, Active, Active(p), Const(g), Const(bracket),
+            Const(SciMLBase.LeftRootFind)
+        )
+    end
+end
+
+@testset "Parameter-dependent continuous event time gradients ($T)" for T in (Float32, Float64)
+    rtol = T === Float32 ? 2.0e-5 : 1.0e-8
+    # u′ = 1 from 0 hits u = p > 0.75 once, at t = p, so u(1) = 1.5 - p.
+    p = T[0.78, 0.84, 0.93]
+    rhs = (u, p, t) -> SVector(one(eltype(u)))
+    for condition in (linear_event, curved_event)
+        @test event_time_loss(p, rhs, condition, 0, backend) ≈ sum(T(1.5) .- p) rtol = rtol
+        dp = zero(p)
+        Enzyme.autodiff(
+            Reverse, event_time_loss, Active, Duplicated(p, dp),
+            Const(rhs), Const(condition), Const(0), Const(backend)
+        )
+        @test dp ≈ -ones(T, 3) rtol = rtol
+    end
+end
+
+@testset "Nonlinear continuous event time gradients" begin
+    # u′ = u from 1 hits u = p at t = log(p), so u(1) = 0.5e / p.
+    p = [1.3, 1.7, 2.2]
+    rhs = (u, p, t) -> u
+    @test event_time_loss(p, rhs, linear_event, 1, backend) ≈ sum(0.5 * ℯ ./ p) rtol = 1.0e-7
+    dp = zero(p)
+    Enzyme.autodiff(
+        Reverse, event_time_loss, Active, Duplicated(p, dp),
+        Const(rhs), Const(linear_event), Const(1), Const(backend)
+    )
+    @test dp ≈ -0.5 * ℯ ./ p .^ 2 rtol = 1.0e-6
+end
+
+time_event(u, t, integrator) = t - integrator.p[1]
+reset_zero!(integrator) = (integrator.u = zero(integrator.u))
+double_state!(integrator) = (integrator.u = 2 * integrator.u)
+
+function endpoint_event_loss(p, affect!, backend)
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(1.0), SVector(0.0), (0.0, 1.0), SVector(p[1])
+    )
+    cb = ContinuousCallback(time_event, affect!; save_positions = (false, false))
+    sol = solve(
+        EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = 3, adaptive = false,
+        dt = 0.25, callback = cb, merge_callbacks = true, save_everystep = false
+    )
+    return sum(s -> only(s.u[end]), sol.u) / 3
+end
+
+@testset "Event time gradients at step endpoints ($(nameof(affect!)))" for (affect!, sign) in (
+        (reset_zero!, -1), (double_state!, 1),
+    )
+    # u′ = 1 from 0 with the event at t = p: resetting gives u(1) = 1 - p and doubling
+    # gives u(1) = 2p + (1 - p) = 1 + p. p = 0.5 and 0.75 land exactly on step endpoints.
+    for p in (0.5, 0.74, 0.75, 0.76)
+        @test endpoint_event_loss([p], affect!, backend) ≈ 1 + sign * p rtol = 1.0e-12
+        dp = [0.0]
+        Enzyme.autodiff(
+            Reverse, endpoint_event_loss, Active, Duplicated([p], dp),
+            Const(affect!), Const(backend)
+        )
+        @test only(dp) ≈ sign rtol = 1.0e-10
+    end
+end
+
+function event_fields_loss(x, condition, adaptive, backend)
+    a, b, t0, tf, c, r, dt = x
+    prob = ODEProblem{false}(
+        (u, p, t) -> SVector(p[1]), SVector(b), (t0, tf), SVector(a, c, r)
+    )
+    affect!(integrator) = (integrator.u = SVector(integrator.p[3]))
+    cb = ContinuousCallback(condition, affect!; save_positions = (false, false))
+    sol = solve(
+        EnsembleProblem(prob; safetycopy = false), GPUTsit5(),
+        EnsembleGPUKernel(backend, 0.0); trajectories = 3, adaptive, dt,
+        callback = cb, merge_callbacks = true, save_everystep = false
+    )
+    return sum(s -> only(s.u[end]), sol.u) / 3
+end
+
+mixed_event(u, t, integrator) = u[1] + 10 * t - integrator.p[2]
+state_event(u, t, integrator) = u[1] - integrator.p[2]
+
+@testset "Event time gradients for all problem fields (adaptive = $adaptive)" for adaptive in (false, true)
+    # x = [a, b, t0, tf, c, r, dt] for u′ = a, u(t0) = b, reset to r, dt = 0.25.
+    # u + 10t = c fires once at τ = (c - b + a t0) / (a + 10), so L = r + a (tf - τ).
+    # c = 8.25 puts τ = 0.75 exactly on a step endpoint.
+    for c in (8.14, 8.25, 8.36)
+        x = [1.0, 0.0, 0.0, 1.0, c, 2.0, 0.25]
+        dx = zero(x)
+        @test event_fields_loss(x, mixed_event, adaptive, backend) ≈ 3 - c / 11 atol = 1.0e-12
+        Enzyme.autodiff(
+            Reverse, event_fields_loss, Active, Duplicated(x, dx),
+            Const(mixed_event), Const(adaptive), Const(backend)
+        )
+        @test dx ≈ [1 - 10c / 121, 1 / 11, -1 / 11, 1, -1 / 11, 1, 0] atol = 1.0e-10
+    end
+    # u = c fires at τ₁ = t0 + (c - b) / a and, after each reset to r = 0, every c / a,
+    # giving six events per solve, several within one original step: L = a (tf - τ₆).
+    x = [1.0, 0.0, 0.0, 1.0, 0.15, 0.0, 0.25]
+    dx = zero(x)
+    @test event_fields_loss(x, state_event, adaptive, backend) ≈ 0.1 atol = 1.0e-12
+    Enzyme.autodiff(
+        Reverse, event_fields_loss, Active, Duplicated(x, dx),
+        Const(state_event), Const(adaptive), Const(backend)
+    )
+    @test dx ≈ [1, 1, -1, 1, -6, 6, 0] atol = 1.0e-10
+end
