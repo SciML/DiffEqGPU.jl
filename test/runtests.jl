@@ -132,6 +132,12 @@ if GROUP in SUPPORTS_DOUBLE_PRECISION
     =#
 end
 
+if GROUP in ("CUDA", "AMDGPU", "Metal")
+    @time @safetestset "EnsembleGPUArray DynamicalODEFunction" begin
+        include("ensemblegpuarray_dynamical.jl")
+    end
+end
+
 if GROUP == "CPU"
     @time @safetestset "Public generic interfaces" begin
         include("public_interface.jl")

@@ -25,14 +25,18 @@ end
 # A `DynamicalODEFunction` (also used by `SecondOrderODEProblem`) has no single `f`: `f1`
 # gives the derivative of `v` and `f2` the derivative of `u`. Each column of the batched
 # state holds one trajectory's `ArrayPartition(v, u)` flattened to `[v; u]`, so split it
-# and call both halves.
-struct DynamicalColumnRHS{F1, F2}
+# and call both halves, writing each derivative into its slice of `du`. Out-of-place
+# halves are copied element by element: concatenating them (e.g. with `vcat`) is generic
+# array code that doesn't compile for GPUs when a half returns a view of the state.
+struct DynamicalColumnRHS{iip, F1, F2}
     f1::F1
     f2::F2
     n::Int # length of `v`
 end
+DynamicalColumnRHS{iip}(f1::F1, f2::F2, n) where {iip, F1, F2} =
+    DynamicalColumnRHS{iip, F1, F2}(f1, f2, n)
 
-@inline function (f::DynamicalColumnRHS)(du, u, p, t)
+@inline function (f::DynamicalColumnRHS{true})(du, u, p, t)
     n = f.n
     @views begin
         v, x = u[1:n], u[(n + 1):end]
@@ -42,16 +46,28 @@ end
     return nothing
 end
 
-@inline function (f::DynamicalColumnRHS)(u, p, t)
+@inline function (f::DynamicalColumnRHS{false})(du, u, p, t)
     n = f.n
     @views v, x = u[1:n], u[(n + 1):end]
-    return vcat(f.f1(v, x, p, t), f.f2(v, x, p, t))
+    dv = f.f1(v, x, p, t)
+    @inbounds for j in 1:n
+        du[j] = dv[j]
+    end
+    dx = f.f2(v, x, p, t)
+    @inbounds for j in 1:(length(du) - n)
+        du[n + j] = dx[j]
+    end
+    return nothing
 end
 
 column_rhs(f, u0) = f.f
 function column_rhs(f::SciMLBase.DynamicalODEFunction, u0)
-    return DynamicalColumnRHS(f.f1, f.f2, length(u0.x[1]))
+    return DynamicalColumnRHS{SciMLBase.isinplace(f)}(f.f1, f.f2, length(u0.x[1]))
 end
+
+# `DynamicalColumnRHS` always writes into `du`, so it runs in the in-place kernel
+column_kernel(f, prob) = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
+column_kernel(::DynamicalColumnRHS, prob) = gpu_kernel
 
 function generate_problem(
         prob::SciMLBase.AbstractODEProblem,
@@ -60,7 +76,7 @@ function generate_problem(
         jac_prototype,
         colorvec
     )
-    _f = let f = column_rhs(prob.f, prob.u0), kernel = DiffEqBase.isinplace(prob) ? gpu_kernel : gpu_kernel_oop
+    _f = let f = column_rhs(prob.f, prob.u0), kernel = column_kernel(f, prob)
         function (du, u, p, t)
             version = get_backend(u)
             wgs = workgroupsize(version, size(u, 2))

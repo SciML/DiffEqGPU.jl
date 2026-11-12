@@ -1,12 +1,16 @@
-using DiffEqGPU
+using DiffEqGPU, StaticArrays
 using OrdinaryDiffEq: Tsit5
 using SciMLBase: DynamicalODEProblem, SecondOrderODEProblem, EnsembleProblem,
     EnsembleSerial, remake, solve
 using Test
 
+include("utils.jl")
+ensemble = GROUP == "CPU" ? EnsembleCPUArray() : EnsembleGPUArray(backend, 0.0)
+
 # harmonic oscillators: dv/dt = -k x, dx/dt = v, with a different k per trajectory
 dv(v, x, p, t) = -p[1] .* x
-dx(v, x, p, t) = v
+dx(v, x, p, t) = v # returns the state itself: a view of it in the GPU kernels
+dv_static(v, x, p, t) = SVector(-p[1] * x[1], -p[1] * x[2])
 function dv!(a, v, x, p, t)
     for j in eachindex(a)
         a[j] = -p[1] * x[j]
@@ -31,16 +35,27 @@ function exact(k, t)
     return vcat(-w .* x0 .* sin(w * t) .+ v0 .* cos(w * t), x0 .* cos(w * t) .+ v0 ./ w .* sin(w * t))
 end
 
-probs = [
+v0_static, x0_static = SVector{2}(v0), SVector{2}(x0)
+
+# `dv` allocates, so these out-of-place cases only run on the CPU
+cpu_probs = [
     "DynamicalODEProblem oop" => DynamicalODEProblem{false}(dv, dx, v0, x0, tspan, Float32[1]),
-    "DynamicalODEProblem iip" => DynamicalODEProblem{true}(dv!, dx!, v0, x0, tspan, Float32[1]),
     "SecondOrderODEProblem" => SecondOrderODEProblem{false}(dv, v0, x0, tspan, Float32[1]),
 ]
+# allocation-free right-hand sides that also compile for GPUs
+probs = [
+    "DynamicalODEProblem iip" => DynamicalODEProblem{true}(dv!, dx!, v0, x0, tspan, Float32[1]),
+    "DynamicalODEProblem oop, static" =>
+        DynamicalODEProblem{false}(dv_static, dx, v0_static, x0_static, tspan, Float32[1]),
+    "SecondOrderODEProblem oop, static" =>
+        SecondOrderODEProblem{false}(dv_static, v0_static, x0_static, tspan, Float32[1]),
+]
+GROUP == "CPU" && append!(probs, cpu_probs)
 
 @testset "$name" for (name, prob) in probs
     ens = EnsembleProblem(prob; prob_func, safetycopy = false)
     kw = (; trajectories = length(ks), abstol = 1.0f-7, reltol = 1.0f-7, save_everystep = false)
-    sol = solve(ens, Tsit5(), EnsembleCPUArray(); kw...)
+    sol = solve(ens, Tsit5(), ensemble; kw...)
     ref = solve(ens, Tsit5(), EnsembleSerial(); kw...)
     for (i, k) in enumerate(ks)
         @test collect(sol.u[i].u[end]) ≈ exact(k, tspan[2]) atol = 1.0f-3
