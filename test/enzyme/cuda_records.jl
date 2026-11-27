@@ -8,6 +8,7 @@ recordalloc(dims) = CuArray{EnzymeAllocationRecord}(undef, dims)
 
 @testset "Allocate records $dims" for dims in ((), (0,), (3,), (2, 3))
     dup = Enzyme.autodiff(ForwardWithPrimal, recordalloc, Duplicated, Const(dims))
+    @test eltype(dup[1]) === EnzymeAllocationRecord
     @test size(dup[1]) == dims
     @test all(x -> iszero(x.value) && !x.flag, Array(dup[1]))
 
@@ -16,6 +17,7 @@ recordalloc(dims) = CuArray{EnzymeAllocationRecord}(undef, dims)
         Duplicated, Const{typeof(dims)}
     )
     tape, prim, shad = fwd(Const(recordalloc), Const(dims))
+    @test eltype(shad) === EnzymeAllocationRecord
     @test size(shad) == dims
     @test all(x -> iszero(x.value) && !x.flag, Array(shad))
 end

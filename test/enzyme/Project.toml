@@ -1,6 +1,5 @@
 [deps]
 CUDA = "052768ef-5323-5732-b1bb-66c8b64840ba"
-CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
 DiffEqGPU = "071ae1c0-96b5-11e9-1965-c90190d839ea"
 Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
 ExplicitImports = "7d51a73a-1435-4ff3-83d9-f097790105c7"
@@ -16,7 +15,6 @@ DiffEqGPU = {path = "../.."}
 
 [compat]
 CUDA = "6"
-CUDACore = "6.2"
 Enzyme = "0.13.201"
 ExplicitImports = "1.15"
 JLArrays = "0.3"
