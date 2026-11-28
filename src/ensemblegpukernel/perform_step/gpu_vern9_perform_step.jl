@@ -132,10 +132,10 @@ end
         T
     )
 
-    dt = integ.dtnew
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dt = integ.tdir * min(abs(integ.dtnew), abs(_next_stop(integ, tf) - t))
 
     @unpack c1, c2, c3, c4, c5, c6, c7, c8, c9, c10, c11, c12, c13, a0201, a0301, a0302,
         a0401, a0403, a0501, a0503, a0504, a0601, a0604, a0605, a0701, a0704, a0705, a0706,
@@ -302,7 +302,7 @@ end
                 end
                 dt = integ.t - integ.tprev
                 integ.tstops_idx += 1
-            elseif (tf - t - dt) < convert(T, 1.0e-14)
+            elseif integ.tdir * (tf - t - dt) < convert(T, 1.0e-14)
                 integ.t = tf
             else
                 ##Advance the integrator

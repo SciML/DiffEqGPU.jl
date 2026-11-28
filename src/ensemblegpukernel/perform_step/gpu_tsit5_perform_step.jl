@@ -72,10 +72,10 @@ end
         T
     )
     c1, c2, c3, c4, c5, c6 = integ.cs
-    dt = integ.dtnew
     t = integ.t
     p = integ.p
     tf = integ.tf
+    dt = integ.tdir * min(abs(integ.dtnew), abs(_next_stop(integ, tf) - t))
     a21, a31, a32, a41, a42, a43, a51, a52, a53, a54,
         a61, a62, a63, a64, a65, a71, a72, a73, a74, a75, a76 = integ.as
     btilde1, btilde2, btilde3, btilde4, btilde5, btilde6, btilde7 = integ.btildes
@@ -157,7 +157,7 @@ end
                 end
                 dt = integ.t - integ.tprev
                 integ.tstops_idx += 1
-            elseif (tf - t - dt) < T(1.0e-14)
+            elseif integ.tdir * (tf - t - dt) < T(1.0e-14)
                 integ.t = tf
             else
                 ##Advance the integrator
