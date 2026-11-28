@@ -5,7 +5,7 @@ module DiffEqGPU
 
 using DocStringExtensions: DocStringExtensions
 using SciMLPublic: @public
-using EnzymeCore: within_autodiff
+using EnzymeCore: ignore_derivatives, within_autodiff
 using FastPower: fastpower
 using KernelAbstractions: KernelAbstractions, @Const, @index, @kernel, CPU
 import KernelAbstractions: get_backend, allocate
