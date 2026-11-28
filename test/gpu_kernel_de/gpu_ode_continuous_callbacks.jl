@@ -12,6 +12,7 @@ end
 u0 = @SVector[45.0f0, 0.0f0]
 # End away from the velocity jump at t = 15 so roundoff cannot change the endpoint side.
 tspan = (0.0f0, 16.0f0)
+u_exact = @SVector [25.0f0, 20.0f0]
 p = @SVector [10.0f0]
 prob = ODEProblem{false}(f, u0, tspan, p)
 prob_func = (prob, ctx) -> remake(prob, p = prob.p)
@@ -117,6 +118,8 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     )
 
     @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 1.0e-2
+    @test norm(bench_sol.u[end] - u_exact) < 1.0e-2
+    @test norm(sol.u[1].u[end] - u_exact) < 1.0e-2
 
     @info "Callback: CallbackSets"
 
@@ -136,6 +139,8 @@ for (alg, diffeq_alg) in zip(algs, diffeq_algs)
     )
 
     @test norm(bench_sol.u[end] - sol.u[1].u[end]) < 1.0e-2
+    @test norm(bench_sol.u[end] - u_exact) < 1.0e-2
+    @test norm(sol.u[1].u[end] - u_exact) < 1.0e-2
 
     @info "saveat and callbacks"
 
