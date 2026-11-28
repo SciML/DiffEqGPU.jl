@@ -185,6 +185,9 @@ struct GPURodas5P{AD} <: GPUODEImplicitAlgorithm{AD} end
 
 Third-order ESDIRK method specialized for stiff `EnsembleGPUKernel` ODE solves.
 
+Supports nonsingular mass matrices (`M * u' = f(u,p,t)`). Singular mass matrices
+(DAEs) are rejected; use `GPURosenbrock23`, `GPURodas4`, or `GPURodas5P` instead.
+
 # Keyword Arguments
 
   - `autodiff`: whether automatic differentiation is used for derivative generation.
@@ -201,7 +204,8 @@ A `GPUKvaerno3` algorithm selector.
 
 # Throws
 
-`solve` throws when the problem does not provide GPU-compatible derivative information.
+`solve` throws when the problem does not provide GPU-compatible derivative information,
+or when the mass matrix is singular.
 """
 struct GPUKvaerno3{AD} <: GPUODEImplicitAlgorithm{AD} end
 
@@ -209,6 +213,9 @@ struct GPUKvaerno3{AD} <: GPUODEImplicitAlgorithm{AD} end
     GPUKvaerno5(; autodiff = Val{true}())
 
 Fifth-order ESDIRK method specialized for stiff `EnsembleGPUKernel` ODE solves.
+
+Supports nonsingular mass matrices (`M * u' = f(u,p,t)`). Singular mass matrices
+(DAEs) are rejected; use `GPURosenbrock23`, `GPURodas4`, or `GPURodas5P` instead.
 
 # Keyword Arguments
 
@@ -226,7 +233,8 @@ A `GPUKvaerno5` algorithm selector.
 
 # Throws
 
-`solve` throws when the problem does not provide GPU-compatible derivative information.
+`solve` throws when the problem does not provide GPU-compatible derivative information,
+or when the mass matrix is singular.
 """
 struct GPUKvaerno5{AD} <: GPUODEImplicitAlgorithm{AD} end
 

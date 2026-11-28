@@ -92,27 +92,21 @@ end
 end
 
 @testset "GPUKvaerno3 DAE" begin
-    sol = solve(
+    @test_throws ArgumentError solve(
         monteprob, GPUKvaerno3(), EnsembleGPUKernel(backend),
         trajectories = 2,
         dt = 0.001f0,
         adaptive = false
     )
-    @test length(sol.u) == 2
-    @test !any(isnan, sol.u[1].u[end])
-    @test abs(sol.u[1].u[end][1] + sol.u[1].u[end][2] - 1.0f0) < 0.01f0
 end
 
 @testset "GPUKvaerno5 DAE" begin
-    sol = solve(
+    @test_throws ArgumentError solve(
         monteprob, GPUKvaerno5(), EnsembleGPUKernel(backend),
         trajectories = 2,
         dt = 0.001f0,
         adaptive = false
     )
-    @test length(sol.u) == 2
-    @test !any(isnan, sol.u[1].u[end])
-    @test abs(sol.u[1].u[end][1] + sol.u[1].u[end][2] - 1.0f0) < 0.01f0
 end
 
 # ============================================================================
