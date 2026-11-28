@@ -33,6 +33,15 @@ end
     @test dp ≈ exp.(p) rtol = (T === Float32 ? 2.0e-5 : 1.0e-7)
 end
 
+@testset "Adaptive reverse-mode primal ($T)" for T in (Float32, Float64)
+    p = T[1.25, -0.8, 2.1]
+    dp = zero(p)
+    _, primal = Enzyme.autodiff(
+        ReverseWithPrimal, ensemble_loss, Active, Duplicated(p, dp), Const(backend), Const(true)
+    )
+    @test primal ≈ ensemble_loss(p, backend, true) rtol = 8eps(T)
+end
+
 function lorenz_rhs(u, p, t)
     x, y, z = u
     return SVector(10 * (y - x), x * (p[1] - z) - y, x * y - (8 / 3) * z)

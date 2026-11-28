@@ -1,0 +1,9 @@
+[deps]
+CUDACore = "bd0ed864-bdfe-4181-a5ed-ce625a5fdea2"
+Enzyme = "7da242da-08ed-463a-9acd-ee780be4f1d9"
+Test = "8dfed614-e22c-5e08-85e1-65c5234f0b40"
+
+[compat]
+CUDACore = "6.5"
+Enzyme = "0.13.201"
+julia = "1.10"
